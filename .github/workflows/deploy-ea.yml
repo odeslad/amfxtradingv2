@@ -39,6 +39,8 @@ jobs:
       - name: Upload EA files to staging folder
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
           scp ea/HttpBridgeCommands.mq4 $SSH_USER@ssh.v2.amfxtrading.com:"C:/deploy/"
@@ -47,6 +49,8 @@ jobs:
       - name: Distribute to all MT4 instances
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command \
             \$terminals = Get-ChildItem 'C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\' -Directory; \

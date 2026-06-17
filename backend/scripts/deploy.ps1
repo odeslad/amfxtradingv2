@@ -1,27 +1,32 @@
+$ErrorActionPreference = 'Stop'
+
+function Invoke-Step {
+    param([string]$Label, [scriptblock]$Command)
+    Write-Host "[$Label]"
+    & $Command
+    if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE" }
+}
+
 Set-Location C:\amfxtradingv2
 
-Write-Host "Pulling latest code..."
-git pull origin master
+Invoke-Step "git reset" { git reset --hard HEAD }
+Invoke-Step "git pull" { git pull origin master }
 
 Set-Location backend
 
-Write-Host "Stopping backend..."
-pm2 stop amfxtrading-backend
+# Stop and delete so npm ci can replace the locked Prisma DLL
+pm2 delete amfxtrading-backend 2>$null
+$LASTEXITCODE = 0
 
-Write-Host "Installing dependencies..."
-npm ci
+Invoke-Step "npm ci" { npm ci }
+Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }
+Invoke-Step "prisma migrate" { node_modules\.bin\prisma migrate deploy }
+Invoke-Step "build" { npm run build }
 
-Write-Host "Generating Prisma client..."
-node_modules\.bin\prisma generate
+Invoke-Step "pm2 start" {
+    pm2 start C:\amfxtradingv2\backend\dist\index.js --name amfxtrading-backend
+}
 
-Write-Host "Running migrations..."
-node_modules\.bin\prisma migrate deploy
+Invoke-Step "pm2 save" { pm2 save }
 
-Write-Host "Building..."
-npm run build
-
-Write-Host "Restarting backend..."
-pm2 restart amfxtrading-backend
-
-pm2 save
-Write-Host "Backend deployed successfully"
+Write-Host "[OK] Backend deployed and running"

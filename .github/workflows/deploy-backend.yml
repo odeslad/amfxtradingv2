@@ -36,6 +36,15 @@ jobs:
             IdentityFile ~/.ssh/id_ed25519
           EOF
 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload deploy script
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          scp backend/scripts/deploy.ps1 $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/backend/scripts/deploy.ps1"
+
       - name: Deploy backend
         env:
           SSH_USER: ${{ secrets.SSH_USER }}

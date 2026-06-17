@@ -15,8 +15,7 @@ Invoke-Step "git pull" { git pull origin master }
 Set-Location backend
 
 # Stop and delete so npm ci can replace the locked Prisma DLL
-try { pm2 delete amfxtrading-backend 2>&1 | Out-Null } catch {}
-$LASTEXITCODE = 0
+Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend }
 Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
 Start-Sleep -Seconds 3
 

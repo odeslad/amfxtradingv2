@@ -22,20 +22,6 @@ jobs:
           chmod +x cloudflared
           sudo mv cloudflared /usr/local/bin/
 
-      - name: Diagnose Access service token
-        env:
-          CF_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
-        run: |
-          echo "Client ID length: ${#CF_ID}"
-          echo "Client Secret length: ${#CF_SECRET}"
-          echo "Testing Access auth against hostname..."
-          code=$(curl -s -o /dev/null -w "%{http_code}" https://ssh-v2.amfxtrading.com \
-            -H "CF-Access-Client-Id: $CF_ID" \
-            -H "CF-Access-Client-Secret: $CF_SECRET")
-          echo "HTTP status with service token: $code"
-          echo "(403 = token rejected by Access policy; 530/502 = tunnel/origin issue; 200/400 = auth OK)"
-
       - name: Setup SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
@@ -53,45 +39,24 @@ jobs:
             IdentityFile ~/.ssh/id_ed25519
           EOF
 
-      - name: Upload EA files to staging folder
+      - name: Upload EA and scripts
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
-          scp ea/HttpBridgeCommands.mq4 $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp ea/HttpBridgeState.mq4 $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp ea/HttpBridgeCommands.mq4   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp ea/HttpBridgeState.mq4      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
 
       - name: Compile EA files
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command \
-            \$editor = Get-ChildItem 'C:\Program Files (x86)' -Recurse -Filter 'metaeditor.exe' -ErrorAction SilentlyContinue | Select-Object -First 1; \
-            if (-not \$editor) { Write-Error 'metaeditor.exe not found'; exit 1 }; \
-            Write-Host 'Using metaeditor:' \$editor.FullName; \
-            foreach (\$f in @('HttpBridgeCommands.mq4','HttpBridgeState.mq4')) { \
-              \$path = 'C:\deploy\' + \$f; \
-              \$proc = Start-Process -FilePath \$editor.FullName -ArgumentList ('/compile:\"' + \$path + '\"', '/log') -Wait -PassThru; \
-              if (\$proc.ExitCode -ne 0) { Write-Warning (\$f + ' compile exit code: ' + \$proc.ExitCode) }; \
-              else { Write-Host (\$f + ' compiled OK') }; \
-            }"
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\deploy\compile-ea.ps1"
 
       - name: Distribute to all MT4 instances
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command \
-            \$terminals = Get-ChildItem 'C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\' -Directory; \
-            \$count = 0; \
-            foreach (\$t in \$terminals) { \
-              \$dest = \$t.FullName + '\MQL4\Experts\'; \
-              if (Test-Path \$dest) { \
-                Copy-Item 'C:\deploy\HttpBridgeCommands.mq4' \$dest -Force; \
-                Copy-Item 'C:\deploy\HttpBridgeState.mq4' \$dest -Force; \
-                if (Test-Path 'C:\deploy\HttpBridgeCommands.ex4') { Copy-Item 'C:\deploy\HttpBridgeCommands.ex4' \$dest -Force }; \
-                if (Test-Path 'C:\deploy\HttpBridgeState.ex4') { Copy-Item 'C:\deploy\HttpBridgeState.ex4' \$dest -Force }; \
-                Write-Host 'Deployed to' \$dest; \
-                \$count++; \
-              } \
-            }; \
-            Write-Host 'Total MT4 instances updated:' \$count"
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\deploy\distribute-ea.ps1"

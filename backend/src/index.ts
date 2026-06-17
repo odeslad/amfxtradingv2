@@ -9,13 +9,15 @@ import { createTicksWss } from './ws/ticks';
 import { upsertCandles } from './services/candles';
 import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
-import { saveDailyAccountSnapshot } from './services/account';
+import { saveDailyBalances } from './services/account';
 
-function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: unknown) => void) {
+type TicksWss = ReturnType<typeof createTicksWss>;
+
+function startBroker(brokerName: string, bridgePath: string, wss: TicksWss) {
   const pipe = new PipeReader(brokerName);
   const watcher = new FileWatcher(brokerName, bridgePath);
 
-  pipe.on('ticks', (batch) => broadcast(batch));
+  pipe.on('ticks', (batch) => wss.broadcast(brokerName, batch));
 
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
     try { await upsertCandles(brokerName, symbol, timeframe, data); }
@@ -33,7 +35,7 @@ function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: 
   });
 
   watcher.on('account', async (account) => {
-    try { await saveDailyAccountSnapshot(brokerName, account); }
+    try { await saveDailyBalances(brokerName, account); }
     catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
   });
 
@@ -50,10 +52,10 @@ async function main() {
   console.log('[DB] Connected');
 
   const server = http.createServer(app);
-  const ticksWss = createTicksWss(server);
+  const wss = createTicksWss(server);
 
   const watchers = config.brokers.map(({ name, bridgePath }) =>
-    startBroker(name, bridgePath, (batch) => ticksWss.broadcast(name, batch)),
+    startBroker(name, bridgePath, wss),
   );
 
   server.listen(config.port, () => {

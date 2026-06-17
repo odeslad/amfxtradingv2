@@ -1,7 +1,7 @@
 import { db } from '../db/client';
 import type { BridgeAccount } from '../bridge/file-watcher';
 
-export async function saveDailyAccountSnapshot(broker: string, account: BridgeAccount) {
+export async function saveDailyBalances(broker: string, account: BridgeAccount) {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 

@@ -7,7 +7,9 @@ export async function upsertCandles(
   timeframe: string,
   data: BridgeCandles,
 ) {
-  const records = data.candles.map((c) => ({
+  const closed = data.candles.slice(0, -1);
+
+  const records = closed.map((c) => ({
     broker,
     symbol,
     timeframe,

@@ -9,7 +9,7 @@ import { createTicksWss } from './ws/ticks';
 import { upsertCandles } from './services/candles';
 import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
-import { saveAccountSnapshot } from './services/account';
+import { saveDailyAccountSnapshot } from './services/account';
 
 function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: unknown) => void) {
   const pipe = new PipeReader(brokerName);
@@ -33,7 +33,7 @@ function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: 
   });
 
   watcher.on('account', async (account) => {
-    try { await saveAccountSnapshot(brokerName, account); }
+    try { await saveDailyAccountSnapshot(brokerName, account); }
     catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
   });
 

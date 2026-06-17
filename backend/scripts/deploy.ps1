@@ -17,6 +17,8 @@ Set-Location backend
 # Stop and delete so npm ci can replace the locked Prisma DLL
 pm2 delete amfxtrading-backend 2>$null
 $LASTEXITCODE = 0
+Get-Process -Name "node" -ErrorAction SilentlyContinue | Stop-Process -Force
+Start-Sleep -Seconds 3
 
 Invoke-Step "npm ci" { npm ci }
 Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }

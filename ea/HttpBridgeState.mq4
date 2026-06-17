@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.12"
+#property version   "3.13"
 #property strict
 
 #import "kernel32.dll"
@@ -22,6 +22,7 @@ string g_brokerName  = "";
 string g_symbolsRaw  = "";
 
 // ── Pipe state ──────────────────────────────────────────────────────────────
+string g_pipeName     = "";
 int    g_pipe         = INVALID_HANDLE;
 int    g_event        = INVALID_HANDLE;
 int    g_ovlp[5];
@@ -36,7 +37,6 @@ int    g_lastPositionCount = -1;
 string g_symbols[];
 int    g_symbolCount = 0;
 
-#define PIPE_NAME              "\\\\.\\pipe\\mt4tick"
 #define GENERIC_WRITE          0x40000000
 #define OPEN_EXISTING          3
 #define FILE_ATTRIB_NORM       0x80
@@ -148,7 +148,7 @@ void PipeClose() {
 bool PipeConnect() {
    PipeClose();
    int flags = FILE_ATTRIB_NORM | FILE_FLAG_OVERLAPPED;
-   g_pipe = CreateFileW(PIPE_NAME, GENERIC_WRITE, 0, 0, OPEN_EXISTING, flags, 0);
+   g_pipe = CreateFileW(g_pipeName, GENERIC_WRITE, 0, 0, OPEN_EXISTING, flags, 0);
    if (g_pipe != INVALID_HANDLE) {
       g_timeouts    = 0;
       lastReconnect = GetTickCount();
@@ -213,10 +213,11 @@ bool PipeWrite(string data) {
 int OnInit() {
    LoadConfig();
    ParseSymbols();
+   g_pipeName = "\\\\.\\pipe\\mt4tick_" + g_brokerName;
    g_event = CreateEventW(0, 1, 0, 0);
    EventSetMillisecondTimer(100);
 
-   Print("[STATE] HttpBridgeState v3.11 | broker: ", g_brokerName,
+   Print("[STATE] HttpBridgeState v3.13 | broker: ", g_brokerName,
          " | symbols: ", g_symbolsRaw,
          " | symbol count: ", g_symbolCount,
          " | state every: ", STATE_EVERY_S, "s");

@@ -5,7 +5,7 @@ git pull origin master
 
 Write-Host "Installing dependencies..."
 Set-Location backend
-npm ci --omit=dev
+npm ci
 
 Write-Host "Generating Prisma client..."
 npx prisma generate

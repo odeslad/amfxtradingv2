@@ -15,7 +15,7 @@
 input string BROKER_NAME   = "ftmo";
 input string SYMBOLS       = "EURUSD,EURGBP,EURJPY,EURCAD,EURAUD,GBPUSD,GBPJPY,GBPCAD,GBPAUD,USDJPY,USDCAD,AUDUSD,AUDJPY,AUDCAD,CADJPY";
 input int    RECENT_BARS   = 100;
-input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles)
+input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles).
 
 // ── Pipe state ──────────────────────────────────────────────────────────────
 int    g_pipe         = INVALID_HANDLE;

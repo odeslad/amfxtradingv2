@@ -1,0 +1,65 @@
+name: Deploy EA to VPS
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'ea/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install cloudflared
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/
+
+      - name: Setup SSH
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          cat >> ~/.ssh/config << EOF
+          Host ssh.v2.amfxtrading.com
+            ProxyCommand cloudflared access ssh --hostname ssh.v2.amfxtrading.com --id $CF_ACCESS_CLIENT_ID --secret $CF_ACCESS_CLIENT_SECRET
+            StrictHostKeyChecking no
+            IdentityFile ~/.ssh/id_ed25519
+          EOF
+
+      - name: Upload EA files to staging folder
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
+          scp ea/HttpBridgeCommands.mq4 $SSH_USER@ssh.v2.amfxtrading.com:"C:/deploy/"
+          scp ea/HttpBridgeState.mq4 $SSH_USER@ssh.v2.amfxtrading.com:"C:/deploy/"
+
+      - name: Distribute to all MT4 instances
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command \
+            \$terminals = Get-ChildItem 'C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\' -Directory; \
+            \$count = 0; \
+            foreach (\$t in \$terminals) { \
+              \$dest = \$t.FullName + '\MQL4\Experts\'; \
+              if (Test-Path \$dest) { \
+                Copy-Item 'C:\deploy\HttpBridgeCommands.mq4' \$dest -Force; \
+                Copy-Item 'C:\deploy\HttpBridgeState.mq4' \$dest -Force; \
+                Write-Host 'Deployed to' \$dest; \
+                \$count++; \
+              } \
+            }; \
+            Write-Host 'Total MT4 instances updated:' \$count"

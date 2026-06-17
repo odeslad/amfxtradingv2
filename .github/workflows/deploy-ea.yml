@@ -43,21 +43,21 @@ jobs:
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
-          scp ea/HttpBridgeCommands.mq4   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp ea/HttpBridgeState.mq4      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp ea/scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp ea/scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp ea/scripts/restart-mt4.ps1     $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\amfxtradingv2\ea\scripts'"
+          scp ea/HttpBridgeCommands.mq4      $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/ea/"
+          scp ea/HttpBridgeState.mq4         $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/ea/"
+          scp ea/scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/ea/scripts/"
+          scp ea/scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/ea/scripts/"
+          scp ea/scripts/restart-mt4.ps1     $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/ea/scripts/"
 
       - name: Compile EA files
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\deploy\compile-ea.ps1"
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\amfxtradingv2\ea\scripts\compile-ea.ps1"
 
       - name: Distribute to all MT4 instances
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
-          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\deploy\distribute-ea.ps1"
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\amfxtradingv2\ea\scripts\distribute-ea.ps1"

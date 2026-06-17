@@ -5,11 +5,11 @@ foreach ($t in $terminals) {
     $dest = Join-Path $t.FullName 'MQL4\Experts\'
     if (-not (Test-Path $dest)) { continue }
 
-    Copy-Item 'C:\deploy\HttpBridgeCommands.mq4' $dest -Force
-    Copy-Item 'C:\deploy\HttpBridgeState.mq4'    $dest -Force
+    Copy-Item 'C:\amfxtradingv2\ea\HttpBridgeCommands.mq4' $dest -Force
+    Copy-Item 'C:\amfxtradingv2\ea\HttpBridgeState.mq4'    $dest -Force
 
-    if (Test-Path 'C:\deploy\HttpBridgeCommands.ex4') { Copy-Item 'C:\deploy\HttpBridgeCommands.ex4' $dest -Force }
-    if (Test-Path 'C:\deploy\HttpBridgeState.ex4')    { Copy-Item 'C:\deploy\HttpBridgeState.ex4'    $dest -Force }
+    if (Test-Path 'C:\amfxtradingv2\ea\HttpBridgeCommands.ex4') { Copy-Item 'C:\amfxtradingv2\ea\HttpBridgeCommands.ex4' $dest -Force }
+    if (Test-Path 'C:\amfxtradingv2\ea\HttpBridgeState.ex4')    { Copy-Item 'C:\amfxtradingv2\ea\HttpBridgeState.ex4'    $dest -Force }
 
     Write-Host "Deployed to $dest"
     $count++

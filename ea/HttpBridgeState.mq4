@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.11"
+#property version   "3.12"
 #property strict
 
 #import "kernel32.dll"
@@ -167,7 +167,6 @@ bool PipeWrite(string data) {
    }
 
    if (now - lastReconnect >= RECONNECT_INTERVAL_MS) {
-      Print("[PIPE] Periodic reconnect | broker: ", g_brokerName);
       PipeConnect();
       if (g_pipe == INVALID_HANDLE) return false;
    }
@@ -297,14 +296,11 @@ void OnTimer() {
       WriteAccount();
 
       if (posCount != g_lastPositionCount) {
-         Print("[STATE] Positions update | open: ", posCount, " | broker: ", g_brokerName);
+         Print("[STATE] Positions changed | open: ", posCount, " | broker: ", g_brokerName);
          g_lastPositionCount = posCount;
       }
 
       WriteHistory();
-      Print("[STATE] State updated | positions: ", posCount, " | broker: ", g_brokerName);
-
-      Print("[STATE] Refreshing candles (", RECENT_BARS, " bars × 5 tf × ", g_symbolCount, " symbols) | broker: ", g_brokerName);
       for (int i = 0; i < g_symbolCount; i++) {
          WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  RECENT_BARS);
          WriteHistoricalCandles(g_symbols[i], PERIOD_M15, RECENT_BARS);
@@ -422,7 +418,6 @@ void WriteHistoricalCandles(string sym, int period, int maxBars) {
 
    string json = "{\"brokerOffset\":" + IntegerToString(brokerOffset) + ",\"candles\":[" + candles + "]}";
    WriteFile("candles_" + sym + "_" + label + ".json", json);
-   Print("[STATE] Candles written | ", sym, " ", label, " bars: ", limit, " offset: ", brokerOffset, "s");
 }
 
 void WriteFile(string filename, string content) {

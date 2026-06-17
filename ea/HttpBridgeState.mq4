@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.13"
+#property version   "3.14"
 #property strict
 
 #import "kernel32.dll"
@@ -29,7 +29,6 @@ int    g_ovlp[5];
 int    g_timeouts     = 0;
 
 // ── Timer state ──────────────────────────────────────────────────────────────
-ulong  lastReconnect      = 0;
 ulong  lastStateSend      = 0;
 int    g_lastPositionCount = -1;
 
@@ -44,7 +43,6 @@ int    g_symbolCount = 0;
 #define WAIT_OBJECT_0          0
 #define WAIT_TIMEOUT_CODE      0x102
 #define PIPE_WRITE_TIMEOUT_MS  8
-#define RECONNECT_INTERVAL_MS  30000
 
 // ────────────────────────────────────────────────────────────────────────────
 // Symbol list parsing
@@ -151,7 +149,6 @@ bool PipeConnect() {
    g_pipe = CreateFileW(g_pipeName, GENERIC_WRITE, 0, 0, OPEN_EXISTING, flags, 0);
    if (g_pipe != INVALID_HANDLE) {
       g_timeouts    = 0;
-      lastReconnect = GetTickCount();
       Print("[PIPE] Connected | broker: ", g_brokerName);
    } else {
       Print("[PIPE] Connection failed | broker: ", g_brokerName, " | backend running?");
@@ -164,11 +161,6 @@ bool PipeWrite(string data) {
 
    if (g_pipe == INVALID_HANDLE) {
       if (!PipeConnect()) return false;
-   }
-
-   if (now - lastReconnect >= RECONNECT_INTERVAL_MS) {
-      PipeConnect();
-      if (g_pipe == INVALID_HANDLE) return false;
    }
 
    uchar buf[];

@@ -249,6 +249,71 @@ pending → dot 8px --gold, animación pulse 0.7s infinite
 
 ---
 
+## Arquitectura del backend (Fase 2 — implementada)
+
+### Comunicación EA → Backend
+
+| Canal | Uso | Formato |
+|-------|-----|---------|
+| Named Pipe `\\.\pipe\mt4tick_<broker>` | Ticks en tiempo real | JSON por línea (batch) |
+| Archivo `bridge/command.json` | Órdenes backend → EA | JSON con campos: `action`, `symbol`, `lots`, `sl`, `tp`, `price`, `magic`, `id` |
+| Archivos `bridge/*.json` | Estado periódico (30s) | `account.json`, `positions.json`, `history.json`, `candles_SYMBOL_TF.json` |
+
+**Backend es SERVER del pipe.** El EA es CLIENT y se conecta al iniciar.
+
+### Acciones de comando soportadas
+
+`buy` · `sell` · `buylimit` · `selllimit` · `buystop` · `sellstop` · `close` · `modify`
+
+El EA responde con `bridge/result.json` → `{ "status": "ok", "ticket": 123, "id": "..." }`.
+
+### Velas activas
+
+Las velas activas **no se persisten en BD**. El frontend las construye desde los ticks — cada `TickData` ya contiene OHLC de todos los TF (`m5_open/high/low`, etc.) y `bid` como close. Solo velas cerradas van a la tabla `candles` (`slice(0, -1)`).
+
+### Multi-broker
+
+Un `PipeReader` + `FileWatcher` por broker. Config en `brokers.json` (excluido de git, nunca commitear).
+
+### Modelos BD
+
+`Candle` · `Position` · `Trade` · `Balance` (snapshot diario de balance por broker)
+
+### Deploy backend
+
+Pipeline: push `master` en `backend/**` → GitHub Actions → SCP `deploy.ps1` → SSH VPS → PowerShell.
+El proceso PM2 `amfxtrading-backend` **debe estar activo** antes del deploy — si no existe, la pipeline falla.
+Para arranque inicial manual: `pm2 start dist\index.js --name amfxtrading-backend && pm2 save`
+
+---
+
+## Trading Engine (Fase 2 — en diseño)
+
+Engine que procesa ticks en tiempo real, evalúa estrategias almacenadas en BD y genera órdenes al EA.
+
+### Flujo
+
+```
+tick → candle-tracker → strategy-evaluator → order-executor → bridge/command.json → EA
+```
+
+### Componentes previstos en `backend/src/engine/`
+
+- `candle-tracker.ts` — detecta cierre de vela comparando `m5_time`/`h1_time`/etc. entre ticks
+- `strategy-evaluator.ts` — carga estrategias activas de BD y evalúa su JSON de config
+- `order-executor.ts` — escribe `bridge/command.json` en el bridge path del broker
+- `engine.ts` — orquesta todo
+
+### Modelo BD `Strategy`
+
+Campos: broker, symbol, timeframe, config (JSON), activa/inactiva.
+
+### Magic number
+
+Constante fija del engine. Solo gestiona posiciones abiertas por él (filtradas por magic number). Las posiciones abiertas manualmente o por el EA autónomo no son gestionadas por el engine (no las cierra ni modifica), pero siguen activas en MT4 y se sincronizan en BD via `positions.json`.
+
+---
+
 ## Referencia
 
 El MVP de referencia está en `c:/work/odeslad/amfxtrading`.  

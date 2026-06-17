@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "2.21"
+#property version   "3.00"
 #property strict
 
 #import "kernel32.dll"
@@ -13,25 +13,24 @@
 #import
 
 input string BROKER_NAME   = "ftmo";
+input string SYMBOLS       = "EURUSD";   // comma-separated, e.g. "EURUSD,XAUUSD,BTCUSD"
 input int    RECENT_BARS   = 100;
-input int    REFRESH_EVERY = 30;
+input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles)
 
 // ── Pipe state ──────────────────────────────────────────────────────────────
 int    g_pipe         = INVALID_HANDLE;
 int    g_event        = INVALID_HANDLE;
-int    g_ovlp[5];       // Windows OVERLAPPED struct: 20 bytes / 5 × int32
-                        // [0] Internal  [1] InternalHigh  [2] Offset
-                        // [3] OffsetHigh  [4] hEvent
+int    g_ovlp[5];
 int    g_timeouts     = 0;
 
-// ── Tick state ───────────────────────────────────────────────────────────────
-int    timerCount     = 0;
-ulong  lastPipeMs     = 0;
-ulong  lastReconnect  = 0;
-string pendingTick    = "";
-
-// ── Position tracking (for change detection) ─────────────────────────────────
+// ── Timer state ──────────────────────────────────────────────────────────────
+ulong  lastReconnect      = 0;
+ulong  lastStateSend      = 0;
 int    g_lastPositionCount = -1;
+
+// ── Symbol list ──────────────────────────────────────────────────────────────
+string g_symbols[];
+int    g_symbolCount = 0;
 
 #define PIPE_NAME              "\\\\.\\pipe\\mt4tick"
 #define GENERIC_WRITE          0x40000000
@@ -40,10 +39,33 @@ int    g_lastPositionCount = -1;
 #define FILE_FLAG_OVERLAPPED   0x40000000
 #define WAIT_OBJECT_0          0
 #define WAIT_TIMEOUT_CODE      0x102
-#define PIPE_THROTTLE_MS       100
 #define PIPE_WRITE_TIMEOUT_MS  8
 #define RECONNECT_INTERVAL_MS  30000
-#define MAX_TIMEOUTS           3
+
+// ────────────────────────────────────────────────────────────────────────────
+// Symbol list parsing
+// ────────────────────────────────────────────────────────────────────────────
+
+void ParseSymbols() {
+   string raw = SYMBOLS;
+   g_symbolCount = 0;
+   ArrayResize(g_symbols, 0);
+
+   int start = 0;
+   for (int i = 0; i <= StringLen(raw); i++) {
+      if (i == StringLen(raw) || StringGetCharacter(raw, i) == ',') {
+         string sym = StringSubstr(raw, start, i - start);
+         StringTrimLeft(sym);
+         StringTrimRight(sym);
+         if (StringLen(sym) > 0) {
+            ArrayResize(g_symbols, g_symbolCount + 1);
+            g_symbols[g_symbolCount] = sym;
+            g_symbolCount++;
+         }
+         start = i + 1;
+      }
+   }
+}
 
 // ────────────────────────────────────────────────────────────────────────────
 // Pipe management
@@ -109,9 +131,9 @@ bool PipeWrite(string data) {
    if (result == WAIT_TIMEOUT_CODE)
       Print("[PIPE] Write timeout #", g_timeouts, " | broker: ", BROKER_NAME);
    else
-      Print("[PIPE] Wait failed | result=", result, " broker: ", BROKER_NAME);
+      Print("[PIPE] Wait failed | result=", result, " | broker: ", BROKER_NAME);
 
-   if (g_timeouts >= MAX_TIMEOUTS) {
+   if (g_timeouts >= 3) {
       Print("[PIPE] Dead after ", g_timeouts, " timeouts — reconnecting | broker: ", BROKER_NAME);
       PipeClose();
       g_timeouts = 0;
@@ -120,18 +142,29 @@ bool PipeWrite(string data) {
    return false;
 }
 
+// ────────────────────────────────────────────────────────────────────────────
+// Init / Deinit
+// ────────────────────────────────────────────────────────────────────────────
+
 int OnInit() {
-   EventSetTimer(1);
+   ParseSymbols();
    g_event = CreateEventW(0, 1, 0, 0);
-   Print("[STATE] HttpBridgeState v2.21 | broker: ", BROKER_NAME,
-         " | symbol: ", Symbol(),
-         " | refresh every: ", REFRESH_EVERY, "s");
-   Print("[STATE] Writing historical candles (5 timeframes × 5000 bars)...");
-   WriteHistoricalCandles(PERIOD_M5,  5000);
-   WriteHistoricalCandles(PERIOD_M15, 5000);
-   WriteHistoricalCandles(PERIOD_H1,  5000);
-   WriteHistoricalCandles(PERIOD_H4,  5000);
-   WriteHistoricalCandles(PERIOD_D1,  5000);
+   EventSetMillisecondTimer(100);
+
+   Print("[STATE] HttpBridgeState v3.0 | broker: ", BROKER_NAME,
+         " | symbols: ", SYMBOLS,
+         " | symbol count: ", g_symbolCount,
+         " | state every: ", STATE_EVERY_S, "s");
+
+   Print("[STATE] Writing historical candles (", g_symbolCount, " symbols × 5 timeframes × 5000 bars)...");
+   for (int i = 0; i < g_symbolCount; i++) {
+      WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  5000);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_M15, 5000);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_H1,  5000);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_H4,  5000);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_D1,  5000);
+   }
+
    Print("[STATE] Init complete | ready to stream ticks");
    return INIT_SUCCEEDED;
 }
@@ -143,75 +176,82 @@ void OnDeinit(const int reason) {
    Print("[STATE] Stopped | reason: ", reason);
 }
 
-void OnTick() {
-   string sym = Symbol();
+// ────────────────────────────────────────────────────────────────────────────
+// Timer — 100ms tick batch + periodic state
+// ────────────────────────────────────────────────────────────────────────────
 
-   int brokerOffset = (int)(TimeCurrent() - TimeGMT());
-   pendingTick = "{\"broker\":\"" + BROKER_NAME + "\","
-               + "\"symbol\":\"" + sym + "\","
-               + "\"bid\":"            + DoubleToString(MarketInfo(sym, MODE_BID), 5) + ","
-               + "\"ask\":"            + DoubleToString(MarketInfo(sym, MODE_ASK), 5) + ","
-               + "\"time\":"           + IntegerToString(TimeGMT() * 1000) + ","
-               + "\"broker_offset\":"  + IntegerToString(brokerOffset) + ","
-               + "\"m5_time\":"        + IntegerToString(iTime(sym, PERIOD_M5,  0) * 1000) + ","
-               + "\"m5_open\":"        + DoubleToString(iOpen(sym,  PERIOD_M5,  0), 5) + ","
-               + "\"m5_high\":"        + DoubleToString(iHigh(sym,  PERIOD_M5,  0), 5) + ","
-               + "\"m5_low\":"         + DoubleToString(iLow(sym,   PERIOD_M5,  0), 5) + ","
-               + "\"m15_time\":"       + IntegerToString(iTime(sym, PERIOD_M15, 0) * 1000) + ","
-               + "\"m15_open\":"       + DoubleToString(iOpen(sym,  PERIOD_M15, 0), 5) + ","
-               + "\"m15_high\":"       + DoubleToString(iHigh(sym,  PERIOD_M15, 0), 5) + ","
-               + "\"m15_low\":"        + DoubleToString(iLow(sym,   PERIOD_M15, 0), 5) + ","
-               + "\"h1_time\":"        + IntegerToString(iTime(sym, PERIOD_H1,  0) * 1000) + ","
-               + "\"h1_open\":"        + DoubleToString(iOpen(sym,  PERIOD_H1,  0), 5) + ","
-               + "\"h1_high\":"        + DoubleToString(iHigh(sym,  PERIOD_H1,  0), 5) + ","
-               + "\"h1_low\":"         + DoubleToString(iLow(sym,   PERIOD_H1,  0), 5) + ","
-               + "\"h4_time\":"        + IntegerToString(iTime(sym, PERIOD_H4,  0) * 1000) + ","
-               + "\"h4_open\":"        + DoubleToString(iOpen(sym,  PERIOD_H4,  0), 5) + ","
-               + "\"h4_high\":"        + DoubleToString(iHigh(sym,  PERIOD_H4,  0), 5) + ","
-               + "\"h4_low\":"         + DoubleToString(iLow(sym,   PERIOD_H4,  0), 5) + ","
-               + "\"d1_time\":"        + IntegerToString(iTime(sym, PERIOD_D1,  0) * 1000) + ","
-               + "\"d1_open\":"        + DoubleToString(iOpen(sym,  PERIOD_D1,  0), 5) + ","
-               + "\"d1_high\":"        + DoubleToString(iHigh(sym,  PERIOD_D1,  0), 5) + ","
-               + "\"d1_low\":"         + DoubleToString(iLow(sym,   PERIOD_D1,  0), 5)
-               + "}\n";
-
+void OnTimer() {
    ulong now = GetTickCount();
-   if (now - lastPipeMs >= PIPE_THROTTLE_MS) {
-      if (PipeWrite(pendingTick)) {
-         lastPipeMs  = now;
-         pendingTick = "";
+
+   // ── Tick batch: all symbols every 100ms ──────────────────────────────────
+   int    brokerOffset = (int)(TimeCurrent() - TimeGMT());
+   string batch        = "[";
+
+   for (int i = 0; i < g_symbolCount; i++) {
+      string sym = g_symbols[i];
+      if (i > 0) batch += ",";
+      batch += "{";
+      batch += "\"symbol\":\""   + sym                                                      + "\",";
+      batch += "\"bid\":"        + DoubleToString(MarketInfo(sym, MODE_BID), 5)             + ",";
+      batch += "\"ask\":"        + DoubleToString(MarketInfo(sym, MODE_ASK), 5)             + ",";
+      batch += "\"time\":"       + IntegerToString(TimeGMT() * 1000)                       + ",";
+      batch += "\"broker_offset\":" + IntegerToString(brokerOffset)                        + ",";
+      batch += "\"m5_time\":"    + IntegerToString(iTime(sym, PERIOD_M5,  0) * 1000)       + ",";
+      batch += "\"m5_open\":"    + DoubleToString(iOpen(sym,  PERIOD_M5,  0), 5)           + ",";
+      batch += "\"m5_high\":"    + DoubleToString(iHigh(sym,  PERIOD_M5,  0), 5)           + ",";
+      batch += "\"m5_low\":"     + DoubleToString(iLow(sym,   PERIOD_M5,  0), 5)           + ",";
+      batch += "\"m15_time\":"   + IntegerToString(iTime(sym, PERIOD_M15, 0) * 1000)       + ",";
+      batch += "\"m15_open\":"   + DoubleToString(iOpen(sym,  PERIOD_M15, 0), 5)           + ",";
+      batch += "\"m15_high\":"   + DoubleToString(iHigh(sym,  PERIOD_M15, 0), 5)           + ",";
+      batch += "\"m15_low\":"    + DoubleToString(iLow(sym,   PERIOD_M15, 0), 5)           + ",";
+      batch += "\"h1_time\":"    + IntegerToString(iTime(sym, PERIOD_H1,  0) * 1000)       + ",";
+      batch += "\"h1_open\":"    + DoubleToString(iOpen(sym,  PERIOD_H1,  0), 5)           + ",";
+      batch += "\"h1_high\":"    + DoubleToString(iHigh(sym,  PERIOD_H1,  0), 5)           + ",";
+      batch += "\"h1_low\":"     + DoubleToString(iLow(sym,   PERIOD_H1,  0), 5)           + ",";
+      batch += "\"h4_time\":"    + IntegerToString(iTime(sym, PERIOD_H4,  0) * 1000)       + ",";
+      batch += "\"h4_open\":"    + DoubleToString(iOpen(sym,  PERIOD_H4,  0), 5)           + ",";
+      batch += "\"h4_high\":"    + DoubleToString(iHigh(sym,  PERIOD_H4,  0), 5)           + ",";
+      batch += "\"h4_low\":"     + DoubleToString(iLow(sym,   PERIOD_H4,  0), 5)           + ",";
+      batch += "\"d1_time\":"    + IntegerToString(iTime(sym, PERIOD_D1,  0) * 1000)       + ",";
+      batch += "\"d1_open\":"    + DoubleToString(iOpen(sym,  PERIOD_D1,  0), 5)           + ",";
+      batch += "\"d1_high\":"    + DoubleToString(iHigh(sym,  PERIOD_D1,  0), 5)           + ",";
+      batch += "\"d1_low\":"     + DoubleToString(iLow(sym,   PERIOD_D1,  0), 5);
+      batch += "}";
+   }
+   batch += "]\n";
+
+   PipeWrite(batch);
+
+   // ── State update: positions, account, history, candles every STATE_EVERY_S ──
+   if (now - lastStateSend >= (ulong)(STATE_EVERY_S * 1000)) {
+      lastStateSend = now;
+
+      int posCount = OrdersTotal();
+      WritePositions(posCount);
+      WriteAccount();
+
+      if (posCount != g_lastPositionCount) {
+         Print("[STATE] Positions update | open: ", posCount, " | broker: ", BROKER_NAME);
+         g_lastPositionCount = posCount;
+      }
+
+      WriteHistory();
+      Print("[STATE] State updated | positions: ", posCount, " | broker: ", BROKER_NAME);
+
+      Print("[STATE] Refreshing candles (", RECENT_BARS, " bars × 5 tf × ", g_symbolCount, " symbols) | broker: ", BROKER_NAME);
+      for (int i = 0; i < g_symbolCount; i++) {
+         WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  RECENT_BARS);
+         WriteHistoricalCandles(g_symbols[i], PERIOD_M15, RECENT_BARS);
+         WriteHistoricalCandles(g_symbols[i], PERIOD_H1,  RECENT_BARS);
+         WriteHistoricalCandles(g_symbols[i], PERIOD_H4,  RECENT_BARS);
+         WriteHistoricalCandles(g_symbols[i], PERIOD_D1,  RECENT_BARS);
       }
    }
 }
 
-void OnTimer() {
-   int posCount = OrdersTotal();
-
-   WritePositions(posCount);
-   WriteAccount();
-
-   // Log only when position count changes
-   if (posCount != g_lastPositionCount) {
-      Print("[STATE] Positions update | open: ", posCount, " | broker: ", BROKER_NAME);
-      g_lastPositionCount = posCount;
-   }
-
-   if (timerCount % 60 == 0) {
-      WriteHistory();
-      Print("[STATE] History refreshed | broker: ", BROKER_NAME);
-   }
-
-   timerCount++;
-
-   if (timerCount % REFRESH_EVERY == 0) {
-      Print("[STATE] Refreshing candles (", RECENT_BARS, " bars × 5 tf) | broker: ", BROKER_NAME);
-      WriteHistoricalCandles(PERIOD_M5,  RECENT_BARS);
-      WriteHistoricalCandles(PERIOD_M15, RECENT_BARS);
-      WriteHistoricalCandles(PERIOD_H1,  RECENT_BARS);
-      WriteHistoricalCandles(PERIOD_H4,  RECENT_BARS);
-      WriteHistoricalCandles(PERIOD_D1,  RECENT_BARS);
-   }
-}
+// ────────────────────────────────────────────────────────────────────────────
+// State writers
+// ────────────────────────────────────────────────────────────────────────────
 
 void WriteAccount() {
    string j = "{";
@@ -294,8 +334,7 @@ string PeriodToLabel(int period) {
    return "M15";
 }
 
-void WriteHistoricalCandles(int period = PERIOD_M15, int maxBars = 5000) {
-   string sym          = Symbol();
+void WriteHistoricalCandles(string sym, int period, int maxBars) {
    int    total        = iBars(sym, period);
    int    limit        = MathMin(total - 1, maxBars);
    int    brokerOffset = (int)(TimeCurrent() - TimeGMT());

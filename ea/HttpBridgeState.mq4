@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.10"
+#property version   "3.11"
 #property strict
 
 #import "kernel32.dll"
@@ -55,13 +55,34 @@ int    g_symbolCount = 0;
 // ────────────────────────────────────────────────────────────────────────────
 
 string ExtractField(string json, string key) {
-   string search = "\"" + key + "\":\"";
-   int start = StringFind(json, search);
-   if (start < 0) return "";
-   start += StringLen(search);
-   int end = StringFind(json, "\"", start);
-   if (end < 0) return "";
-   return StringSubstr(json, start, end - start);
+   int p = StringFind(json, "\"" + key + "\"");
+   if (p < 0) return "";
+   int colon = StringFind(json, ":", p);
+   if (colon < 0) return "";
+   p = colon + 1;
+
+   while (p < StringLen(json)) {
+      ushort c = StringGetCharacter(json, p);
+      if (c == ' ' || c == '\t' || c == '\n' || c == '\r') p++;
+      else break;
+   }
+   if (p >= StringLen(json)) return "";
+
+   if (StringGetCharacter(json, p) == '"') {
+      int start = p + 1;
+      int end = StringFind(json, "\"", start);
+      if (end < 0) return "";
+      return StringSubstr(json, start, end - start);
+   }
+
+   int s = p;
+   int e = StringFind(json, ",", s);
+   if (e < 0) e = StringFind(json, "}", s);
+   if (e < 0) e = StringLen(json);
+   string v = StringSubstr(json, s, e - s);
+   StringTrimLeft(v);
+   StringTrimRight(v);
+   return v;
 }
 
 void LoadConfig() {
@@ -196,7 +217,7 @@ int OnInit() {
    g_event = CreateEventW(0, 1, 0, 0);
    EventSetMillisecondTimer(100);
 
-   Print("[STATE] HttpBridgeState v3.10 | broker: ", g_brokerName,
+   Print("[STATE] HttpBridgeState v3.11 | broker: ", g_brokerName,
          " | symbols: ", g_symbolsRaw,
          " | symbol count: ", g_symbolCount,
          " | state every: ", STATE_EVERY_S, "s");

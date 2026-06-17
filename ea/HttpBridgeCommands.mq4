@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "2.20"
+#property version   "2.21"
 #property strict
 
 input string BROKER_NAME = "ftmo";
@@ -28,7 +28,7 @@ void LoadConfig() {
 int OnInit() {
    LoadConfig();
    EventSetTimer(1);
-   Print("[CMD] HttpBridgeCommands v2.20 | broker: ", g_brokerName, " | ready");
+   Print("[CMD] HttpBridgeCommands v2.21 | broker: ", g_brokerName, " | ready");
    return INIT_SUCCEEDED;
 }
 
@@ -199,18 +199,32 @@ void WriteFile(string filename, string content) {
 }
 
 string ExtractField(string json, string key) {
-   string search = "\"" + key + "\":\"";
-   int start = StringFind(json, search);
-   if (start < 0) {
-      search = "\"" + key + "\":";
-      start  = StringFind(json, search);
-      if (start < 0) return "";
-      start += StringLen(search);
-      int end = StringFind(json, ",", start);
-      if (end < 0) end = StringFind(json, "}", start);
+   int p = StringFind(json, "\"" + key + "\"");
+   if (p < 0) return "";
+   int colon = StringFind(json, ":", p);
+   if (colon < 0) return "";
+   p = colon + 1;
+
+   while (p < StringLen(json)) {
+      ushort c = StringGetCharacter(json, p);
+      if (c == ' ' || c == '\t' || c == '\n' || c == '\r') p++;
+      else break;
+   }
+   if (p >= StringLen(json)) return "";
+
+   if (StringGetCharacter(json, p) == '"') {
+      int start = p + 1;
+      int end = StringFind(json, "\"", start);
+      if (end < 0) return "";
       return StringSubstr(json, start, end - start);
    }
-   start += StringLen(search);
-   int end = StringFind(json, "\"", start);
-   return StringSubstr(json, start, end - start);
+
+   int s = p;
+   int e = StringFind(json, ",", s);
+   if (e < 0) e = StringFind(json, "}", s);
+   if (e < 0) e = StringLen(json);
+   string v = StringSubstr(json, s, e - s);
+   StringTrimLeft(v);
+   StringTrimRight(v);
+   return v;
 }

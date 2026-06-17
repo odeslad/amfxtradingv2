@@ -48,6 +48,7 @@ jobs:
           scp ea/HttpBridgeState.mq4      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
           scp ea/scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
           scp ea/scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp ea/scripts/restart-mt4.ps1     $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
 
       - name: Compile EA files
         env:

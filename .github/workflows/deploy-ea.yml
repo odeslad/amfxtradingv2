@@ -46,8 +46,8 @@ jobs:
           ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
           scp ea/HttpBridgeCommands.mq4   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
           scp ea/HttpBridgeState.mq4      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
-          scp scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp ea/scripts/compile-ea.ps1      $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
+          scp ea/scripts/distribute-ea.ps1   $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
 
       - name: Compile EA files
         env:

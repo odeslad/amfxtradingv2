@@ -22,17 +22,33 @@ jobs:
           chmod +x cloudflared
           sudo mv cloudflared /usr/local/bin/
 
+      - name: Diagnose Access service token
+        env:
+          CF_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          echo "Client ID length: ${#CF_ID}"
+          echo "Client Secret length: ${#CF_SECRET}"
+          echo "Testing Access auth against hostname..."
+          code=$(curl -s -o /dev/null -w "%{http_code}" https://ssh.v2.amfxtrading.com \
+            -H "CF-Access-Client-Id: $CF_ID" \
+            -H "CF-Access-Client-Secret: $CF_SECRET")
+          echo "HTTP status with service token: $code"
+          echo "(403 = token rejected by Access policy; 530/502 = tunnel/origin issue; 200/400 = auth OK)"
+
       - name: Setup SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          CF_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
 
-          cat >> ~/.ssh/config << 'EOF'
+          cat > ~/.ssh/config << EOF
           Host ssh.v2.amfxtrading.com
-            ProxyCommand cloudflared access ssh --hostname ssh.v2.amfxtrading.com
+            ProxyCommand cloudflared access ssh --hostname ssh.v2.amfxtrading.com --service-token-id $CF_ID --service-token-secret $CF_SECRET
             StrictHostKeyChecking no
             IdentityFile ~/.ssh/id_ed25519
           EOF
@@ -40,8 +56,6 @@ jobs:
       - name: Upload EA files to staging folder
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command New-Item -ItemType Directory -Force -Path 'C:\deploy'"
           scp ea/HttpBridgeCommands.mq4 $SSH_USER@ssh.v2.amfxtrading.com:"C:/deploy/"
@@ -50,8 +64,6 @@ jobs:
       - name: Distribute to all MT4 instances
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
-          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
-          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
         run: |
           ssh $SSH_USER@ssh.v2.amfxtrading.com "powershell -Command \
             \$terminals = Get-ChildItem 'C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\' -Directory; \

@@ -61,6 +61,21 @@ jobs:
           scp ea/HttpBridgeCommands.mq4 $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
           scp ea/HttpBridgeState.mq4 $SSH_USER@ssh-v2.amfxtrading.com:"C:/deploy/"
 
+      - name: Compile EA files
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -Command \
+            \$editor = Get-ChildItem 'C:\Program Files (x86)' -Recurse -Filter 'metaeditor.exe' -ErrorAction SilentlyContinue | Select-Object -First 1; \
+            if (-not \$editor) { Write-Error 'metaeditor.exe not found'; exit 1 }; \
+            Write-Host 'Using metaeditor:' \$editor.FullName; \
+            foreach (\$f in @('HttpBridgeCommands.mq4','HttpBridgeState.mq4')) { \
+              \$path = 'C:\deploy\' + \$f; \
+              \$proc = Start-Process -FilePath \$editor.FullName -ArgumentList ('/compile:\"' + \$path + '\"', '/log') -Wait -PassThru; \
+              if (\$proc.ExitCode -ne 0) { Write-Warning (\$f + ' compile exit code: ' + \$proc.ExitCode) }; \
+              else { Write-Host (\$f + ' compiled OK') }; \
+            }"
+
       - name: Distribute to all MT4 instances
         env:
           SSH_USER: ${{ secrets.SSH_USER }}
@@ -73,6 +88,8 @@ jobs:
               if (Test-Path \$dest) { \
                 Copy-Item 'C:\deploy\HttpBridgeCommands.mq4' \$dest -Force; \
                 Copy-Item 'C:\deploy\HttpBridgeState.mq4' \$dest -Force; \
+                if (Test-Path 'C:\deploy\HttpBridgeCommands.ex4') { Copy-Item 'C:\deploy\HttpBridgeCommands.ex4' \$dest -Force }; \
+                if (Test-Path 'C:\deploy\HttpBridgeState.ex4') { Copy-Item 'C:\deploy\HttpBridgeState.ex4' \$dest -Force }; \
                 Write-Host 'Deployed to' \$dest; \
                 \$count++; \
               } \

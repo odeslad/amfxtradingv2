@@ -19,8 +19,7 @@ export interface TickData {
 export class PipeReader extends EventEmitter {
   private readonly pipePath: string;
   private readonly brokerName: string;
-  private reconnectTimer: NodeJS.Timeout | null = null;
-  private buffer = '';
+  private server: net.Server | null = null;
 
   constructor(brokerName: string) {
     super();
@@ -29,52 +28,45 @@ export class PipeReader extends EventEmitter {
   }
 
   start() {
-    this.connect();
-  }
+    this.server = net.createServer((socket) => {
+      console.log(`[PIPE:${this.brokerName}] EA connected`);
+      let buffer = '';
 
-  private connect() {
-    const socket = net.createConnection(this.pipePath);
-
-    socket.on('connect', () => {
-      console.log(`[PIPE:${this.brokerName}] Connected`);
-      this.buffer = '';
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
-    });
-
-    socket.on('data', (chunk) => {
-      this.buffer += chunk.toString();
-      const lines = this.buffer.split('\n');
-      this.buffer = lines.pop() ?? '';
-      for (const line of lines) {
-        const trimmed = line.trim();
-        if (!trimmed) continue;
-        try {
-          const batch: TickBatch = JSON.parse(trimmed);
-          this.emit('ticks', batch);
-        } catch {
-          console.warn(`[PIPE:${this.brokerName}] Failed to parse tick batch`);
+      socket.on('data', (chunk) => {
+        buffer += chunk.toString();
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed) continue;
+          try {
+            const batch: TickBatch = JSON.parse(trimmed);
+            this.emit('ticks', batch);
+          } catch {
+            console.warn(`[PIPE:${this.brokerName}] Failed to parse tick batch`);
+          }
         }
-      }
+      });
+
+      socket.on('close', () => {
+        console.log(`[PIPE:${this.brokerName}] EA disconnected`);
+      });
+
+      socket.on('error', (err) => {
+        console.error(`[PIPE:${this.brokerName}] Socket error:`, err.message);
+      });
     });
 
-    socket.on('close', () => {
-      console.log(`[PIPE:${this.brokerName}] Disconnected — reconnecting in 5s`);
-      this.scheduleReconnect();
+    this.server.listen(this.pipePath, () => {
+      console.log(`[PIPE:${this.brokerName}] Listening on ${this.pipePath}`);
     });
 
-    socket.on('error', () => {
-      socket.destroy();
+    this.server.on('error', (err) => {
+      console.error(`[PIPE:${this.brokerName}] Server error:`, err.message);
     });
   }
 
-  private scheduleReconnect() {
-    if (this.reconnectTimer) return;
-    this.reconnectTimer = setTimeout(() => {
-      this.reconnectTimer = null;
-      this.connect();
-    }, 5000);
+  stop() {
+    this.server?.close();
   }
 }

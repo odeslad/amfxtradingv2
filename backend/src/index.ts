@@ -42,7 +42,7 @@ function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: 
 
   console.log(`[BROKER] Started: ${brokerName} | bridge: ${bridgePath}`);
 
-  return watcher;
+  return { pipe, watcher };
 }
 
 async function main() {
@@ -62,7 +62,7 @@ async function main() {
   });
 
   process.on('SIGTERM', async () => {
-    watchers.forEach((w) => w.stop());
+    watchers.forEach(({ pipe, watcher }) => { pipe.stop(); watcher.stop(); });
     await db.$disconnect();
     server.close();
   });

@@ -1,12 +1,34 @@
 #property copyright "HttpBridge"
-#property version   "2.11"
+#property version   "2.20"
 #property strict
 
 input string BROKER_NAME = "ftmo";
 
+string g_brokerName = "";
+
+void LoadConfig() {
+   g_brokerName = BROKER_NAME;
+   if (FileIsExist("bridge\\config.json")) {
+      int handle = FileOpen("bridge\\config.json", FILE_READ | FILE_TXT | FILE_ANSI);
+      if (handle != INVALID_HANDLE) {
+         string content = "";
+         while (!FileIsEnding(handle)) content += FileReadString(handle);
+         FileClose(handle);
+         string b = ExtractField(content, "brokerName");
+         if (StringLen(b) > 0) g_brokerName = b;
+         Print("[CMD] Config loaded from config.json | broker: ", g_brokerName);
+         return;
+      }
+   }
+   string company = AccountCompany();
+   if (StringLen(company) > 0) g_brokerName = company;
+   Print("[CMD] No config.json — broker fallback: ", g_brokerName);
+}
+
 int OnInit() {
+   LoadConfig();
    EventSetTimer(1);
-   Print("[CMD] HttpBridgeCommands v2.11 | broker: ", BROKER_NAME, " | ready");
+   Print("[CMD] HttpBridgeCommands v2.20 | broker: ", g_brokerName, " | ready");
    return INIT_SUCCEEDED;
 }
 

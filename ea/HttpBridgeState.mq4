@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.00"
+#property version   "3.10"
 #property strict
 
 #import "kernel32.dll"
@@ -16,6 +16,10 @@ input string BROKER_NAME   = "ftmo";
 input string SYMBOLS       = "EURUSD,EURGBP,EURJPY,EURCAD,EURAUD,GBPUSD,GBPJPY,GBPCAD,GBPAUD,USDJPY,USDCAD,AUDUSD,AUDJPY,AUDCAD,CADJPY";
 input int    RECENT_BARS   = 100;
 input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles).
+
+// ── Runtime config (config.json overrides inputs) ────────────────────────────
+string g_brokerName  = "";
+string g_symbolsRaw  = "";
 
 // ── Pipe state ──────────────────────────────────────────────────────────────
 int    g_pipe         = INVALID_HANDLE;
@@ -46,8 +50,48 @@ int    g_symbolCount = 0;
 // Symbol list parsing
 // ────────────────────────────────────────────────────────────────────────────
 
+// ────────────────────────────────────────────────────────────────────────────
+// Config loading (bridge/config.json overrides inputs; AccountCompany fallback)
+// ────────────────────────────────────────────────────────────────────────────
+
+string ExtractField(string json, string key) {
+   string search = "\"" + key + "\":\"";
+   int start = StringFind(json, search);
+   if (start < 0) return "";
+   start += StringLen(search);
+   int end = StringFind(json, "\"", start);
+   if (end < 0) return "";
+   return StringSubstr(json, start, end - start);
+}
+
+void LoadConfig() {
+   g_brokerName = BROKER_NAME;
+   g_symbolsRaw = SYMBOLS;
+
+   if (FileIsExist("bridge\\config.json")) {
+      int handle = FileOpen("bridge\\config.json", FILE_READ | FILE_TXT | FILE_ANSI);
+      if (handle != INVALID_HANDLE) {
+         string content = "";
+         while (!FileIsEnding(handle)) content += FileReadString(handle);
+         FileClose(handle);
+
+         string b = ExtractField(content, "brokerName");
+         string s = ExtractField(content, "symbols");
+         if (StringLen(b) > 0) g_brokerName = b;
+         if (StringLen(s) > 0) g_symbolsRaw = s;
+         Print("[STATE] Config loaded from config.json | broker: ", g_brokerName,
+               " | symbols from config: ", (StringLen(s) > 0));
+         return;
+      }
+   }
+
+   string company = AccountCompany();
+   if (StringLen(company) > 0) g_brokerName = company;
+   Print("[STATE] No config.json — broker fallback: ", g_brokerName, " | symbols from input");
+}
+
 void ParseSymbols() {
-   string raw = SYMBOLS;
+   string raw = g_symbolsRaw;
    g_symbolCount = 0;
    ArrayResize(g_symbols, 0);
 
@@ -76,7 +120,7 @@ void PipeClose() {
       CancelIo(g_pipe);
       CloseHandle(g_pipe);
       g_pipe = INVALID_HANDLE;
-      Print("[PIPE] Disconnected | broker: ", BROKER_NAME);
+      Print("[PIPE] Disconnected | broker: ", g_brokerName);
    }
 }
 
@@ -87,9 +131,9 @@ bool PipeConnect() {
    if (g_pipe != INVALID_HANDLE) {
       g_timeouts    = 0;
       lastReconnect = GetTickCount();
-      Print("[PIPE] Connected | broker: ", BROKER_NAME);
+      Print("[PIPE] Connected | broker: ", g_brokerName);
    } else {
-      Print("[PIPE] Connection failed | broker: ", BROKER_NAME, " | backend running?");
+      Print("[PIPE] Connection failed | broker: ", g_brokerName, " | backend running?");
    }
    return g_pipe != INVALID_HANDLE;
 }
@@ -102,7 +146,7 @@ bool PipeWrite(string data) {
    }
 
    if (now - lastReconnect >= RECONNECT_INTERVAL_MS) {
-      Print("[PIPE] Periodic reconnect | broker: ", BROKER_NAME);
+      Print("[PIPE] Periodic reconnect | broker: ", g_brokerName);
       PipeConnect();
       if (g_pipe == INVALID_HANDLE) return false;
    }
@@ -129,12 +173,12 @@ bool PipeWrite(string data) {
    g_timeouts++;
 
    if (result == WAIT_TIMEOUT_CODE)
-      Print("[PIPE] Write timeout #", g_timeouts, " | broker: ", BROKER_NAME);
+      Print("[PIPE] Write timeout #", g_timeouts, " | broker: ", g_brokerName);
    else
-      Print("[PIPE] Wait failed | result=", result, " | broker: ", BROKER_NAME);
+      Print("[PIPE] Wait failed | result=", result, " | broker: ", g_brokerName);
 
    if (g_timeouts >= 3) {
-      Print("[PIPE] Dead after ", g_timeouts, " timeouts — reconnecting | broker: ", BROKER_NAME);
+      Print("[PIPE] Dead after ", g_timeouts, " timeouts — reconnecting | broker: ", g_brokerName);
       PipeClose();
       g_timeouts = 0;
    }
@@ -147,12 +191,13 @@ bool PipeWrite(string data) {
 // ────────────────────────────────────────────────────────────────────────────
 
 int OnInit() {
+   LoadConfig();
    ParseSymbols();
    g_event = CreateEventW(0, 1, 0, 0);
    EventSetMillisecondTimer(100);
 
-   Print("[STATE] HttpBridgeState v3.0 | broker: ", BROKER_NAME,
-         " | symbols: ", SYMBOLS,
+   Print("[STATE] HttpBridgeState v3.10 | broker: ", g_brokerName,
+         " | symbols: ", g_symbolsRaw,
          " | symbol count: ", g_symbolCount,
          " | state every: ", STATE_EVERY_S, "s");
 
@@ -231,14 +276,14 @@ void OnTimer() {
       WriteAccount();
 
       if (posCount != g_lastPositionCount) {
-         Print("[STATE] Positions update | open: ", posCount, " | broker: ", BROKER_NAME);
+         Print("[STATE] Positions update | open: ", posCount, " | broker: ", g_brokerName);
          g_lastPositionCount = posCount;
       }
 
       WriteHistory();
-      Print("[STATE] State updated | positions: ", posCount, " | broker: ", BROKER_NAME);
+      Print("[STATE] State updated | positions: ", posCount, " | broker: ", g_brokerName);
 
-      Print("[STATE] Refreshing candles (", RECENT_BARS, " bars × 5 tf × ", g_symbolCount, " symbols) | broker: ", BROKER_NAME);
+      Print("[STATE] Refreshing candles (", RECENT_BARS, " bars × 5 tf × ", g_symbolCount, " symbols) | broker: ", g_brokerName);
       for (int i = 0; i < g_symbolCount; i++) {
          WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  RECENT_BARS);
          WriteHistoricalCandles(g_symbols[i], PERIOD_M15, RECENT_BARS);

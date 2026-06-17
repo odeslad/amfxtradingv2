@@ -36,6 +36,16 @@ jobs:
             IdentityFile ~/.ssh/id_ed25519
           EOF
 
+      - name: Test Cloudflare Access token
+        env:
+          CF_ACCESS_CLIENT_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_ACCESS_CLIENT_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          curl -v --fail \
+            -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+            -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
+            https://ssh.v2.amfxtrading.com 2>&1 || true
+
       - name: Upload EA files to staging folder
         env:
           SSH_USER: ${{ secrets.SSH_USER }}

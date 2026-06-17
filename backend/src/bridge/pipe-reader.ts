@@ -16,10 +16,17 @@ export interface TickData {
   d1_time: number;  d1_open: number;  d1_high: number;  d1_low: number;
 }
 
-class PipeReader extends EventEmitter {
-  private readonly pipePath = '\\\\.\\pipe\\mt4tick';
+export class PipeReader extends EventEmitter {
+  private readonly pipePath: string;
+  private readonly brokerName: string;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private buffer = '';
+
+  constructor(brokerName: string) {
+    super();
+    this.brokerName = brokerName;
+    this.pipePath = `\\\\.\\pipe\\mt4tick_${brokerName}`;
+  }
 
   start() {
     this.connect();
@@ -29,7 +36,7 @@ class PipeReader extends EventEmitter {
     const socket = net.createConnection(this.pipePath);
 
     socket.on('connect', () => {
-      console.log('[PIPE] Connected');
+      console.log(`[PIPE:${this.brokerName}] Connected`);
       this.buffer = '';
       if (this.reconnectTimer) {
         clearTimeout(this.reconnectTimer);
@@ -48,13 +55,13 @@ class PipeReader extends EventEmitter {
           const batch: TickBatch = JSON.parse(trimmed);
           this.emit('ticks', batch);
         } catch {
-          console.warn('[PIPE] Failed to parse tick batch');
+          console.warn(`[PIPE:${this.brokerName}] Failed to parse tick batch`);
         }
       }
     });
 
     socket.on('close', () => {
-      console.log('[PIPE] Disconnected — reconnecting in 5s');
+      console.log(`[PIPE:${this.brokerName}] Disconnected — reconnecting in 5s`);
       this.scheduleReconnect();
     });
 
@@ -71,5 +78,3 @@ class PipeReader extends EventEmitter {
     }, 5000);
   }
 }
-
-export const pipeReader = new PipeReader();

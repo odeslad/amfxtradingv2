@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import { EventEmitter } from 'events';
-import { config } from '../config';
 
 export interface BridgeAccount {
   balance: number; equity: number; profit: number;
@@ -28,12 +27,16 @@ export interface BridgeCandles {
 
 const TIMEFRAME_RE = /^candles_(.+)_(M5|M15|H1|H4|D1)\.json$/;
 
-class FileWatcher extends EventEmitter {
-  private intervalMs: number;
+export class FileWatcher extends EventEmitter {
+  private readonly brokerName: string;
+  private readonly bridgePath: string;
+  private readonly intervalMs: number;
   private timer: NodeJS.Timeout | null = null;
 
-  constructor(intervalMs = 30_000) {
+  constructor(brokerName: string, bridgePath: string, intervalMs = 30_000) {
     super();
+    this.brokerName = brokerName;
+    this.bridgePath = bridgePath;
     this.intervalMs = intervalMs;
   }
 
@@ -47,15 +50,14 @@ class FileWatcher extends EventEmitter {
   }
 
   private poll() {
-    const bridgePath = config.bridgePath;
-    this.readJson<BridgeAccount>('account.json',   bridgePath, (data) => this.emit('account',   data));
-    this.readJson<BridgePosition[]>('positions.json', bridgePath, (data) => this.emit('positions', data));
-    this.readJson<BridgeTrade[]>('history.json',   bridgePath, (data) => this.emit('history',   data));
-    this.readCandles(bridgePath);
+    this.readJson<BridgeAccount>('account.json',    (data) => this.emit('account',   data));
+    this.readJson<BridgePosition[]>('positions.json', (data) => this.emit('positions', data));
+    this.readJson<BridgeTrade[]>('history.json',    (data) => this.emit('history',   data));
+    this.readCandles();
   }
 
-  private readJson<T>(filename: string, dir: string, cb: (data: T) => void) {
-    const filepath = path.join(dir, filename);
+  private readJson<T>(filename: string, cb: (data: T) => void) {
+    const filepath = path.join(this.bridgePath, filename);
     try {
       const raw = fs.readFileSync(filepath, 'utf8');
       cb(JSON.parse(raw) as T);
@@ -64,10 +66,10 @@ class FileWatcher extends EventEmitter {
     }
   }
 
-  private readCandles(dir: string) {
+  private readCandles() {
     let files: string[];
     try {
-      files = fs.readdirSync(dir);
+      files = fs.readdirSync(this.bridgePath);
     } catch {
       return;
     }
@@ -75,11 +77,9 @@ class FileWatcher extends EventEmitter {
       const match = TIMEFRAME_RE.exec(file);
       if (!match) continue;
       const [, symbol, timeframe] = match;
-      this.readJson<BridgeCandles>(file, dir, (data) => {
+      this.readJson<BridgeCandles>(file, (data) => {
         this.emit('candles', { symbol, timeframe, ...data });
       });
     }
   }
 }
-
-export const fileWatcher = new FileWatcher();

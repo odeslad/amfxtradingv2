@@ -3,13 +3,47 @@ import http from 'http';
 import app from './app';
 import { config } from './config';
 import { db } from './db/client';
-import { pipeReader } from './bridge/pipe-reader';
-import { fileWatcher } from './bridge/file-watcher';
+import { PipeReader } from './bridge/pipe-reader';
+import { FileWatcher } from './bridge/file-watcher';
 import { createTicksWss } from './ws/ticks';
 import { upsertCandles } from './services/candles';
 import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
 import { saveAccountSnapshot } from './services/account';
+
+function startBroker(brokerName: string, bridgePath: string, broadcast: (batch: unknown) => void) {
+  const pipe = new PipeReader(brokerName);
+  const watcher = new FileWatcher(brokerName, bridgePath);
+
+  pipe.on('ticks', (batch) => broadcast(batch));
+
+  watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
+    try { await upsertCandles(brokerName, symbol, timeframe, data); }
+    catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }
+  });
+
+  watcher.on('positions', async (positions) => {
+    try { await syncPositions(brokerName, positions); }
+    catch (err) { console.error(`[DB:${brokerName}] positions sync failed`, err); }
+  });
+
+  watcher.on('history', async (trades) => {
+    try { await syncTrades(brokerName, trades); }
+    catch (err) { console.error(`[DB:${brokerName}] trades sync failed`, err); }
+  });
+
+  watcher.on('account', async (account) => {
+    try { await saveAccountSnapshot(brokerName, account); }
+    catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
+  });
+
+  pipe.start();
+  watcher.start();
+
+  console.log(`[BROKER] Started: ${brokerName} | bridge: ${bridgePath}`);
+
+  return watcher;
+}
 
 async function main() {
   await db.$connect();
@@ -18,49 +52,17 @@ async function main() {
   const server = http.createServer(app);
   const ticksWss = createTicksWss(server);
 
-  pipeReader.on('ticks', (batch) => ticksWss.broadcast(batch));
-  pipeReader.start();
-
-  fileWatcher.on('candles', async ({ symbol, timeframe, ...data }) => {
-    try {
-      await upsertCandles(config.brokerName, symbol, timeframe, data);
-    } catch (err) {
-      console.error(`[DB] candles upsert failed ${symbol} ${timeframe}`, err);
-    }
-  });
-
-  fileWatcher.on('positions', async (positions) => {
-    try {
-      await syncPositions(config.brokerName, positions);
-    } catch (err) {
-      console.error('[DB] positions sync failed', err);
-    }
-  });
-
-  fileWatcher.on('history', async (trades) => {
-    try {
-      await syncTrades(config.brokerName, trades);
-    } catch (err) {
-      console.error('[DB] trades sync failed', err);
-    }
-  });
-
-  fileWatcher.on('account', async (account) => {
-    try {
-      await saveAccountSnapshot(config.brokerName, account);
-    } catch (err) {
-      console.error('[DB] account snapshot failed', err);
-    }
-  });
-
-  fileWatcher.start();
+  const watchers = config.brokers.map(({ name, bridgePath }) =>
+    startBroker(name, bridgePath, (batch) => ticksWss.broadcast(name, batch)),
+  );
 
   server.listen(config.port, () => {
     console.log(`[HTTP] Listening on port ${config.port}`);
+    console.log(`[BROKER] Active brokers: ${config.brokers.map((b) => b.name).join(', ')}`);
   });
 
   process.on('SIGTERM', async () => {
-    fileWatcher.stop();
+    watchers.forEach((w) => w.stop());
     await db.$disconnect();
     server.close();
   });

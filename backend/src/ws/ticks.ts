@@ -1,6 +1,5 @@
 import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
-import type { TickBatch } from '../bridge/pipe-reader';
 
 export function createTicksWss(server: Server) {
   const wss = new WebSocketServer({ server, path: '/ws/ticks' });
@@ -11,9 +10,9 @@ export function createTicksWss(server: Server) {
   });
 
   return {
-    broadcast(batch: TickBatch) {
+    broadcast(broker: string, batch: unknown) {
       if (wss.clients.size === 0) return;
-      const payload = JSON.stringify(batch);
+      const payload = JSON.stringify({ broker, ticks: batch });
       for (const client of wss.clients) {
         if (client.readyState === WebSocket.OPEN) client.send(payload);
       }

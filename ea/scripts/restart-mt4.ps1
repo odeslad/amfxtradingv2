@@ -14,4 +14,4 @@ foreach ($p in $processes) {
     Write-Host "Started: $exe"
 }
 
-Write-Host "Done — $($processes.Count) instance(s) restarted"
+Write-Host "Done - $($processes.Count) instance(s) restarted"

@@ -1,0 +1,86 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Candle {
+  id        Int      @id @default(autoincrement())
+  broker    String
+  symbol    String
+  timeframe String
+  time      DateTime
+  open      Float
+  high      Float
+  low       Float
+  close     Float
+
+  @@unique([broker, symbol, timeframe, time])
+  @@index([broker, symbol, timeframe])
+  @@map("candles")
+}
+
+model Position {
+  ticket     Int      @id
+  broker     String
+  symbol     String
+  type       Int
+  lots       Float
+  openPrice  Float
+  sl         Float
+  tp         Float
+  profit     Float
+  swap       Float
+  commission Float
+  magic      Int
+  comment    String
+  openTime   DateTime
+  updatedAt  DateTime @updatedAt
+
+  @@index([broker])
+  @@map("positions")
+}
+
+model Trade {
+  ticket     Int      @id
+  broker     String
+  symbol     String
+  type       Int
+  lots       Float
+  openPrice  Float
+  closePrice Float
+  sl         Float
+  tp         Float
+  profit     Float
+  swap       Float
+  commission Float
+  magic      Int
+  comment    String
+  openTime   DateTime
+  closeTime  DateTime
+
+  @@index([broker, symbol])
+  @@index([closeTime])
+  @@map("trades")
+}
+
+model AccountSnapshot {
+  id         Int      @id @default(autoincrement())
+  broker     String
+  balance    Float
+  equity     Float
+  profit     Float
+  margin     Float
+  freeMargin Float
+  leverage   Int
+  currency   String
+  name       String
+  number     Int
+  timestamp  DateTime @default(now())
+
+  @@index([broker, timestamp])
+  @@map("account_snapshots")
+}

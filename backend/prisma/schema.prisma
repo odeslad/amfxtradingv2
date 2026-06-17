@@ -67,7 +67,7 @@ model Trade {
   @@map("trades")
 }
 
-model AccountSnapshot {
+model Balance {
   id         Int      @id @default(autoincrement())
   broker     String
   balance    Float
@@ -82,5 +82,5 @@ model AccountSnapshot {
   timestamp  DateTime @default(now())
 
   @@index([broker, timestamp])
-  @@map("account_snapshots")
+  @@map("balances")
 }

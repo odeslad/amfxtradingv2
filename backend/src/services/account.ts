@@ -5,7 +5,7 @@ export async function saveDailyAccountSnapshot(broker: string, account: BridgeAc
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const existing = await db.accountSnapshot.findFirst({
+  const existing = await db.balance.findFirst({
     where: {
       broker,
       timestamp: { gte: today },
@@ -14,7 +14,7 @@ export async function saveDailyAccountSnapshot(broker: string, account: BridgeAc
 
   if (existing) return;
 
-  await db.accountSnapshot.create({
+  await db.balance.create({
     data: {
       broker,
       balance: account.balance, equity: account.equity,

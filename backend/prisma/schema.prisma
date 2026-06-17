@@ -67,6 +67,18 @@ model Trade {
   @@map("trades")
 }
 
+model Strategy {
+  id        Int      @id @default(autoincrement())
+  broker    String
+  symbol    String
+  timeframe String
+  config    Json
+  active    Boolean  @default(true)
+
+  @@index([broker, active])
+  @@map("strategies")
+}
+
 model Balance {
   id         Int      @id @default(autoincrement())
   broker     String

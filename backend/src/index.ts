@@ -10,14 +10,19 @@ import { upsertCandles } from './services/candles';
 import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
 import { saveDailyBalances } from './services/account';
+import { Engine } from './engine/engine';
 
 type TicksWss = ReturnType<typeof createTicksWss>;
 
 function startBroker(brokerName: string, bridgePath: string, wss: TicksWss) {
   const pipe = new PipeReader(brokerName);
   const watcher = new FileWatcher(brokerName, bridgePath);
+  const engine = new Engine(brokerName, bridgePath);
 
-  pipe.on('ticks', (batch) => wss.broadcast(brokerName, batch));
+  pipe.on('ticks', (batch) => {
+    wss.broadcast(brokerName, batch);
+    engine.processTicks(batch);
+  });
 
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
     try { await upsertCandles(brokerName, symbol, timeframe, data); }

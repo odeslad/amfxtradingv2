@@ -1,0 +1,81 @@
+.card {
+  border-bottom: 1px solid var(--border);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto auto auto 1fr;
+  align-items: baseline;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 10px 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+}
+
+.value {
+  color: var(--muted);
+}
+
+.right {
+  text-align: right;
+  justify-self: end;
+}
+
+.buy {
+  color: var(--green);
+  letter-spacing: var(--tracking-tight);
+}
+
+.sell {
+  color: var(--red);
+  letter-spacing: var(--tracking-tight);
+}
+
+.profit {
+  color: var(--green);
+}
+
+.loss {
+  color: var(--red);
+}
+
+.details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px 16px;
+  padding: 0 0 12px;
+}
+
+.field,
+.fieldWide {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--text);
+}
+
+.fieldWide {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.muted {
+  color: var(--muted);
+}

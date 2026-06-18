@@ -26,6 +26,20 @@
   overflow-x: auto;
 }
 
+.cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .tableWrapper {
+    display: none;
+  }
+
+  .cards {
+    display: block;
+  }
+}
+
 .table {
   width: 100%;
   border-collapse: collapse;

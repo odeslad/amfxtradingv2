@@ -40,7 +40,11 @@ export function fmtPnl(n: number, currency?: string): string {
   return (n >= 0 ? '+' : '') + fmt(n) + (sym ? ` ${sym}` : '');
 }
 
-export function fmtDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toISOString().slice(0, 16).replace('T', ' ');
+export function fmtDate(raw: string): string {
+  return raw.replace(/\./g, '-').slice(0, 16);
+}
+
+export function openTimeMs(raw: string): number {
+  const ms = Date.parse(raw.replace(/\./g, '-').replace(' ', 'T'));
+  return Number.isNaN(ms) ? 0 : ms;
 }

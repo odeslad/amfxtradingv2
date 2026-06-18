@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
-import { type Position, TYPE_LABEL, fmt, fmtPnl, fmtDate } from './position';
+import { type Position, TYPE_LABEL, fmt, fmtPnl, fmtDate, openTimeMs } from './position';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 
@@ -33,7 +33,7 @@ export function JournalPage() {
     setPositions(prev => {
       const withoutBroker = prev.filter(p => p.broker !== msg.broker);
       return [...withoutBroker, ...incoming].sort((a, b) =>
-        (a.broker ?? '').localeCompare(b.broker ?? '') || new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
+        (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
       );
     });
   }, []);

@@ -7,6 +7,74 @@
   border-left: 2px solid var(--blue);
 }
 
+.swipeRow {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--border-bright);
+}
+
+.actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 2;
+}
+
+.actionsInner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+  height: 100%;
+  background: var(--bg);
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+}
+
+.actionsInnerOpen {
+  transform: translateX(0);
+}
+
+.actionsInnerExpanded {
+  background: linear-gradient(rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.03)), var(--bg);
+}
+
+.editBtn,
+.closeBtn {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  transition: background 0.12s ease;
+}
+
+.editBtn {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.editBtn:hover {
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.closeBtn {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.closeBtn:hover {
+  background: rgba(224, 92, 92, 0.15);
+}
+
 .summary {
   display: grid;
   grid-template-columns: auto auto auto 1fr;
@@ -14,13 +82,17 @@
   gap: 4px 14px;
   width: 100%;
   padding: 10px 5px;
-  background: transparent;
+  background: var(--bg);
   border: none;
-  border-top: 1px solid var(--border-bright);
   cursor: pointer;
   text-align: left;
   font-family: var(--font-mono);
   font-size: var(--text-xl);
+  position: relative;
+}
+
+.smooth {
+  transition: transform 0.2s ease;
 }
 
 .summaryActive {

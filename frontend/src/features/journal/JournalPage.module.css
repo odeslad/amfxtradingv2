@@ -114,6 +114,71 @@
   text-transform: uppercase;
 }
 
+.table tbody tr {
+  position: relative;
+}
+
+.actionsCell {
+  width: 0;
+  padding: 0;
+}
+
+.rowActions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
+.rowActionsInner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 16px;
+  background: var(--bg);
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+}
+
+.rowActions:hover .rowActionsInner {
+  transform: translateX(0);
+}
+
+.editBtn,
+.closeBtn {
+  height: 27px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  background: transparent;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.editBtn {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.editBtn:hover {
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.closeBtn {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.closeBtn:hover {
+  background: rgba(224, 92, 92, 0.15);
+}
+
 .empty {
   padding: 40px 0;
   text-align: center;

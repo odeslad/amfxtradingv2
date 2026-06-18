@@ -41,6 +41,14 @@ export function JournalPage() {
 
   useWs(handleWsMessage);
 
+  const handleEdit = (p: Position) => {
+    console.log('[positions] edit', p.broker, p.ticket);
+  };
+
+  const handleClose = (p: Position) => {
+    console.log('[positions] close', p.broker, p.ticket);
+  };
+
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;
 
@@ -69,6 +77,7 @@ export function JournalPage() {
                   <th>Commission</th>
                   <th>P&amp;L</th>
                   <th>Open Time</th>
+                  <th className={styles.actionsCell} aria-label="Actions"></th>
                 </tr>
               </thead>
               <tbody>
@@ -90,6 +99,14 @@ export function JournalPage() {
                       {fmtPnl(p.profit, p.currency)}
                     </td>
                     <td>{fmtLocalTime(p.openTime, p.brokerOffset)}</td>
+                    <td className={styles.actionsCell}>
+                      <div className={styles.rowActions}>
+                        <div className={styles.rowActionsInner}>
+                          <button type="button" className={styles.editBtn} onClick={() => handleEdit(p)}>Edit</button>
+                          <button type="button" className={styles.closeBtn} onClick={() => handleClose(p)}>Close</button>
+                        </div>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -98,7 +115,12 @@ export function JournalPage() {
 
           <div className={styles.cards}>
             {positions.map(p => (
-              <PositionCard key={`${p.broker}-${p.ticket}`} position={p} />
+              <PositionCard
+                key={`${p.broker}-${p.ticket}`}
+                position={p}
+                onEdit={handleEdit}
+                onClose={handleClose}
+              />
             ))}
           </div>
         </>

@@ -5,6 +5,8 @@ import type { EmaCrossContext } from '../engine/evaluators/ema-cross';
 import type { Candle } from '../engine/indicators/ema';
 
 interface StrategyForm {
+  id?: string;
+  name?: string;
   contextType: string;
   context: EmaCrossContext;
   instrument: string;
@@ -20,7 +22,8 @@ export async function runBacktest(strategyId: number): Promise<void> {
   if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
 
   const config = strategy.config as unknown as StrategyConfig;
-  const configHash = crypto.createHash('md5').update(JSON.stringify(config)).digest('hex');
+  const configForHash = { forms: config.forms.map(({ id: _id, name: _name, ...rest }) => rest) };
+  const configHash = crypto.createHash('md5').update(JSON.stringify(configForHash)).digest('hex');
 
   for (const form of config.forms) {
     if (form.contextType !== 'ema_cross') continue;

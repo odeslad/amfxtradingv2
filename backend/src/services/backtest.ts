@@ -70,6 +70,8 @@ export async function runBacktest(strategyId: number): Promise<void> {
           closePrice: setup.closePrice,
           levels: setup.levels as object,
           candleCount: setup.candleCount,
+          weakCandles: setup.weakCandles,
+          strongCandles: setup.strongCandles,
         },
       });
     }

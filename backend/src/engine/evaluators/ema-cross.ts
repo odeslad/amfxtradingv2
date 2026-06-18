@@ -1,9 +1,27 @@
 import { calculateEma, type Candle } from '../indicators/ema';
 
+export interface WeakConfig {
+  enabled: boolean;
+  maxSpreadPips: number;
+  useMaxSpread: boolean;
+  requireNewLow: boolean;
+  requireContrarySlopes: boolean;
+  requireCloseVsSlowEma: boolean;
+}
+
+export interface StrongConfig {
+  minSpreadPips: number;
+  useMinSpread: boolean;
+  requireNewHigh: boolean;
+}
+
 export interface EmaCrossContext {
   emaFast: number;
   emaSlow: number;
   direction: 'buy' | 'sell' | 'both';
+  pipSize?: number;
+  weakConfig?: WeakConfig;
+  strongConfig?: StrongConfig;
 }
 
 export interface EmaCrossSetup {
@@ -21,6 +39,8 @@ export interface EmaCrossSetup {
     EVL: number | null;
     MHL: number | null;
   };
+  weakCandles: Date[];
+  strongCandles: Date[];
 }
 
 interface CrossEvent {
@@ -71,6 +91,11 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
     const evl = findEvl(fastEma, i, contextStart, cross.direction);
     const mhl = prevOppositeCross !== null ? findMhl(candles, contextStart, i, cross.direction) : null;
 
+    const windowEnd = closeIndex ?? candles.length - 1;
+    const { weakCandles, strongCandles } = classifyCandles(
+      candles, fastEma, slowEma, i, windowEnd, cross.direction, context,
+    );
+
     setups.push({
       direction: cross.direction,
       activationIndex: i,
@@ -81,6 +106,8 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
       closePrice: closeIndex !== null ? candles[closeIndex].close : null,
       candleCount: closeIndex !== null ? closeIndex - i : candles.length - 1 - i,
       levels: { ECC: candles[i].close, EMA: emaLevel, EVL: evl, MHL: mhl },
+      weakCandles,
+      strongCandles,
     });
   }
 
@@ -148,6 +175,51 @@ function findMhl(
   }
 
   return extreme;
+}
+
+function classifyCandles(
+  candles: Candle[],
+  fastEma: (number | null)[],
+  slowEma: (number | null)[],
+  fromIndex: number,
+  toIndex: number,
+  direction: 'buy' | 'sell',
+  context: EmaCrossContext,
+): { weakCandles: Date[]; strongCandles: Date[] } {
+  const weak: Date[] = [];
+  const strong: Date[] = [];
+  const { weakConfig, strongConfig, pipSize = 0.0001 } = context;
+
+  for (let i = fromIndex + 1; i <= toIndex; i++) {
+    const fast = fastEma[i];
+    const slow = slowEma[i];
+    if (fast === null || slow === null) continue;
+
+    const candle = candles[i];
+    const spread = Math.abs(fast - slow) / pipSize;
+
+    if (weakConfig?.enabled) {
+      const belowBoth = direction === 'buy'
+        ? candle.close < fast && candle.close < slow
+        : candle.close > fast && candle.close > slow;
+
+      const spreadOk = !weakConfig.useMaxSpread || spread <= weakConfig.maxSpreadPips;
+
+      if (belowBoth && spreadOk) weak.push(candle.time);
+    }
+
+    if (strongConfig) {
+      const aboveBoth = direction === 'buy'
+        ? candle.close > fast && candle.close > slow
+        : candle.close < fast && candle.close < slow;
+
+      const spreadOk = !strongConfig.useMinSpread || spread >= strongConfig.minSpreadPips;
+
+      if (aboveBoth && spreadOk) strong.push(candle.time);
+    }
+  }
+
+  return { weakCandles: weak, strongCandles: strong };
 }
 
 function findSetupClose(

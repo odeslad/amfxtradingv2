@@ -108,6 +108,8 @@ model BacktestSetup {
   closePrice      Float?
   levels          Json
   candleCount     Int
+  weakCandles     DateTime[]
+  strongCandles   DateTime[]
   trades          BacktestTrade[]
 
   @@index([runId])

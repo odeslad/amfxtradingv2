@@ -5,22 +5,22 @@ import { config } from './config';
 import { db } from './db/client';
 import { PipeReader } from './bridge/pipe-reader';
 import { FileWatcher } from './bridge/file-watcher';
-import { createTicksWss } from './ws/ticks';
+import { createWss } from './ws/ws';
 import { upsertCandles } from './services/candles';
 import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
 import { saveDailyBalances } from './services/account';
 import { Engine } from './engine/engine';
 
-type TicksWss = ReturnType<typeof createTicksWss>;
+type Wss = ReturnType<typeof createWss>;
 
-function startBroker(brokerName: string, bridgePath: string, wss: TicksWss) {
+function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   const pipe = new PipeReader(brokerName);
   const watcher = new FileWatcher(brokerName, bridgePath);
   const engine = new Engine(brokerName, bridgePath);
 
   pipe.on('ticks', (batch) => {
-    wss.broadcast(brokerName, batch);
+    wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
   });
 
@@ -30,7 +30,10 @@ function startBroker(brokerName: string, bridgePath: string, wss: TicksWss) {
   });
 
   watcher.on('positions', async (positions) => {
-    try { await syncPositions(brokerName, positions); }
+    try {
+      await syncPositions(brokerName, positions);
+      wss.broadcastPositions(brokerName, positions);
+    }
     catch (err) { console.error(`[DB:${brokerName}] positions sync failed`, err); }
   });
 
@@ -58,7 +61,7 @@ async function main() {
   console.log('[DB] Connected');
 
   const server = http.createServer(app);
-  const wss = createTicksWss(server);
+  const wss = createWss(server);
 
   const watchers = config.brokers.map(({ name, bridgePath }) =>
     startBroker(name, bridgePath, wss),

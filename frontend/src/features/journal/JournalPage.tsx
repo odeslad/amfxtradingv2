@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
+import { useWs } from '../../lib/useWs';
 import styles from './JournalPage.module.css';
 
 interface Position {
@@ -47,6 +48,20 @@ export function JournalPage() {
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleWsMessage = useCallback((data: unknown) => {
+    if (typeof data !== 'object' || data === null) return;
+    const msg = data as { type: string; broker: string; positions: Position[] };
+    if (msg.type !== 'positions') return;
+    setPositions(prev => {
+      const withoutBroker = prev.filter(p => p.broker !== msg.broker);
+      return [...withoutBroker, ...msg.positions].sort((a, b) =>
+        a.broker.localeCompare(b.broker) || new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
+      );
+    });
+  }, []);
+
+  useWs(handleWsMessage);
 
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;

@@ -528,6 +528,26 @@ Constante fija del engine. Solo gestiona posiciones abiertas por él (filtradas 
 
 ---
 
+## Pendiente backend (Fase 2)
+
+### Engine — evaluador
+
+| Item | Estado | Notas |
+|------|--------|-------|
+| Trailing `riskCut` | ⏳ pendiente | A definir con el usuario |
+| Nivel `EMCC` | ⏳ pendiente | Definición "a confirmar" |
+| Nivel `SHL` | ⏳ pendiente | Definición "a confirmar" |
+| Filtros de entry (`maxDistToEma`, `maxDistToEvl`, `maxDistToShl`) | ⏳ pendiente | No implementados en entry-evaluator |
+| Modo realtime del evaluador | ⏳ pendiente | A definir en detalle |
+
+### Backend general
+
+| Item | Estado | Notas |
+|------|--------|-------|
+| Duplicate balance records | ⏳ pendiente | Race condition entre dos brokers al escribir simultáneamente |
+
+---
+
 ## Referencia
 
 El MVP de referencia está en `c:/work/odeslad/amfxtrading`.  

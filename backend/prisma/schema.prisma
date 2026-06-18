@@ -140,6 +140,15 @@ model BacktestTrade {
   @@map("backtest_trades")
 }
 
+model User {
+  id           Int      @id @default(autoincrement())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  @@map("users")
+}
+
 model Balance {
   id         Int      @id @default(autoincrement())
   broker     String

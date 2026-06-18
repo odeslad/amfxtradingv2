@@ -1,0 +1,43 @@
+:root {
+  /* Backgrounds */
+  --bg: #0d0d0d;
+  --surface: #161616;
+  --surface2: #1e1e1e;
+
+  /* Borders */
+  --border: rgba(255, 255, 255, 0.08);
+  --border-bright: rgba(255, 255, 255, 0.18);
+
+  /* Text */
+  --text: #e8e8e8;
+  --muted: #666666;
+
+  /* Accents */
+  --orange: #f5a623;
+  --blue: #3a7bd5;
+
+  /* Semantic */
+  --green: #4caf84;
+  --red: #e05c5c;
+  --gold: #c8a840;
+
+  /* Typography */
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'IBM Plex Sans', sans-serif;
+
+  --text-2xs: 9px;
+  --text-xs: 10px;
+  --text-sm: 11px;
+  --text-base: 12px;
+  --text-md: 13px;
+  --text-lg: 14px;
+  --text-xl: 16px;
+  --text-2xl: 20px;
+  --text-3xl: 28px;
+
+  --tracking-tight: 0.02em;
+  --tracking-normal: 0.06em;
+  --tracking-wide: 0.12em;
+  --tracking-wider: 0.2em;
+  --tracking-widest: 0.3em;
+}

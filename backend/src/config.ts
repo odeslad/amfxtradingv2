@@ -28,5 +28,6 @@ function loadBrokers(): BrokerConfig[] {
 export const config = {
   port: parseInt(process.env['PORT'] ?? '3000', 10),
   databaseUrl: required('DATABASE_URL'),
+  jwtSecret: required('JWT_SECRET'),
   brokers: loadBrokers(),
 };

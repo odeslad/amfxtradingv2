@@ -37,7 +37,10 @@ router.put('/:id', async (req, res) => {
 
     const strategy = await db.strategy.update({
       where: { id },
-      data: { ...(config !== undefined && { config }), ...(active !== undefined && { active }) },
+      data: {
+        ...(config !== undefined && { config: config as object }),
+        ...(active !== undefined && { active }),
+      },
     });
 
     if (config !== undefined) {

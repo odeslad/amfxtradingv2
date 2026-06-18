@@ -19,7 +19,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
   const strategy = await db.strategy.findUnique({ where: { id: strategyId } });
   if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
 
-  const config = strategy.config as StrategyConfig;
+  const config = strategy.config as unknown as StrategyConfig;
   const configHash = crypto.createHash('md5').update(JSON.stringify(config)).digest('hex');
 
   for (const form of config.forms) {

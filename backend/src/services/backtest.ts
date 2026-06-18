@@ -2,15 +2,15 @@ import crypto from 'crypto';
 import { db } from '../db/client';
 import { detectEmaCrossSetups } from '../engine/evaluators/ema-cross';
 import type { EmaCrossContext } from '../engine/evaluators/ema-cross';
+import { getPipSize } from '../engine/pip-size';
 import type { Candle } from '../engine/indicators/ema';
 
 interface StrategyForm {
   id?: string;
   name?: string;
-  contextType: string;
-  context: EmaCrossContext;
   instrument: string;
   timeframe: string;
+  setup: EmaCrossContext & { type: string };
 }
 
 interface StrategyConfig {
@@ -26,7 +26,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
   const configHash = crypto.createHash('md5').update(JSON.stringify(configForHash)).digest('hex');
 
   for (const form of config.forms) {
-    if (form.contextType !== 'ema_cross') continue;
+    if (form.setup.type !== 'ema_cross') continue;
 
     const symbol = form.instrument;
     const timeframe = normalizeTimeframe(form.timeframe);
@@ -56,7 +56,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
 
     console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | evaluating ${candles.length} candles`);
 
-    const setups = detectEmaCrossSetups(candles as Candle[], form.context);
+    const setups = detectEmaCrossSetups(candles as Candle[], form.setup, getPipSize(symbol));
 
     const run = await db.backtestRun.create({
       data: { strategyId, broker: strategy.broker, symbol, timeframe, dateFrom, dateTo, configHash },

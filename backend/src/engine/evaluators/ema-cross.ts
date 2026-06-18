@@ -4,22 +4,17 @@ export interface WeakConfig {
   enabled: boolean;
   maxSpreadPips: number;
   useMaxSpread: boolean;
-  requireNewLow: boolean;
-  requireContrarySlopes: boolean;
-  requireCloseVsSlowEma: boolean;
 }
 
 export interface StrongConfig {
   minSpreadPips: number;
   useMinSpread: boolean;
-  requireNewHigh: boolean;
 }
 
 export interface EmaCrossContext {
   emaFast: number;
   emaSlow: number;
   direction: 'buy' | 'sell' | 'both';
-  pipSize?: number;
   pivotLen?: number;
   weakConfig?: WeakConfig;
   strongConfig?: StrongConfig;
@@ -60,7 +55,7 @@ interface CrossEvent {
   direction: 'buy' | 'sell';
 }
 
-export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext): EmaCrossSetup[] {
+export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext, pipSize = 0.0001): EmaCrossSetup[] {
   const { emaFast: fastPeriod, emaSlow: slowPeriod, direction } = context;
 
   const fastEma = calculateEma(candles, fastPeriod);
@@ -105,7 +100,7 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
 
     const windowEnd = closeIndex ?? candles.length - 1;
     const { weakCandles, strongCandles } = classifyCandles(
-      candles, fastEma, slowEma, i, windowEnd, cross.direction, context,
+      candles, fastEma, slowEma, i, windowEnd, cross.direction, context, pipSize,
     );
 
     setups.push({
@@ -282,10 +277,11 @@ function classifyCandles(
   toIndex: number,
   direction: 'buy' | 'sell',
   context: EmaCrossContext,
+  pipSize: number,
 ): { weakCandles: Date[]; strongCandles: Date[] } {
   const weak: Date[] = [];
   const strong: Date[] = [];
-  const { weakConfig, strongConfig, pipSize = 0.0001 } = context;
+  const { weakConfig, strongConfig } = context;
 
   for (let i = fromIndex + 1; i <= toIndex; i++) {
     const fast = fastEma[i];

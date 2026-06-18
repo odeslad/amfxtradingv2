@@ -30,6 +30,18 @@ router.post('/', async (req, res) => {
   }
 });
 
+router.get('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params['id'], 10);
+    const strategy = await db.strategy.findUnique({ where: { id } });
+    if (!strategy) { res.status(404).json({ error: 'Strategy not found' }); return; }
+    res.json(strategy);
+  } catch (err) {
+    console.error('[STRATEGIES] GET failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.put('/:id', async (req, res) => {
   try {
     const id = parseInt(req.params['id'], 10);

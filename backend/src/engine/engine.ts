@@ -12,7 +12,7 @@ export class Engine {
 
   constructor(brokerName: string, bridgePath: string) {
     this.brokerName = brokerName;
-    this.tracker = new CandleTracker();
+    this.tracker = new CandleTracker(brokerName);
     this.executor = new OrderExecutor(brokerName, bridgePath);
 
     this.tracker.on('close', async (event) => {

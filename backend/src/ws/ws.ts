@@ -40,8 +40,8 @@ export function createWss(server: Server) {
     broadcastTicks(broker: string, batch: unknown) {
       broadcast('ticks', { broker, ticks: batch });
     },
-    broadcastPositions(broker: string, positions: unknown, currency: string) {
-      broadcast('positions', { broker, currency, positions });
+    broadcastPositions(broker: string, positions: unknown, currency: string, brokerOffset: number) {
+      broadcast('positions', { broker, currency, brokerOffset, positions });
     },
   };
 }

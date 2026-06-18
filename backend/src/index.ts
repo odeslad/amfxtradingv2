@@ -20,14 +20,16 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   const engine = new Engine(brokerName, bridgePath);
 
   let currency = '';
+  let brokerOffset = 0;
 
   pipe.on('ticks', (batch) => {
+    if (batch.length > 0) brokerOffset = batch[0].broker_offset ?? brokerOffset;
     wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
   });
 
   pipe.on('positions', (positions) => {
-    wss.broadcastPositions(brokerName, positions, currency);
+    wss.broadcastPositions(brokerName, positions, currency, brokerOffset);
   });
 
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {

@@ -255,11 +255,19 @@ pending → dot 8px --gold, animación pulse 0.7s infinite
 
 | Canal | Uso | Formato |
 |-------|-----|---------|
-| Named Pipe `\\.\pipe\mt4tick_<broker>` | Ticks en tiempo real | JSON por línea (batch) |
+| Named Pipe `\\.\pipe\mt4tick_<broker>` | Ticks (100ms) + posiciones en vivo (1s) | JSON por línea, una por mensaje |
 | Archivo `bridge/command.json` | Órdenes backend → EA | JSON con campos: `action`, `symbol`, `lots`, `sl`, `tp`, `price`, `magic`, `id` |
 | Archivos `bridge/*.json` | Estado periódico (30s) | `account.json`, `positions.json`, `history.json`, `candles_SYMBOL_TF.json` |
 
 **Backend es SERVER del pipe.** El EA es CLIENT y se conecta al iniciar.
+
+**El pipe transporta dos tipos de mensaje**, distinguidos por la forma de la línea JSON:
+- **Array** `[...]` → batch de ticks (cada 100ms).
+- **Objeto** `{"type":"positions","positions":[...]}` → posiciones abiertas en vivo (cada `POSITIONS_EVERY_S` del EA, default 1s).
+
+`pipe-reader.ts` emite `ticks` o `positions` según el tipo. Las **posiciones por pipe solo se hacen broadcast por WS, NO se escriben en BD** (desacople vista/persistencia). La persistencia de posiciones sigue por el FileWatcher leyendo `positions.json` cada 30s (`syncPositions`). El fichero `positions.json` se escribe a `STATE_EVERY_S` (60s) y ya **no** se usa para broadcast, solo para BD.
+
+**WebSocket `/ws`** (auth cookie JWT) emite `{ type, broker, ... }`. En `positions`, el `broker` va en el ROOT del mensaje, no por item: el front debe inyectarlo antes de ordenar.
 
 ### Acciones de comando soportadas
 

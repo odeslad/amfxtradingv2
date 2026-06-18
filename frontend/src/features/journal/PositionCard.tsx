@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Position, fmt, fmtPnl, fmtDate } from './position';
+import { type Position, fmt, fmtPnl, fmtDate, currencySymbol } from './position';
 import styles from './PositionCard.module.css';
 
 interface PositionCardProps {
@@ -12,10 +12,10 @@ export function PositionCard({ position: p }: PositionCardProps) {
   const toggle = () => setExpanded(prev => !prev);
 
   return (
-    <div className={styles.card}>
+    <div className={`${styles.card} ${expanded ? styles.cardExpanded : ''}`}>
       <button
         type="button"
-        className={styles.summary}
+        className={`${styles.summary} ${expanded ? styles.summaryActive : ''}`}
         onClick={toggle}
         aria-expanded={expanded}
       >
@@ -36,23 +36,23 @@ export function PositionCard({ position: p }: PositionCardProps) {
         <div className={styles.details}>
           <div className={styles.field}>
             <span className={styles.label}>SL</span>
-            <span className={styles.muted}>{p.sl ? fmt(p.sl, 5) : '—'}</span>
+            <span>{p.sl ? fmt(p.sl, 5) : '—'}</span>
           </div>
           <div className={styles.field}>
             <span className={styles.label}>TP</span>
-            <span className={styles.muted}>{p.tp ? fmt(p.tp, 5) : '—'}</span>
+            <span>{p.tp ? fmt(p.tp, 5) : '—'}</span>
           </div>
           <div className={styles.field}>
             <span className={styles.label}>Swap</span>
-            <span className={p.swap < 0 ? styles.loss : styles.muted}>{fmt(p.swap, 2)}</span>
+            <span className={p.swap < 0 ? styles.loss : undefined}>{fmt(p.swap, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}</span>
           </div>
           <div className={styles.field}>
             <span className={styles.label}>Commission</span>
-            <span className={p.commission < 0 ? styles.loss : styles.muted}>{fmt(p.commission, 2)}</span>
+            <span className={p.commission < 0 ? styles.loss : styles.muted}>{fmt(p.commission, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}</span>
           </div>
           <div className={styles.fieldWide}>
-            <span className={styles.label}>{p.broker}</span>
-            <span className={styles.muted}>{fmtDate(p.openTime)}</span>
+            <span className={styles.brokerName}>{p.broker}</span>
+            <span className={styles.date}>{fmtDate(p.openTime)}</span>
           </div>
         </div>
       )}

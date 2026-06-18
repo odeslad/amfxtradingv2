@@ -10,6 +10,7 @@ function Invoke-Step {
 Set-Location C:\amfxtradingv2
 
 Invoke-Step "git reset" { git reset --hard HEAD }
+Invoke-Step "git clean" { git clean -fd }
 Invoke-Step "git pull" { git pull origin master }
 
 Set-Location frontend

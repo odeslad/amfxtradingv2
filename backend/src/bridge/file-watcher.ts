@@ -41,6 +41,7 @@ export class FileWatcher extends EventEmitter {
   }
 
   start() {
+    console.log(`[FILE-WATCHER: ${this.brokerName}] started | bridge=${this.bridgePath} | polls account, positions, history, candles every ${this.intervalMs / 1000}s`);
     this.poll();
     this.timer = setInterval(() => this.poll(), this.intervalMs);
   }
@@ -61,8 +62,11 @@ export class FileWatcher extends EventEmitter {
     try {
       const raw = fs.readFileSync(filepath, 'utf8');
       cb(JSON.parse(raw) as T);
-    } catch {
-      // file missing or malformed — EA may not have written it yet
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (!msg.includes('ENOENT')) {
+        console.error(`[FILE-WATCHER: ${this.brokerName}] error reading ${filename} | ${msg}`);
+      }
     }
   }
 

@@ -4,6 +4,10 @@ import { LoginPage } from '../features/auth/LoginPage';
 import { ProtectedRoute } from './ProtectedRoute';
 import { AppLayout } from './layout/AppLayout';
 import { JournalPage } from '../features/journal/JournalPage';
+import { ChartPage } from '../features/chart/ChartPage';
+import { BacktestPage } from '../features/backtest/BacktestPage';
+import { EnginePage } from '../features/engine/EnginePage';
+import { SettingsPage } from '../features/settings/SettingsPage';
 
 export function Router() {
   return (
@@ -20,6 +24,10 @@ export function Router() {
           >
             <Route index element={<Navigate to="/journal" replace />} />
             <Route path="/journal" element={<JournalPage />} />
+            <Route path="/chart" element={<ChartPage />} />
+            <Route path="/backtest" element={<BacktestPage />} />
+            <Route path="/engine" element={<EnginePage />} />
+            <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

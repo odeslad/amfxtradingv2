@@ -8,7 +8,7 @@
 }
 
 .title {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-md);
   font-weight: 500;
   letter-spacing: var(--tracking-wide);
@@ -29,7 +29,7 @@
 .table {
   width: 100%;
   border-collapse: collapse;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   font-size: var(--text-sm);
 }
 

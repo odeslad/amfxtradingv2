@@ -481,6 +481,37 @@ Todos los tipos de entry comparten estos campos:
 
 ---
 
+---
+
+### Modos del evaluador de estrategias
+
+#### Modo backtest
+- Recibe un intervalo histórico de velas (de BD)
+- Evalúa la estrategia sobre todo el histórico y genera todas las operaciones encontradas
+- Persiste los resultados en BD bajo un `BacktestRun`
+- **Caché:** si la estrategia no ha cambiado sus parámetros desde el último run, reutiliza los resultados sin reevaluar
+- El frontend consume estos resultados para visualizar setups y trades del backtest
+
+**Jerarquía en BD:**
+```
+Strategy
+└── BacktestRun          — cada evaluación completa de la estrategia
+    └── BacktestSetup    — cada setup detectado en el run (con sus niveles y características)
+        └── BacktestTrade — cada operación encontrada dentro del setup
+```
+
+**`BacktestRun`:** strategyId, broker, symbol, timeframe, fechaInicio, fechaFin, configHash (para detectar cambios de parámetros), createdAt
+
+**`BacktestSetup`:** runId, dirección (buy/sell), vela de activación, precio de activación, vela de cierre, precio de cierre, niveles JSON (ECC, EMA, EVL, MHL...), candleCount
+
+**`BacktestTrade`:** setupId, entryType (ECC/EMA/EVL...), precio entrada, SL, TP, vela de entrada, vela de cierre, resultado (pips, RR), status (win/loss/breakeven/open)
+
+#### Modo realtime
+- A definir en detalle — analiza y toma decisiones en tiempo real al cierre de cada vela
+- Decide si ejecutar una operación o no según las condiciones de la estrategia
+
+---
+
 ### Broker Settings (por estrategia)
 
 ```json

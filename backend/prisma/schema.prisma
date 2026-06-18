@@ -68,15 +68,68 @@ model Trade {
 }
 
 model Strategy {
-  id        Int      @id @default(autoincrement())
+  id        Int           @id @default(autoincrement())
   broker    String
   symbol    String
   timeframe String
   config    Json
-  active    Boolean  @default(true)
+  active    Boolean       @default(true)
+  runs      BacktestRun[]
 
   @@index([broker, active])
   @@map("strategies")
+}
+
+model BacktestRun {
+  id          Int             @id @default(autoincrement())
+  strategyId  Int
+  strategy    Strategy        @relation(fields: [strategyId], references: [id])
+  broker      String
+  symbol      String
+  timeframe   String
+  dateFrom    DateTime
+  dateTo      DateTime
+  configHash  String
+  createdAt   DateTime        @default(now())
+  setups      BacktestSetup[]
+
+  @@index([strategyId])
+  @@map("backtest_runs")
+}
+
+model BacktestSetup {
+  id              Int             @id @default(autoincrement())
+  runId           Int
+  run             BacktestRun     @relation(fields: [runId], references: [id])
+  direction       String
+  activationTime  DateTime
+  activationPrice Float
+  closeTime       DateTime?
+  closePrice      Float?
+  levels          Json
+  candleCount     Int
+  trades          BacktestTrade[]
+
+  @@index([runId])
+  @@map("backtest_setups")
+}
+
+model BacktestTrade {
+  id          Int           @id @default(autoincrement())
+  setupId     Int
+  setup       BacktestSetup @relation(fields: [setupId], references: [id])
+  entryType   String
+  entryPrice  Float
+  sl          Float
+  tp          Float
+  entryTime   DateTime
+  closeTime   DateTime?
+  resultPips  Float?
+  resultRR    Float?
+  status      String
+
+  @@index([setupId])
+  @@map("backtest_trades")
 }
 
 model Balance {

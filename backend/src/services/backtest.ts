@@ -75,6 +75,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
           candleCount: setup.candleCount,
           weakCandles: setup.weakCandles,
           strongCandles: setup.strongCandles,
+          pivots: setup.pivots as object[],
           mfePrice: setup.mfePrice,
           mfeTime: setup.mfeTime,
           maePrice: setup.maePrice,

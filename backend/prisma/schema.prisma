@@ -110,6 +110,7 @@ model BacktestSetup {
   candleCount     Int
   weakCandles     DateTime[]
   strongCandles   DateTime[]
+  pivots          Json       @default("[]")
   mfePrice        Float?
   mfeTime         DateTime?
   maePrice        Float?

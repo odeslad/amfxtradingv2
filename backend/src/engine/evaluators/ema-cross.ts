@@ -20,8 +20,15 @@ export interface EmaCrossContext {
   emaSlow: number;
   direction: 'buy' | 'sell' | 'both';
   pipSize?: number;
+  pivotLen?: number;
   weakConfig?: WeakConfig;
   strongConfig?: StrongConfig;
+}
+
+export interface PivotPoint {
+  type: 'high' | 'low';
+  price: number;
+  time: Date;
 }
 
 export interface EmaCrossSetup {
@@ -41,6 +48,7 @@ export interface EmaCrossSetup {
   };
   weakCandles: Date[];
   strongCandles: Date[];
+  pivots: PivotPoint[];
   mfePrice: number | null;
   mfeTime: Date | null;
   maePrice: number | null;
@@ -112,6 +120,7 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
       levels: { ECC: candles[i].close, EMA: emaLevel, EVL: evl, MHL: mhl },
       weakCandles,
       strongCandles,
+      pivots: detectPivots(candles, i, windowEnd, context.pivotLen ?? 5),
       ...calculateMaeMfe(candles, i, windowEnd, cross.direction),
     });
   }
@@ -180,6 +189,51 @@ function findMhl(
   }
 
   return extreme;
+}
+
+function detectPivots(
+  candles: Candle[],
+  fromIndex: number,
+  toIndex: number,
+  pivotLen: number,
+): PivotPoint[] {
+  const pivots: PivotPoint[] = [];
+  let lastType: 'high' | 'low' | null = null;
+
+  for (let i = fromIndex; i <= toIndex; i++) {
+    if (i - pivotLen < 0 || i + pivotLen >= candles.length) continue;
+
+    const isHigh = isSwingHigh(candles, i, pivotLen);
+    const isLow = isSwingLow(candles, i, pivotLen);
+
+    if (isHigh && (lastType === null || lastType === 'low')) {
+      pivots.push({ type: 'high', price: candles[i].high, time: candles[i].time });
+      lastType = 'high';
+    } else if (isLow && (lastType === null || lastType === 'high')) {
+      pivots.push({ type: 'low', price: candles[i].low, time: candles[i].time });
+      lastType = 'low';
+    }
+  }
+
+  return pivots;
+}
+
+function isSwingHigh(candles: Candle[], index: number, len: number): boolean {
+  const val = candles[index].high;
+  for (let i = index - len; i <= index + len; i++) {
+    if (i === index) continue;
+    if (candles[i].high >= val) return false;
+  }
+  return true;
+}
+
+function isSwingLow(candles: Candle[], index: number, len: number): boolean {
+  const val = candles[index].low;
+  for (let i = index - len; i <= index + len; i++) {
+    if (i === index) continue;
+    if (candles[i].low <= val) return false;
+  }
+  return true;
 }
 
 function calculateMaeMfe(

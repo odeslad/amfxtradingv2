@@ -53,10 +53,11 @@ export function JournalPage() {
     if (typeof data !== 'object' || data === null) return;
     const msg = data as { type: string; broker: string; positions: Position[] };
     if (msg.type !== 'positions') return;
+    const incoming = msg.positions.map(p => ({ ...p, broker: p.broker ?? msg.broker }));
     setPositions(prev => {
       const withoutBroker = prev.filter(p => p.broker !== msg.broker);
-      return [...withoutBroker, ...msg.positions].sort((a, b) =>
-        a.broker.localeCompare(b.broker) || new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
+      return [...withoutBroker, ...incoming].sort((a, b) =>
+        (a.broker ?? '').localeCompare(b.broker ?? '') || new Date(a.openTime).getTime() - new Date(b.openTime).getTime()
       );
     });
   }, []);

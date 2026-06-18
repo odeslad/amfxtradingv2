@@ -98,13 +98,22 @@ export function evaluateEntries(
     const slPrice = calculateSl(entry.sl, direction, entryPrice, levels.EVL, pipSize);
     const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
     const tpPrice = calculateTp(entry.exit, direction, entryPrice, slDistancePips, pipSize);
-    const result = scanResult(candles, activationCandleIndex, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize);
+
+    // ECC at close: entry is at candle close, high/low of that candle predate our entry — scan from next candle.
+    // Price-touch entries: we enter during the candle, SL/TP can hit in the same candle — scan from same candle.
+    const isEntryAtClose = entry.type === 'ECC' && entry.offset === 0 && entry.window === 0;
+    const scanFrom = isEntryAtClose ? activationCandleIndex + 1 : activationCandleIndex;
+    const result = scanResult(candles, scanFrom, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize);
+
+    const entryTime = isEntryAtClose
+      ? (candles[activationCandleIndex + 1]?.time ?? candles[activationCandleIndex].time)
+      : candles[activationCandleIndex].time;
 
     results.push({
       entryType: entry.type,
       direction,
       entryPrice,
-      entryTime: candles[activationCandleIndex].time,
+      entryTime,
       sl: slPrice,
       tp: tpPrice,
       ...result,

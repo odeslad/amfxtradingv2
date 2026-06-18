@@ -3,7 +3,7 @@ import { calculateEma, type Candle } from '../indicators/ema';
 export interface EmaCrossContext {
   emaFast: number;
   emaSlow: number;
-  direction: 'buy' | 'sell';
+  direction: 'buy' | 'sell' | 'both';
 }
 
 export interface EmaCrossSetup {
@@ -24,6 +24,13 @@ export interface EmaCrossSetup {
 }
 
 export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext): EmaCrossSetup[] {
+  if (context.direction === 'both') {
+    return [
+      ...detectEmaCrossSetups(candles, { ...context, direction: 'buy' }),
+      ...detectEmaCrossSetups(candles, { ...context, direction: 'sell' }),
+    ].sort((a, b) => a.activationTime.getTime() - b.activationTime.getTime());
+  }
+
   const { emaFast: fastPeriod, emaSlow: slowPeriod, direction } = context;
 
   const fastEma = calculateEma(candles, fastPeriod);

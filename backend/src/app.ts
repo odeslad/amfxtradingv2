@@ -9,7 +9,7 @@ import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
 
-const ALLOWED_ORIGINS = [/\.amfxtrading\.com$/, 'http://localhost:5173'];
+const ALLOWED_ORIGINS = [/\.amfxtrading\.com(:\d+)?$/];
 
 app.use(cors({
   origin: (origin, cb) => {

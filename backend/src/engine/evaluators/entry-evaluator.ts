@@ -201,7 +201,7 @@ function scanResult(
   tpPrice: number | null,
   pipSize: number,
 ): Pick<TradeResult, 'exitTime' | 'exitPrice' | 'resultPips' | 'status' | 'reason'> {
-  for (let i = fromIndex + 1; i <= toIndex; i++) {
+  for (let i = fromIndex; i <= toIndex; i++) {
     const candle = candles[i];
 
     if (direction === 'buy') {

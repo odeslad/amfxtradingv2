@@ -19,13 +19,15 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   const watcher = new FileWatcher(brokerName, bridgePath);
   const engine = new Engine(brokerName, bridgePath);
 
+  let currency = '';
+
   pipe.on('ticks', (batch) => {
     wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
   });
 
   pipe.on('positions', (positions) => {
-    wss.broadcastPositions(brokerName, positions);
+    wss.broadcastPositions(brokerName, positions, currency);
   });
 
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
@@ -44,6 +46,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   });
 
   watcher.on('account', async (account) => {
+    currency = account.currency ?? currency;
     try { await saveDailyBalances(brokerName, account); }
     catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
   });

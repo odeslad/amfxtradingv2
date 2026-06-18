@@ -27,7 +27,7 @@ export function PositionCard({ position: p }: PositionCardProps) {
         <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
         <span className={styles.value}>{fmt(p.openPrice, 5)}</span>
         <span className={styles.value}>{fmt(p.lots, 2)}</span>
-        <span className={`${p.profit >= 0 ? styles.profit : styles.loss} ${styles.right}`}>
+        <span className={`${p.profit >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
           {fmtPnl(p.profit, p.currency)}
         </span>
       </button>

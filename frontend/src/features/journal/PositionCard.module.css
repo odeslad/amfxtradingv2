@@ -36,6 +36,10 @@
   justify-self: end;
 }
 
+.pnl {
+  font-size: var(--text-2xl);
+}
+
 .buy {
   color: var(--green);
   letter-spacing: var(--tracking-tight);

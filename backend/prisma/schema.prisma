@@ -129,11 +129,12 @@ model BacktestTrade {
   entryPrice  Float
   sl          Float
   tp          Float
-  entryTime   DateTime
-  closeTime   DateTime?
+  entryTime   DateTime?
+  exitTime    DateTime?
+  exitPrice   Float?
   resultPips  Float?
-  resultRR    Float?
   status      String
+  reason      String?
 
   @@index([setupId])
   @@map("backtest_trades")

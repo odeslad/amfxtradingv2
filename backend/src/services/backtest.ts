@@ -1,6 +1,8 @@
 import crypto from 'crypto';
 import { db } from '../db/client';
-import { detectEmaCrossSetups } from '../engine/evaluators/ema-cross';
+import { evaluateSetups } from '../engine/evaluators/setup-evaluator';
+import { evaluateEntries } from '../engine/evaluators/entry-evaluator';
+import type { EntryConfig } from '../engine/evaluators/entry-evaluator';
 import type { EmaCrossContext } from '../engine/evaluators/ema-cross';
 import { getPipSize } from '../engine/pip-size';
 import type { Candle } from '../engine/indicators/ema';
@@ -11,6 +13,7 @@ interface StrategyForm {
   instrument: string;
   timeframe: string;
   setup: EmaCrossContext & { type: string };
+  entries: EntryConfig[];
 }
 
 interface StrategyConfig {
@@ -56,14 +59,15 @@ export async function runBacktest(strategyId: number): Promise<void> {
 
     console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | evaluating ${candles.length} candles`);
 
-    const setups = detectEmaCrossSetups(candles as Candle[], form.setup, getPipSize(symbol));
+    const pipSize = getPipSize(symbol);
+    const setups = evaluateSetups(candles as Candle[], form, pipSize);
 
     const run = await db.backtestRun.create({
       data: { strategyId, broker: strategy.broker, symbol, timeframe, dateFrom, dateTo, configHash },
     });
 
     for (const setup of setups) {
-      await db.backtestSetup.create({
+      const savedSetup = await db.backtestSetup.create({
         data: {
           runId: run.id,
           direction: setup.direction,
@@ -82,6 +86,36 @@ export async function runBacktest(strategyId: number): Promise<void> {
           maeTime: setup.maeTime,
         },
       });
+
+      if (form.entries.length > 0) {
+        const trades = evaluateEntries(
+          candles as Candle[],
+          setup.direction,
+          setup.activationIndex,
+          setup.closeIndex,
+          setup.levels,
+          form.entries,
+          pipSize,
+        );
+
+        for (const trade of trades) {
+          await db.backtestTrade.create({
+            data: {
+              setupId: savedSetup.id,
+              entryType: trade.entryType,
+              entryPrice: trade.entryPrice,
+              sl: trade.sl,
+              tp: trade.tp ?? 0,
+              entryTime: trade.entryTime,
+              exitTime: trade.exitTime,
+              exitPrice: trade.exitPrice,
+              resultPips: trade.resultPips,
+              status: trade.status,
+              reason: trade.reason,
+            },
+          });
+        }
+      }
     }
 
     console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | done | setups=${setups.length}`);

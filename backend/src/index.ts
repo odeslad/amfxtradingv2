@@ -33,7 +33,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     try {
       await syncPositions(brokerName, positions);
       wss.broadcastPositions(brokerName, positions);
-      console.log(`[WS:${brokerName}] positions broadcast | count=${positions.length} | ${JSON.stringify(positions)}`);
+      console.log(`[WS:${brokerName}] positions broadcast | ${new Date().toISOString()} | count=${positions.length} | ${JSON.stringify(positions)}`);
     }
     catch (err) { console.error(`[DB:${brokerName}] positions sync failed`, err); }
   });

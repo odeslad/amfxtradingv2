@@ -41,6 +41,10 @@ export interface EmaCrossSetup {
   };
   weakCandles: Date[];
   strongCandles: Date[];
+  mfePrice: number | null;
+  mfeTime: Date | null;
+  maePrice: number | null;
+  maeTime: Date | null;
 }
 
 interface CrossEvent {
@@ -108,6 +112,7 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
       levels: { ECC: candles[i].close, EMA: emaLevel, EVL: evl, MHL: mhl },
       weakCandles,
       strongCandles,
+      ...calculateMaeMfe(candles, i, windowEnd, cross.direction),
     });
   }
 
@@ -175,6 +180,44 @@ function findMhl(
   }
 
   return extreme;
+}
+
+function calculateMaeMfe(
+  candles: Candle[],
+  fromIndex: number,
+  toIndex: number,
+  direction: 'buy' | 'sell',
+): { mfePrice: number | null; mfeTime: Date | null; maePrice: number | null; maeTime: Date | null } {
+  let mfePrice: number | null = null;
+  let mfeIndex: number | null = null;
+
+  for (let i = fromIndex + 1; i <= toIndex; i++) {
+    const val = direction === 'buy' ? candles[i].high : candles[i].low;
+    if (mfePrice === null || (direction === 'buy' ? val > mfePrice : val < mfePrice)) {
+      mfePrice = val;
+      mfeIndex = i;
+    }
+  }
+
+  let maePrice: number | null = null;
+  let maeTime: Date | null = null;
+
+  if (mfeIndex !== null) {
+    for (let i = fromIndex + 1; i <= mfeIndex; i++) {
+      const val = direction === 'buy' ? candles[i].low : candles[i].high;
+      if (maePrice === null || (direction === 'buy' ? val < maePrice : val > maePrice)) {
+        maePrice = val;
+        maeTime = candles[i].time;
+      }
+    }
+  }
+
+  return {
+    mfePrice,
+    mfeTime: mfeIndex !== null ? candles[mfeIndex].time : null,
+    maePrice,
+    maeTime,
+  };
 }
 
 function classifyCandles(

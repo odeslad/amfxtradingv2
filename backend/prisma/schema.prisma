@@ -110,6 +110,10 @@ model BacktestSetup {
   candleCount     Int
   weakCandles     DateTime[]
   strongCandles   DateTime[]
+  mfePrice        Float?
+  mfeTime         DateTime?
+  maePrice        Float?
+  maeTime         DateTime?
   trades          BacktestTrade[]
 
   @@index([runId])

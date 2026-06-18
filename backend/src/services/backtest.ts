@@ -75,6 +75,10 @@ export async function runBacktest(strategyId: number): Promise<void> {
           candleCount: setup.candleCount,
           weakCandles: setup.weakCandles,
           strongCandles: setup.strongCandles,
+          mfePrice: setup.mfePrice,
+          mfeTime: setup.mfeTime,
+          maePrice: setup.maePrice,
+          maeTime: setup.maeTime,
         },
       });
     }

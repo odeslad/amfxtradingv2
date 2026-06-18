@@ -16,6 +16,7 @@ input string BROKER_NAME   = "ftmo";
 input string SYMBOLS       = "EURUSD,EURGBP,EURJPY,EURCAD,EURAUD,GBPUSD,GBPJPY,GBPCAD,GBPAUD,USDJPY,USDCAD,AUDUSD,AUDJPY,AUDCAD,CADJPY";
 input int    RECENT_BARS   = 100;
 input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles).
+input int    POSITIONS_EVERY_S = 1;      // seconds between live position pushes over the pipe.
 
 // ── Runtime config (config.json overrides inputs) ────────────────────────────
 string g_brokerName  = "";
@@ -30,6 +31,7 @@ int    g_timeouts     = 0;
 
 // ── Timer state ──────────────────────────────────────────────────────────────
 ulong  lastStateSend      = 0;
+ulong  lastPositionsSend  = 0;
 int    g_lastPositionCount = -1;
 
 // ── Symbol list ──────────────────────────────────────────────────────────────
@@ -280,6 +282,12 @@ void OnTimer() {
 
    PipeWrite(batch);
 
+   // ── Live positions over the pipe every POSITIONS_EVERY_S ─────────────────
+   if (now - lastPositionsSend >= (ulong)(POSITIONS_EVERY_S * 1000)) {
+      lastPositionsSend = now;
+      PipeWrite("{\"type\":\"positions\",\"positions\":" + BuildPositionsJson(OrdersTotal()) + "}\n");
+   }
+
    // ── State update: positions, account, history, candles every STATE_EVERY_S ──
    if (now - lastStateSend >= (ulong)(STATE_EVERY_S * 1000)) {
       lastStateSend = now;
@@ -324,6 +332,10 @@ void WriteAccount() {
 }
 
 void WritePositions(int total) {
+   WriteFile("positions.json", BuildPositionsJson(total));
+}
+
+string BuildPositionsJson(int total) {
    string j = "[";
    int count = 0;
    for (int i = 0; i < total; i++) {
@@ -347,7 +359,7 @@ void WritePositions(int total) {
       count++;
    }
    j += "]";
-   WriteFile("positions.json", j);
+   return j;
 }
 
 void WriteHistory() {

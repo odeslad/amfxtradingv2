@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Position, fmt, fmtPnl, fmtDate, currencySymbol } from './position';
+import { type Position, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './position';
 import styles from './PositionCard.module.css';
 
 interface PositionCardProps {
@@ -52,7 +52,7 @@ export function PositionCard({ position: p }: PositionCardProps) {
           </div>
           <div className={styles.fieldWide}>
             <span className={styles.brokerName}>{p.broker}</span>
-            <span className={styles.date}>{fmtDate(p.openTime)}</span>
+            <span className={styles.date}>{fmtLocalTime(p.openTime, p.brokerOffset)}</span>
           </div>
         </div>
       )}

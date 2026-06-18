@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
-import { type Position, fmt, fmtPnl, fmtDate, openTimeMs, currencySymbol } from './position';
+import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './position';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 
@@ -23,12 +23,13 @@ export function JournalPage() {
 
   const handleWsMessage = useCallback((data: unknown) => {
     if (typeof data !== 'object' || data === null) return;
-    const msg = data as { type: string; broker: string; currency?: string; positions: Position[] };
+    const msg = data as { type: string; broker: string; currency?: string; brokerOffset?: number; positions: Position[] };
     if (msg.type !== 'positions') return;
     const incoming = msg.positions.map(p => ({
       ...p,
       broker: p.broker ?? msg.broker,
       currency: p.currency ?? msg.currency,
+      brokerOffset: p.brokerOffset ?? msg.brokerOffset,
     }));
     setPositions(prev => {
       const withoutBroker = prev.filter(p => p.broker !== msg.broker);
@@ -88,7 +89,7 @@ export function JournalPage() {
                     <td className={p.profit >= 0 ? styles.profit : styles.loss}>
                       {fmtPnl(p.profit, p.currency)}
                     </td>
-                    <td>{fmtDate(p.openTime)}</td>
+                    <td>{fmtLocalTime(p.openTime, p.brokerOffset)}</td>
                   </tr>
                 ))}
               </tbody>

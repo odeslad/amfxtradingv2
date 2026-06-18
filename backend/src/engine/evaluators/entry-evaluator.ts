@@ -1,18 +1,15 @@
 import type { Candle } from '../indicators/ema';
+import type { PivotPoint } from './ema-cross';
+import { calculateSl, type SLConfig } from './entry/sl';
+import { calculateTp, type ExitConfig } from './entry/exit';
+import { scanResult } from './entry/scan';
+import { findActivation, resolveScanParams } from './entry/activation';
+import type { TrailConfig } from './entry/trail';
 
-export interface SLConfig {
-  type: 'fixed' | 'evl';
-  pips: number;
-  minPips: number | null;
-  maxPips: number | null;
-  evlOffset: number;
-}
-
-export interface ExitConfig {
-  type: 'none' | 'fixed' | 'rr';
-  pips: number | null;
-  rr: number | null;
-}
+export type { SLConfig } from './entry/sl';
+export type { ExitConfig } from './entry/exit';
+export type { TrailConfig } from './entry/trail';
+export type { SizingConfig } from './entry/sizing';
 
 export interface EntryConfig {
   type: 'ECC' | 'EMA' | 'EVL' | 'MHL';
@@ -22,6 +19,7 @@ export interface EntryConfig {
   window: number;
   sl: SLConfig;
   exit: ExitConfig;
+  trail?: TrailConfig;
 }
 
 export interface TradeResult {
@@ -40,6 +38,28 @@ export interface TradeResult {
 
 type Levels = { ECC: number; EMA: number; EVL: number | null; MHL: number | null };
 
+const DEFAULT_TRAIL: TrailConfig = {
+  type: 'none',
+  offset: 0,
+  distance: 0,
+  updateEvery: 1,
+  toRR: null,
+  activateCandles: null,
+  activateMode: 'or',
+};
+
+interface Setup {
+  candles: Candle[];
+  setupDirection: 'buy' | 'sell';
+  activationIndex: number;
+  closeIndex: number | null;
+  levels: Levels;
+  pipSize: number;
+  weakCandles: Date[];
+  strongCandles: Date[];
+  pivots: PivotPoint[];
+}
+
 export function evaluateEntries(
   candles: Candle[],
   setupDirection: 'buy' | 'sell',
@@ -48,187 +68,59 @@ export function evaluateEntries(
   levels: Levels,
   entries: EntryConfig[],
   pipSize: number,
+  setupWeakCandles: Date[] = [],
+  setupStrongCandles: Date[] = [],
+  setupPivots: PivotPoint[] = [],
 ): TradeResult[] {
-  const results: TradeResult[] = [];
-
-  for (const entry of entries) {
-    if (!entry.enabled) continue;
-
-    const levelPrice = levels[entry.type];
-    if (levelPrice === null || levelPrice === undefined) continue;
-
-    const direction = entry.invert
-      ? (setupDirection === 'buy' ? 'sell' : 'buy')
-      : setupDirection;
-
-    const entryPrice = direction === 'buy'
-      ? levelPrice + entry.offset * pipSize
-      : levelPrice - entry.offset * pipSize;
-
-    const windowEnd = Math.min(
-      activationIndex + entry.window,
-      closeIndex ?? candles.length - 1,
-      candles.length - 1,
-    );
-
-    const activationCandleIndex = findActivation(
-      candles, entry, direction, activationIndex, windowEnd, entryPrice,
-    );
-
-    if (activationCandleIndex === null) {
-      const missedReason = (closeIndex !== null && closeIndex <= activationIndex + entry.window)
-        ? 'setup finished'
-        : 'window elapsed';
-      results.push({
-        entryType: entry.type,
-        direction,
-        entryPrice,
-        entryTime: null,
-        sl: calculateSl(entry.sl, direction, entryPrice, levels.EVL, pipSize),
-        tp: null,
-        exitTime: null,
-        exitPrice: null,
-        resultPips: null,
-        status: 'missed',
-        reason: missedReason,
-      });
-      continue;
-    }
-
-    const slPrice = calculateSl(entry.sl, direction, entryPrice, levels.EVL, pipSize);
-    const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
-    const tpPrice = calculateTp(entry.exit, direction, entryPrice, slDistancePips, pipSize);
-
-    // ECC at close: entry is at candle close, high/low of that candle predate our entry — scan from next candle.
-    // Price-touch entries: we enter during the candle, SL/TP can hit in the same candle — scan from same candle.
-    const isEntryAtClose = entry.type === 'ECC' && entry.offset === 0 && entry.window === 0;
-    const scanFrom = isEntryAtClose ? activationCandleIndex + 1 : activationCandleIndex;
-    const result = scanResult(candles, scanFrom, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize);
-
-    const entryTime = isEntryAtClose
-      ? (candles[activationCandleIndex + 1]?.time ?? candles[activationCandleIndex].time)
-      : candles[activationCandleIndex].time;
-
-    results.push({
-      entryType: entry.type,
-      direction,
-      entryPrice,
-      entryTime,
-      sl: slPrice,
-      tp: tpPrice,
-      ...result,
-    });
-  }
-
-  return results;
+  const ctx: Setup = { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, weakCandles: setupWeakCandles, strongCandles: setupStrongCandles, pivots: setupPivots };
+  return entries.filter(ec => ec.enabled).map(entryConfig => evaluateSingleEntry(ctx, entryConfig));
 }
 
-function findActivation(
-  candles: Candle[],
-  entry: EntryConfig,
-  direction: 'buy' | 'sell',
-  activationIndex: number,
-  windowEnd: number,
-  entryPrice: number,
-): number | null {
-  if (entry.type === 'ECC' && entry.offset === 0 && entry.window === 0) {
-    return activationIndex;
+function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult {
+  const { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, weakCandles, strongCandles, pivots } = ctx;
+
+  const levelPrice = levels[entryConfig.type];
+  if (levelPrice === null || levelPrice === undefined) {
+    return missedTrade(entryConfig, setupDirection, 0, calculateSl(entryConfig.sl, setupDirection, 0, levels.EVL, pipSize), 'window elapsed');
   }
 
-  for (let i = activationIndex; i <= windowEnd; i++) {
-    const touched = direction === 'buy'
-      ? candles[i].low <= entryPrice
-      : candles[i].high >= entryPrice;
-    if (touched) return i;
+  const direction = entryConfig.invert
+    ? (setupDirection === 'buy' ? 'sell' : 'buy')
+    : setupDirection;
+
+  const entryPrice = direction === 'buy'
+    ? levelPrice + entryConfig.offset * pipSize
+    : levelPrice - entryConfig.offset * pipSize;
+
+  const windowEnd = Math.min(
+    activationIndex + entryConfig.window,
+    closeIndex ?? candles.length - 1,
+    candles.length - 1,
+  );
+
+  const activationCandleIndex = findActivation(candles, entryConfig, direction, activationIndex, windowEnd, entryPrice);
+
+  if (activationCandleIndex === null) {
+    const reason = (closeIndex !== null && closeIndex <= activationIndex + entryConfig.window) ? 'setup finished' : 'window elapsed';
+    return missedTrade(entryConfig, direction, entryPrice, calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize), reason);
   }
 
-  return null;
+  const slPrice = calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize);
+  const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
+  const tpPrice = calculateTp(entryConfig.exit, direction, entryPrice, slDistancePips, pipSize);
+  const { scanFrom, entryTime } = resolveScanParams(candles, entryConfig, activationCandleIndex);
+  const trail = entryConfig.trail ?? DEFAULT_TRAIL;
+  const result = scanResult(candles, scanFrom, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize, trail, weakCandles, strongCandles, pivots);
+
+  return { entryType: entryConfig.type, direction, entryPrice, entryTime, sl: slPrice, tp: tpPrice, ...result };
 }
 
-function calculateSl(
-  sl: SLConfig,
+function missedTrade(
+  entryConfig: EntryConfig,
   direction: 'buy' | 'sell',
   entryPrice: number,
-  evl: number | null,
-  pipSize: number,
-): number {
-  let slPrice: number;
-
-  if (sl.type === 'evl' && evl !== null) {
-    slPrice = direction === 'buy'
-      ? evl - sl.evlOffset * pipSize
-      : evl + sl.evlOffset * pipSize;
-  } else {
-    slPrice = direction === 'buy'
-      ? entryPrice - sl.pips * pipSize
-      : entryPrice + sl.pips * pipSize;
-  }
-
-  const distPips = Math.abs(entryPrice - slPrice) / pipSize;
-
-  if (sl.minPips !== null && distPips < sl.minPips) {
-    slPrice = direction === 'buy'
-      ? entryPrice - sl.minPips * pipSize
-      : entryPrice + sl.minPips * pipSize;
-  }
-  if (sl.maxPips !== null && distPips > sl.maxPips) {
-    slPrice = direction === 'buy'
-      ? entryPrice - sl.maxPips * pipSize
-      : entryPrice + sl.maxPips * pipSize;
-  }
-
-  return slPrice;
-}
-
-function calculateTp(
-  exit: ExitConfig,
-  direction: 'buy' | 'sell',
-  entryPrice: number,
-  slDistancePips: number,
-  pipSize: number,
-): number | null {
-  if (exit.type === 'fixed' && exit.pips !== null) {
-    return direction === 'buy'
-      ? entryPrice + exit.pips * pipSize
-      : entryPrice - exit.pips * pipSize;
-  }
-  if (exit.type === 'rr' && exit.rr !== null) {
-    return direction === 'buy'
-      ? entryPrice + slDistancePips * exit.rr * pipSize
-      : entryPrice - slDistancePips * exit.rr * pipSize;
-  }
-  return null;
-}
-
-function scanResult(
-  candles: Candle[],
-  fromIndex: number,
-  toIndex: number,
-  direction: 'buy' | 'sell',
-  entryPrice: number,
-  slPrice: number,
-  tpPrice: number | null,
-  pipSize: number,
-): Pick<TradeResult, 'exitTime' | 'exitPrice' | 'resultPips' | 'status' | 'reason'> {
-  for (let i = fromIndex; i <= toIndex; i++) {
-    const candle = candles[i];
-
-    if (direction === 'buy') {
-      if (candle.low <= slPrice) {
-        return { status: 'closed', reason: 'SL', exitTime: candle.time, exitPrice: slPrice, resultPips: (slPrice - entryPrice) / pipSize };
-      }
-      if (tpPrice !== null && candle.high >= tpPrice) {
-        return { status: 'closed', reason: 'TP', exitTime: candle.time, exitPrice: tpPrice, resultPips: (tpPrice - entryPrice) / pipSize };
-      }
-    } else {
-      if (candle.high >= slPrice) {
-        return { status: 'closed', reason: 'SL', exitTime: candle.time, exitPrice: slPrice, resultPips: (entryPrice - slPrice) / pipSize };
-      }
-      if (tpPrice !== null && candle.low <= tpPrice) {
-        return { status: 'closed', reason: 'TP', exitTime: candle.time, exitPrice: tpPrice, resultPips: (entryPrice - tpPrice) / pipSize };
-      }
-    }
-  }
-
-  return { status: 'open', reason: null, exitTime: null, exitPrice: null, resultPips: null };
+  sl: number,
+  reason: 'window elapsed' | 'setup finished',
+): TradeResult {
+  return { entryType: entryConfig.type, direction, entryPrice, entryTime: null, sl, tp: null, exitTime: null, exitPrice: null, resultPips: null, status: 'missed', reason };
 }

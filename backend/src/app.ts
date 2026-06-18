@@ -8,8 +8,14 @@ import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
 
+const ALLOWED_ORIGINS = [/\.amfxtrading\.com$/, 'http://localhost:5173'];
+
 app.use(cors({
-  origin: /\.amfxtrading\.com$/,
+  origin: (origin, cb) => {
+    if (!origin) return cb(null, true);
+    const allowed = ALLOWED_ORIGINS.some(o => typeof o === 'string' ? o === origin : o.test(origin));
+    cb(allowed ? null : new Error('Not allowed by CORS'), allowed);
+  },
   credentials: true,
 }));
 

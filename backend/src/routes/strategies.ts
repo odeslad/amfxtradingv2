@@ -1,0 +1,83 @@
+import { Router } from 'express';
+import { db } from '../db/client';
+import { runBacktest } from '../services/backtest';
+
+const router = Router();
+
+router.post('/', async (req, res) => {
+  try {
+    const { broker, symbol, timeframe, config } = req.body as {
+      broker: string; symbol: string; timeframe: string; config: unknown;
+    };
+
+    if (!broker || !symbol || !timeframe || !config) {
+      res.status(400).json({ error: 'broker, symbol, timeframe and config are required' });
+      return;
+    }
+
+    const strategy = await db.strategy.create({
+      data: { broker, symbol, timeframe, config },
+    });
+
+    runBacktest(strategy.id).catch((err) =>
+      console.error(`[BACKTEST] strategy=${strategy.id} failed:`, err),
+    );
+
+    res.status(201).json(strategy);
+  } catch (err) {
+    console.error('[STRATEGIES] POST failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.put('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params['id'], 10);
+    const { config, active } = req.body as { config?: unknown; active?: boolean };
+
+    const strategy = await db.strategy.update({
+      where: { id },
+      data: { ...(config !== undefined && { config }), ...(active !== undefined && { active }) },
+    });
+
+    if (config !== undefined) {
+      runBacktest(strategy.id).catch((err) =>
+        console.error(`[BACKTEST] strategy=${strategy.id} re-run failed:`, err),
+      );
+    }
+
+    res.json(strategy);
+  } catch (err) {
+    console.error('[STRATEGIES] PUT failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+router.get('/:id/backtest', async (req, res) => {
+  try {
+    const id = parseInt(req.params['id'], 10);
+    const { from, to } = req.query as { from?: string; to?: string };
+
+    const runs = await db.backtestRun.findMany({
+      where: { strategyId: id },
+      orderBy: { createdAt: 'desc' },
+      take: 1,
+      include: {
+        setups: {
+          where: {
+            ...(from && { activationTime: { gte: new Date(from) } }),
+            ...(to && { activationTime: { lte: new Date(to) } }),
+          },
+          include: { trades: true },
+        },
+      },
+    });
+
+    res.json(runs[0] ?? null);
+  } catch (err) {
+    console.error('[STRATEGIES] GET backtest failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+export default router;

@@ -24,17 +24,17 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     engine.processTicks(batch);
   });
 
+  pipe.on('positions', (positions) => {
+    wss.broadcastPositions(brokerName, positions);
+  });
+
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
     try { await upsertCandles(brokerName, symbol, timeframe, data); }
     catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }
   });
 
   watcher.on('positions', async (positions) => {
-    try {
-      await syncPositions(brokerName, positions);
-      wss.broadcastPositions(brokerName, positions);
-      console.log(`[WS:${brokerName}] positions broadcast | ${new Date().toISOString()} | count=${positions.length} | ${JSON.stringify(positions)}`);
-    }
+    try { await syncPositions(brokerName, positions); }
     catch (err) { console.error(`[DB:${brokerName}] positions sync failed`, err); }
   });
 

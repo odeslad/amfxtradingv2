@@ -40,10 +40,14 @@ export class PipeReader extends EventEmitter {
           const trimmed = line.trim();
           if (!trimmed) continue;
           try {
-            const batch: TickBatch = JSON.parse(trimmed);
-            this.emit('ticks', batch);
+            const parsed = JSON.parse(trimmed);
+            if (Array.isArray(parsed)) {
+              this.emit('ticks', parsed as TickBatch);
+            } else if (parsed?.type === 'positions') {
+              this.emit('positions', parsed.positions);
+            }
           } catch {
-            console.warn(`[PIPE-READER:${this.brokerName}] Failed to parse tick batch`);
+            console.warn(`[PIPE-READER:${this.brokerName}] Failed to parse pipe message`);
           }
         }
       });

@@ -15,6 +15,8 @@ Invoke-Step "git pull" { git pull origin master }
 
 Set-Location frontend
 
+Set-Content ".env.production" "VITE_API_BASE=https://api-v2.amfxtrading.com"
+
 Invoke-Step "npm ci" { npm ci }
 Invoke-Step "build" { npm run build }
 

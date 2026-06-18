@@ -1,0 +1,52 @@
+name: Deploy Frontend to VPS
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install cloudflared
+        run: |
+          curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o cloudflared
+          chmod +x cloudflared
+          sudo mv cloudflared /usr/local/bin/
+
+      - name: Setup SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          CF_ID: ${{ secrets.CF_ACCESS_CLIENT_ID }}
+          CF_SECRET: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          cat > ~/.ssh/config << EOF
+          Host ssh-v2.amfxtrading.com
+            ProxyCommand cloudflared access ssh --hostname ssh-v2.amfxtrading.com --service-token-id $CF_ID --service-token-secret $CF_SECRET
+            StrictHostKeyChecking no
+            IdentityFile ~/.ssh/id_ed25519
+          EOF
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Upload deploy script
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          scp frontend/scripts/deploy.ps1 $SSH_USER@ssh-v2.amfxtrading.com:"C:/amfxtradingv2/frontend/scripts/deploy.ps1"
+
+      - name: Deploy frontend
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\amfxtradingv2\frontend\scripts\deploy.ps1"

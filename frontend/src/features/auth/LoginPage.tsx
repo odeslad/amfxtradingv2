@@ -30,7 +30,7 @@ export function LoginPage() {
     <div className={styles.page}>
       <div className={styles.card}>
         <div className={styles.brand}>AMFX</div>
-        <div className={styles.subtitle}>Trading Terminal V1.0</div>
+        <div className={styles.subtitle}>Trading Terminal V2.0</div>
 
         <form className={styles.form} onSubmit={handleSubmit}>
           <div className={styles.field}>

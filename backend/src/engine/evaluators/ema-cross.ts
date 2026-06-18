@@ -53,47 +53,44 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
 
     if (!isCross) continue;
 
-    const emaLevel = interpolateCross(
-      candles[i - 1].close, prevFast, prevSlow,
-      candles[i].close, currFast, currSlow,
-    );
-
-    const evl = findEvl(candles, fastEma, i, prevSetupCloseIndex ?? 0, direction);
-    const mhl = prevSetupCloseIndex !== null ? findMhl(candles, prevSetupCloseIndex, i, direction) : null;
+    const emaLevel = interpolateCross(prevFast, prevSlow, currFast, currSlow);
 
     const closeResult = findSetupClose(candles, fastEma, slowEma, i, direction);
+    const closeIndex = closeResult?.index ?? null;
+
+    const evl = findEvl(fastEma, i, prevSetupCloseIndex ?? 0, direction);
+    const mhl = prevSetupCloseIndex !== null ? findMhl(candles, prevSetupCloseIndex, i, direction) : null;
 
     const setup: EmaCrossSetup = {
       direction,
       activationIndex: i,
       activationTime: candles[i].time,
       activationPrice: candles[i].close,
-      closeIndex: closeResult?.index ?? null,
-      closeTime: closeResult ? candles[closeResult.index].time : null,
-      closePrice: closeResult ? candles[closeResult.index].close : null,
-      candleCount: closeResult ? closeResult.index - i : candles.length - 1 - i,
+      closeIndex,
+      closeTime: closeIndex !== null ? candles[closeIndex].time : null,
+      closePrice: closeIndex !== null ? candles[closeIndex].close : null,
+      candleCount: closeIndex !== null ? closeIndex - i : candles.length - 1 - i,
       levels: { ECC: candles[i].close, EMA: emaLevel, EVL: evl, MHL: mhl },
     };
 
     setups.push(setup);
-    prevSetupCloseIndex = i;
+    prevSetupCloseIndex = closeIndex ?? i;
   }
 
   return setups;
 }
 
 function interpolateCross(
-  prevClose: number, prevFast: number, prevSlow: number,
-  currClose: number, currFast: number, currSlow: number,
+  prevFast: number, prevSlow: number,
+  currFast: number, currSlow: number,
 ): number {
   const prevDiff = prevFast - prevSlow;
   const currDiff = currFast - currSlow;
   const t = Math.abs(prevDiff) / (Math.abs(prevDiff) + Math.abs(currDiff));
-  return prevClose + t * (currClose - prevClose);
+  return prevFast + t * (currFast - prevFast);
 }
 
 function findEvl(
-  candles: Candle[],
   fastEma: (number | null)[],
   crossIndex: number,
   searchFrom: number,

@@ -96,6 +96,9 @@ export async function runBacktest(strategyId: number): Promise<void> {
           setup.levels,
           form.entries,
           pipSize,
+          setup.weakCandles,
+          setup.strongCandles,
+          setup.pivots,
         );
 
         for (const trade of trades) {

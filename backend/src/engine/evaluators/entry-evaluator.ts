@@ -98,8 +98,7 @@ export function evaluateEntries(
     const slPrice = calculateSl(entry.sl, direction, entryPrice, levels.EVL, pipSize);
     const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
     const tpPrice = calculateTp(entry.exit, direction, entryPrice, slDistancePips, pipSize);
-    const scanEnd = closeIndex ?? candles.length - 1;
-    const result = scanResult(candles, activationCandleIndex, scanEnd, direction, entryPrice, slPrice, tpPrice, pipSize);
+    const result = scanResult(candles, activationCandleIndex, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize);
 
     results.push({
       entryType: entry.type,

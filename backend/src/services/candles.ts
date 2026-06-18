@@ -13,7 +13,7 @@ export async function upsertCandles(
     broker,
     symbol,
     timeframe,
-    time: new Date(c.time),
+    time: new Date(c.time * 1000),
     open: c.open,
     high: c.high,
     low: c.low,

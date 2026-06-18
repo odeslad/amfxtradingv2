@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
-import { type Position, TYPE_LABEL, fmt, fmtPnl, fmtDate, openTimeMs } from './position';
+import { type Position, fmt, fmtPnl, fmtDate, openTimeMs, currencySymbol } from './position';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 
@@ -60,7 +60,6 @@ export function JournalPage() {
                 <tr>
                   <th>Broker</th>
                   <th>Symbol</th>
-                  <th>Type</th>
                   <th>Lots</th>
                   <th>Open Price</th>
                   <th>SL</th>
@@ -75,20 +74,21 @@ export function JournalPage() {
                 {positions.map(p => (
                   <tr key={`${p.broker}-${p.ticket}`}>
                     <td className={styles.broker}>{p.broker}</td>
-                    <td>{p.symbol}</td>
-                    <td className={p.type === 0 ? styles.buy : styles.sell}>
-                      {TYPE_LABEL[p.type] ?? p.type}
-                    </td>
+                    <td className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</td>
                     <td>{fmt(p.lots, 2)}</td>
                     <td>{fmt(p.openPrice, 5)}</td>
-                    <td className={styles.muted}>{p.sl ? fmt(p.sl, 5) : '—'}</td>
-                    <td className={styles.muted}>{p.tp ? fmt(p.tp, 5) : '—'}</td>
-                    <td className={p.swap < 0 ? styles.loss : styles.muted}>{fmt(p.swap, 2)}</td>
-                    <td className={p.commission < 0 ? styles.loss : styles.muted}>{fmt(p.commission, 2)}</td>
+                    <td>{p.sl ? fmt(p.sl, 5) : '—'}</td>
+                    <td>{p.tp ? fmt(p.tp, 5) : '—'}</td>
+                    <td className={p.swap < 0 ? styles.loss : p.swap > 0 ? styles.profit : undefined}>
+                      {fmt(p.swap, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}
+                    </td>
+                    <td className={p.commission < 0 ? styles.loss : p.commission > 0 ? styles.profit : styles.muted}>
+                      {fmt(p.commission, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}
+                    </td>
                     <td className={p.profit >= 0 ? styles.profit : styles.loss}>
                       {fmtPnl(p.profit, p.currency)}
                     </td>
-                    <td className={styles.muted}>{fmtDate(p.openTime)}</td>
+                    <td>{fmtDate(p.openTime)}</td>
                   </tr>
                 ))}
               </tbody>

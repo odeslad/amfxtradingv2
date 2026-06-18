@@ -70,7 +70,6 @@
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);
   white-space: nowrap;
-  color: var(--text);
 }
 
 .table td:first-child {
@@ -110,8 +109,7 @@
 }
 
 .broker {
-  font-size: var(--text-xs);
-  color: var(--muted);
+  color: var(--text);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }

@@ -32,7 +32,7 @@ export class CandleTracker extends EventEmitter {
 
       if (last !== undefined && current !== last) {
         const event: CandleCloseEvent = { symbol: tick.symbol, timeframe: key, time: last };
-        const candle = new Date(last * 1000).toISOString();
+        const candle = new Date(last).toISOString();
         const detected = new Date().toISOString();
         console.log(`[ENGINE-candle-tracker:${this.brokerName}] timeframe=${key} | symbol=${tick.symbol} | raw=${last} candle=${candle} detected=${detected}`);
         this.emit('close', event);

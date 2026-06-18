@@ -53,6 +53,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: TicksWss) {
 }
 
 async function main() {
+  console.log(`[BACKEND] Starting | ${new Date().toISOString()}`);
   await db.$connect();
   console.log('[DB] Connected');
 

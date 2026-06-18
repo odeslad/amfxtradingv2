@@ -23,46 +23,56 @@ export interface EmaCrossSetup {
   };
 }
 
-export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext): EmaCrossSetup[] {
-  if (context.direction === 'both') {
-    return [
-      ...detectEmaCrossSetups(candles, { ...context, direction: 'buy' }),
-      ...detectEmaCrossSetups(candles, { ...context, direction: 'sell' }),
-    ].sort((a, b) => a.activationTime.getTime() - b.activationTime.getTime());
-  }
+interface CrossEvent {
+  index: number;
+  direction: 'buy' | 'sell';
+}
 
+export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext): EmaCrossSetup[] {
   const { emaFast: fastPeriod, emaSlow: slowPeriod, direction } = context;
 
   const fastEma = calculateEma(candles, fastPeriod);
   const slowEma = calculateEma(candles, slowPeriod);
 
-  const setups: EmaCrossSetup[] = [];
-  let prevSetupCloseIndex: number | null = null;
-
+  // First pass: detect all crosses in both directions
+  const allCrosses: CrossEvent[] = [];
   for (let i = 1; i < candles.length; i++) {
     const prevFast = fastEma[i - 1];
     const prevSlow = slowEma[i - 1];
     const currFast = fastEma[i];
     const currSlow = slowEma[i];
-
     if (prevFast === null || prevSlow === null || currFast === null || currSlow === null) continue;
 
-    const isBullishCross = prevFast <= prevSlow && currFast > currSlow;
-    const isBearishCross = prevFast >= prevSlow && currFast < currSlow;
-    const isCross = direction === 'buy' ? isBullishCross : isBearishCross;
+    if (prevFast <= prevSlow && currFast > currSlow) allCrosses.push({ index: i, direction: 'buy' });
+    else if (prevFast >= prevSlow && currFast < currSlow) allCrosses.push({ index: i, direction: 'sell' });
+  }
 
-    if (!isCross) continue;
+  // Second pass: build setups for the requested direction(s)
+  const targetDirections: ('buy' | 'sell')[] = direction === 'both' ? ['buy', 'sell'] : [direction];
+  const setups: EmaCrossSetup[] = [];
+
+  for (const cross of allCrosses) {
+    if (!targetDirections.includes(cross.direction)) continue;
+
+    const i = cross.index;
+    const prevFast = fastEma[i - 1]!;
+    const prevSlow = slowEma[i - 1]!;
+    const currFast = fastEma[i]!;
+    const currSlow = slowEma[i]!;
 
     const emaLevel = interpolateCross(prevFast, prevSlow, currFast, currSlow);
-
-    const closeResult = findSetupClose(candles, fastEma, slowEma, i, direction);
+    const closeResult = findSetupClose(candles, fastEma, slowEma, i, cross.direction);
     const closeIndex = closeResult?.index ?? null;
 
-    const evl = findEvl(fastEma, i, prevSetupCloseIndex ?? 0, direction);
-    const mhl = prevSetupCloseIndex !== null ? findMhl(candles, prevSetupCloseIndex, i, direction) : null;
+    // Previous context starts at the last opposite cross before this one
+    const prevOppositeCross = findPreviousOppositeCross(allCrosses, i, cross.direction);
+    const contextStart = prevOppositeCross ?? 0;
 
-    const setup: EmaCrossSetup = {
-      direction,
+    const evl = findEvl(fastEma, i, contextStart, cross.direction);
+    const mhl = prevOppositeCross !== null ? findMhl(candles, contextStart, i, cross.direction) : null;
+
+    setups.push({
+      direction: cross.direction,
       activationIndex: i,
       activationTime: candles[i].time,
       activationPrice: candles[i].close,
@@ -71,13 +81,24 @@ export function detectEmaCrossSetups(candles: Candle[], context: EmaCrossContext
       closePrice: closeIndex !== null ? candles[closeIndex].close : null,
       candleCount: closeIndex !== null ? closeIndex - i : candles.length - 1 - i,
       levels: { ECC: candles[i].close, EMA: emaLevel, EVL: evl, MHL: mhl },
-    };
-
-    setups.push(setup);
-    prevSetupCloseIndex = closeIndex ?? i;
+    });
   }
 
   return setups;
+}
+
+function findPreviousOppositeCross(
+  allCrosses: CrossEvent[],
+  currentIndex: number,
+  direction: 'buy' | 'sell',
+): number | null {
+  const opposite = direction === 'buy' ? 'sell' : 'buy';
+  for (let i = allCrosses.length - 1; i >= 0; i--) {
+    if (allCrosses[i].direction === opposite && allCrosses[i].index < currentIndex) {
+      return allCrosses[i].index;
+    }
+  }
+  return null;
 }
 
 function interpolateCross(

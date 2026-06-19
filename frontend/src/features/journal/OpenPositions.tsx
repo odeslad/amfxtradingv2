@@ -5,6 +5,7 @@ import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, curr
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { type FilterValues, type FilterOptions } from './Filters';
 import { PositionCard } from './PositionCard';
+import { ColorBadge } from './ColorBadge';
 import styles from './JournalPage.module.css';
 
 interface LiveBrokerPositions {
@@ -20,20 +21,37 @@ interface OpenPositionsProps {
 }
 
 function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
 
 export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) {
   const [positions, setPositions] = useState<Position[]>([]);
+  const [colors, setColors] = useState<Map<string, string>>(new Map());
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
   const [closing, setClosing] = useState(false);
   const { pnlMode } = useDisplaySettings();
+
+  const handleColorChange = (broker: string, ticket: number, color: string) => {
+    setColors(prev => {
+      const next = new Map(prev);
+      if (color) next.set(posKey(broker, ticket), color);
+      else next.delete(posKey(broker, ticket));
+      return next;
+    });
+  };
 
   useEffect(() => {
     fetch(apiUrl('/positions/live'), { credentials: 'include' })
       .then(res => res.ok ? res.json() as Promise<LiveBrokerPositions[]> : Promise.resolve([]))
       .then((brokers) => {
+        const colorMap = new Map<string, string>();
         const all = brokers.flatMap(({ broker, currency, brokerOffset, positions: ps }) =>
-          ps.map(p => ({ ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset }))
+          ps.map(p => {
+            const pos = { ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset };
+            if (pos.color) colorMap.set(posKey(pos.broker!, pos.ticket), pos.color);
+            return pos;
+          })
         );
+        if (colorMap.size > 0) setColors(colorMap);
         if (all.length > 0) {
           setPositions(all.sort((a, b) =>
             (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
@@ -46,8 +64,9 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
   useEffect(() => {
     const brokers = [...new Set(positions.map(p => p.broker ?? '').filter(Boolean))].sort();
     const symbols = [...new Set(positions.map(p => p.symbol).filter(Boolean))].sort();
-    onOptionsChange({ brokers, symbols });
-  }, [positions, onOptionsChange]);
+    const activeColors = [...new Set([...colors.values()].filter(Boolean))];
+    onOptionsChange({ brokers, symbols, colors: activeColors });
+  }, [positions, colors, onOptionsChange]);
 
   const handleWsMessage = useCallback((data: unknown) => {
     if (typeof data !== 'object' || data === null) return;
@@ -64,6 +83,19 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
       return [...withoutBroker, ...incoming].sort((a, b) =>
         (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
       );
+    });
+    // Clean up colors for closed positions of this broker
+    const activeTickets = new Set(incoming.map(p => posKey(p.broker!, p.ticket)));
+    setColors(prev => {
+      const next = new Map(prev);
+      let changed = false;
+      for (const key of next.keys()) {
+        if (key.startsWith(`${msg.broker}:`) && !activeTickets.has(key)) {
+          next.delete(key);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
     });
   }, []);
 
@@ -105,6 +137,7 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
     if (filters.symbol && p.symbol !== filters.symbol) return false;
     if (filters.type === 'buy' && p.type !== 0) return false;
     if (filters.type === 'sell' && p.type !== 1) return false;
+    if (filters.color && colors.get(posKey(p.broker!, p.ticket)) !== filters.color) return false;
     return true;
   });
 
@@ -139,7 +172,17 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
             {filtered.map(p => (
               <tr key={`${p.broker}-${p.ticket}`}>
                 <td className={styles.broker}>{p.broker}</td>
-                <td className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</td>
+                <td>
+                  <span className={styles.symbolCell}>
+                    <ColorBadge
+                      broker={p.broker!}
+                      ticket={p.ticket}
+                      color={colors.get(posKey(p.broker!, p.ticket))}
+                      onColorChange={handleColorChange}
+                    />
+                    <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
+                  </span>
+                </td>
                 <td>{fmt(p.lots, 2)}</td>
                 <td>{fmt(p.openPrice, 5)}</td>
                 <td>{p.sl ? fmt(p.sl, 5) : '—'}</td>
@@ -174,6 +217,8 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
             key={`${p.broker}-${p.ticket}`}
             position={p}
             pnlMode={pnlMode}
+            color={colors.get(posKey(p.broker!, p.ticket))}
+            onColorChange={handleColorChange}
             onEdit={handleEdit}
             onClose={handleClose}
           />

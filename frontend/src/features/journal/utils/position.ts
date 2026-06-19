@@ -31,6 +31,26 @@ export interface Position {
   swap: number;
   commission: number;
   openTime: string;
+  color?: string;
+}
+
+export type PositionColor = 'orange' | 'blue' | 'green' | 'red' | 'gold';
+
+export const POSITION_COLORS: PositionColor[] = ['orange', 'blue', 'green', 'red', 'gold'];
+
+export const POSITION_COLOR_VALUES: Record<PositionColor, string> = {
+  orange: 'var(--orange)',
+  blue:   'var(--blue)',
+  green:  'var(--green)',
+  red:    'var(--red)',
+  gold:   'var(--gold)',
+};
+
+export function nextColor(current?: string): string {
+  if (!current) return POSITION_COLORS[0];
+  const idx = POSITION_COLORS.indexOf(current as PositionColor);
+  if (idx === -1 || idx === POSITION_COLORS.length - 1) return '';
+  return POSITION_COLORS[idx + 1];
 }
 
 export const TYPE_LABEL: Record<number, string> = { 0: 'Buy', 1: 'Sell' };

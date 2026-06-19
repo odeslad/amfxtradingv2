@@ -114,6 +114,12 @@
   font-size: var(--text-3xl);
 }
 
+.symbolCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .buy {
   color: var(--green);
   letter-spacing: var(--tracking-tight);

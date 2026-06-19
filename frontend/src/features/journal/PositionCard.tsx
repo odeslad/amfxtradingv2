@@ -1,5 +1,6 @@
 import { useRef, useState, type TouchEvent } from 'react';
 import { type Position, type PnlMode, fmt, fmtPnlMode, calcPnl, fmtLocalTime, currencySymbol } from './utils/position';
+import { ColorBadge } from './ColorBadge';
 import styles from './PositionCard.module.css';
 
 const SWIPE_THRESHOLD = 50;
@@ -8,11 +9,13 @@ const TAP_TOLERANCE = 8;
 interface PositionCardProps {
   position: Position;
   pnlMode: PnlMode;
+  color?: string;
+  onColorChange: (broker: string, ticket: number, color: string) => void;
   onEdit: (p: Position) => void;
   onClose: (p: Position) => void;
 }
 
-export function PositionCard({ position: p, pnlMode, onEdit, onClose }: PositionCardProps) {
+export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdit, onClose }: PositionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -69,7 +72,10 @@ export function PositionCard({ position: p, pnlMode, onEdit, onClose }: Position
           <span className={styles.label}>Open</span>
           <span className={`${styles.label} ${styles.right}`}>P&amp;L</span>
 
-          <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
+          <span className={styles.symbolCell}>
+            <ColorBadge broker={p.broker!} ticket={p.ticket} color={color} onColorChange={onColorChange} />
+            <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
+          </span>
           <span className={styles.value}>{fmt(p.openPrice, 5)}</span>
           <span className={`${pnlValue >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
             {fmtPnlMode(p, pnlMode)}

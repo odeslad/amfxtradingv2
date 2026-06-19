@@ -1,14 +1,17 @@
+import { POSITION_COLORS, POSITION_COLOR_VALUES, type PositionColor } from './utils/position';
 import styles from './Filters.module.css';
 
 export interface FilterValues {
   broker: string;
   symbol: string;
   type: string;
+  color: string;
 }
 
 export interface FilterOptions {
   brokers: string[];
   symbols: string[];
+  colors: string[];
 }
 
 interface FiltersProps {
@@ -36,6 +39,16 @@ export function Filters({ values, options, onChange }: FiltersProps) {
         <option value="buy">Buy</option>
         <option value="sell">Sell</option>
       </select>
+      {options.colors.length > 0 && (
+        <select className={styles.select} value={values.color} onChange={set('color')}>
+          <option value="">All Colors</option>
+          {POSITION_COLORS.filter(c => options.colors.includes(c)).map(c => (
+            <option key={c} value={c} style={{ color: POSITION_COLOR_VALUES[c as PositionColor] }}>
+              {c.charAt(0).toUpperCase() + c.slice(1)}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

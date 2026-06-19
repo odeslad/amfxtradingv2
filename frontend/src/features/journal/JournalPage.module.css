@@ -311,6 +311,12 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
+.symbolCell {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .buy {
   color: var(--green);
   letter-spacing: var(--tracking-wide);

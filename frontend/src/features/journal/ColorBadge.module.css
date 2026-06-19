@@ -1,0 +1,17 @@
+.badge {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid var(--border-bright);
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 0.12s ease, border-color 0.12s ease, transform 0.12s ease;
+  vertical-align: middle;
+}
+
+.badge:hover {
+  transform: scale(1.3);
+}

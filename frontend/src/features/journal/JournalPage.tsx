@@ -8,8 +8,8 @@ import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'closed';
 
-const DEFAULT_FILTERS: FilterValues = { broker: '', symbol: '', type: '' };
-const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [] };
+const DEFAULT_FILTERS: FilterValues = { broker: '', symbol: '', type: '', color: '' };
+const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [], colors: [] };
 
 export function JournalPage() {
   const [tab, setTab] = useState<Tab>('accounts');

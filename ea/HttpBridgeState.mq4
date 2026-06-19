@@ -15,8 +15,9 @@
 input string BROKER_NAME   = "ftmo";
 input string SYMBOLS       = "EURUSD,EURGBP,EURJPY,EURCAD,EURAUD,GBPUSD,GBPJPY,GBPCAD,GBPAUD,USDJPY,USDCAD,AUDUSD,AUDJPY,AUDCAD,CADJPY";
 input int    RECENT_BARS   = 100;
-input int    STATE_EVERY_S = 60;         // seconds between state updates (positions, account, history, candles).
+input int    STATE_EVERY_S = 60;         // seconds between state updates (history, candles).
 input int    POSITIONS_EVERY_S = 1;      // seconds between live position pushes over the pipe.
+input int    ACCOUNT_EVERY_S = 1;        // seconds between live account pushes over the pipe.
 
 // ── Runtime config (config.json overrides inputs) ────────────────────────────
 string g_brokerName  = "";
@@ -32,6 +33,7 @@ int    g_timeouts     = 0;
 // ── Timer state ──────────────────────────────────────────────────────────────
 ulong  lastStateSend      = 0;
 ulong  lastPositionsSend  = 0;
+ulong  lastAccountSend    = 0;
 int    g_lastPositionCount = -1;
 
 // ── Symbol list ──────────────────────────────────────────────────────────────
@@ -288,6 +290,12 @@ void OnTimer() {
       PipeWrite("{\"type\":\"positions\",\"positions\":" + BuildPositionsJson(OrdersTotal()) + "}\n");
    }
 
+   // ── Live account over the pipe every ACCOUNT_EVERY_S ─────────────────────
+   if (now - lastAccountSend >= (ulong)(ACCOUNT_EVERY_S * 1000)) {
+      lastAccountSend = now;
+      PipeWrite("{\"type\":\"account\"," + BuildAccountJson() + "}\n");
+   }
+
    // ── State update: positions, account, history, candles every STATE_EVERY_S ──
    if (now - lastStateSend >= (ulong)(STATE_EVERY_S * 1000)) {
       lastStateSend = now;
@@ -316,8 +324,8 @@ void OnTimer() {
 // State writers
 // ────────────────────────────────────────────────────────────────────────────
 
-void WriteAccount() {
-   string j = "{";
+string BuildAccountJson() {
+   string j = "";
    j += "\"balance\":"    + DoubleToString(AccountBalance(), 2)    + ",";
    j += "\"equity\":"     + DoubleToString(AccountEquity(), 2)     + ",";
    j += "\"profit\":"     + DoubleToString(AccountProfit(), 2)     + ",";
@@ -327,8 +335,11 @@ void WriteAccount() {
    j += "\"currency\":\"" + AccountCurrency()                      + "\",";
    j += "\"name\":\""     + AccountName()                         + "\",";
    j += "\"number\":"     + IntegerToString(AccountNumber());
-   j += "}";
-   WriteFile("account.json", j);
+   return j;
+}
+
+void WriteAccount() {
+   WriteFile("account.json", "{" + BuildAccountJson() + "}");
 }
 
 void WritePositions(int total) {

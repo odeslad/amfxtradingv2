@@ -1,3 +1,20 @@
+export interface Trade {
+  ticket: number;
+  broker: string;
+  symbol: string;
+  type: number;
+  lots: number;
+  openPrice: number;
+  closePrice: number;
+  sl: number;
+  tp: number;
+  profit: number;
+  swap: number;
+  commission: number;
+  openTime: string;
+  closeTime: string;
+}
+
 export interface Position {
   ticket: number;
   broker?: string;

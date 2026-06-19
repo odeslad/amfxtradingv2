@@ -3,6 +3,7 @@ import { OpenPositions } from './OpenPositions';
 import { ClosedPositions } from './ClosedPositions';
 import { Accounts } from './Accounts';
 import { Filters, type FilterValues, type FilterOptions } from './Filters';
+import { NewTradePanel } from './NewTradePanel';
 import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'closed';
@@ -15,6 +16,7 @@ export function JournalPage() {
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [closedOptions, setClosedOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const filterOptions = tab === 'open' ? openOptions : closedOptions;
 
@@ -50,11 +52,17 @@ export function JournalPage() {
           </button>
         </div>
 
-        {tab !== 'accounts' && (
-          <div className={styles.desktopFilters}>
-            <Filters values={filters} options={filterOptions} onChange={setFilters} />
-          </div>
-        )}
+        <div className={styles.tabBarRight}>
+          {tab !== 'accounts' && (
+            <div className={styles.desktopFilters}>
+              <Filters values={filters} options={filterOptions} onChange={setFilters} />
+            </div>
+          )}
+          <button type="button" className={styles.newTradeBtn} onClick={() => setPanelOpen(true)}>
+            <span className={styles.newTradeBtnDesktop}>+ New Trade</span>
+            <span className={styles.newTradeBtnMobile}>+</span>
+          </button>
+        </div>
       </div>
 
       {tab !== 'accounts' && (
@@ -62,6 +70,8 @@ export function JournalPage() {
           <Filters values={filters} options={filterOptions} onChange={setFilters} />
         </div>
       )}
+
+      <NewTradePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
 
       <div className={styles.tabContent}>
         <div className={tab === 'accounts' ? styles.tabPanel : styles.tabPanelHidden}>

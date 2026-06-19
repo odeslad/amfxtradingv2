@@ -14,10 +14,39 @@
   gap: 0;
 }
 
+.tabBarRight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-bottom: 4px;
+}
+
 .desktopFilters {
   display: flex;
   align-items: center;
-  padding-bottom: 4px;
+}
+
+.newTradeBtn {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.newTradeBtn:hover {
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.newTradeBtnMobile {
+  display: none;
 }
 
 .mobileFilters {
@@ -104,20 +133,45 @@
   .tab {
     flex: 1;
     padding: 12px 8px;
+    font-size: var(--text-lg);
+    letter-spacing: var(--tracking-normal);
   }
 
   .tabBar {
-    flex-wrap: wrap;
+    flex-wrap: nowrap;
     gap: 0;
     margin-bottom: 0;
   }
 
   .tabs {
-    width: 100%;
+    flex: 1;
   }
 
   .desktopFilters {
     display: none;
+  }
+
+  .tabBarRight {
+    padding-bottom: 0;
+    align-self: center;
+  }
+
+  .newTradeBtnDesktop {
+    display: none;
+  }
+
+  .newTradeBtnMobile {
+    display: inline;
+    font-size: var(--text-md);
+  }
+
+  .newTradeBtn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 
   .mobileFilters {

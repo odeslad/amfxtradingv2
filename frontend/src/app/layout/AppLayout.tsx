@@ -1,6 +1,10 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
 import { IconJournal, IconChart, IconBacktest, IconEngine, IconSettings, IconSignOut } from '../../shared/ui/icons';
+import { Toaster } from '../../components/Toaster';
+import { subscribe } from '../../lib/ws';
+import { addToast } from '../../lib/toast';
 import styles from './AppLayout.module.css';
 
 const NAV = [
@@ -13,6 +17,20 @@ const NAV = [
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+
+  useEffect(() => subscribe((data) => {
+    if (typeof data !== 'object' || data === null) return;
+    const msg = data as { type: string; id: string; status: string; ticket?: number; error?: string };
+    if (msg.type !== 'command_result') return;
+    if (msg.status === 'ok') {
+      const detail = msg.ticket != null ? ` — ticket #${msg.ticket}` : '';
+      addToast(`Order executed${detail}`, 'success');
+    } else if (msg.status === 'timeout') {
+      addToast('No response from EA', 'error');
+    } else {
+      addToast(msg.error ?? `EA error: ${msg.status}`, 'error');
+    }
+  }), []);
 
   return (
     <div className={styles.root}>
@@ -49,6 +67,8 @@ export function AppLayout() {
       <footer className={styles.footer}>
         AMFX Trading Terminal v2.0 &nbsp;·&nbsp; © {new Date().getFullYear()}
       </footer>
+
+      <Toaster />
 
       {/* Mobile bottom nav */}
       <nav className={styles.bottomNav}>

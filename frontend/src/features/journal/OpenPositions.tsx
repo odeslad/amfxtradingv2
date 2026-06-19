@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
-import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { type FilterValues, type FilterOptions } from './Filters';
 import { PositionCard } from './PositionCard';
@@ -19,8 +19,12 @@ interface OpenPositionsProps {
   onOptionsChange: (options: FilterOptions) => void;
 }
 
+function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
+
 export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) {
   const [positions, setPositions] = useState<Position[]>([]);
+  const [confirmClose, setConfirmClose] = useState<Position | null>(null);
+  const [closing, setClosing] = useState(false);
   const { pnlMode } = useDisplaySettings();
 
   useEffect(() => {
@@ -69,8 +73,31 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
     console.log('[positions] edit', p.broker, p.ticket);
   };
 
-  const handleClose = (p: Position) => {
-    console.log('[positions] close', p.broker, p.ticket);
+  const handleClose = (p: Position) => setConfirmClose(p);
+
+  const confirmAndClose = async () => {
+    if (!confirmClose) return;
+    setClosing(true);
+    try {
+      await fetch(apiUrl('/commands'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: generateId(),
+          action: 'close',
+          broker: confirmClose.broker,
+          symbol: confirmClose.symbol,
+          lots: confirmClose.lots,
+          ticket: confirmClose.ticket,
+          sl: 0,
+          tp: 0,
+        }),
+      });
+    } finally {
+      setClosing(false);
+      setConfirmClose(null);
+    }
   };
 
   const filtered = positions.filter(p => {
@@ -152,6 +179,24 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
           />
         ))}
       </div>
+
+      {confirmClose && (
+        <div className={styles.modalBackdrop} onClick={() => setConfirmClose(null)}>
+          <div className={styles.modal} onClick={e => e.stopPropagation()}>
+            <p className={styles.modalTitle}>Close position?</p>
+            <p className={styles.modalDesc}>
+              {TYPE_LABEL[confirmClose.type]} {confirmClose.symbol} — {fmt(confirmClose.lots, 2)} lots
+              <span className={styles.modalBroker}>{confirmClose.broker}</span>
+            </p>
+            <div className={styles.modalActions}>
+              <button type="button" className={styles.modalCancel} onClick={() => setConfirmClose(null)}>Cancel</button>
+              <button type="button" className={styles.modalConfirm} onClick={confirmAndClose} disabled={closing}>
+                {closing ? 'Closing...' : 'Close'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

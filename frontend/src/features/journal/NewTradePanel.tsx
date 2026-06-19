@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { subscribe } from '../../lib/ws';
+import { addToast } from '../../lib/toast';
 import styles from './NewTradePanel.module.css';
 
 interface NewTradePanelProps {
@@ -37,8 +38,6 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
   const [tp, setTp] = useState('');
   const [symbols, setSymbols] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
   const pendingIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -50,9 +49,10 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       pendingIds.current.delete(msg.id);
       if (pendingIds.current.size === 0) setSubmitting(false);
       if (msg.status === 'ok') {
-        setTimeout(onClose, 800);
+        setTimeout(onClose, 300);
       } else {
-        setError(msg.error ?? `EA returned status: ${msg.status}`);
+        addToast(msg.error ?? `EA error: ${msg.status}`, 'error');
+        setSubmitting(false);
       }
     });
   }, []);
@@ -96,7 +96,7 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
   const mirrorDisabled = activeMirrorBrokers.length === 0;
   const isPending = ['buylimit', 'selllimit', 'buystop', 'sellstop'].includes(action);
 
-  const resetFeedback = () => { setError(''); setSuccess(''); };
+  const resetFeedback = () => {};
 
   useEffect(() => {
     if (!open) {
@@ -108,8 +108,6 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       setPrice('');
       setSl('');
       setTp('');
-      setError('');
-      setSuccess('');
       setSubmitting(false);
       pendingIds.current.clear();
     }
@@ -161,7 +159,7 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       }
     } catch (err) {
       setSubmitting(false);
-      setError(err instanceof Error ? err.message : 'Failed to send order');
+      addToast(err instanceof Error ? err.message : 'Failed to send order', 'error');
     }
   };
 
@@ -285,8 +283,6 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
             </div>
           </div>
 
-          {error && <div className={styles.feedbackError}>{error}</div>}
-          {success && <div className={styles.feedbackSuccess}>{success}</div>}
 
           <button
             type="submit"

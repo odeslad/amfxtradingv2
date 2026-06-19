@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
+import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import styles from './JournalPage.module.css';
 import tradeStyles from './TradeCard.module.css';
 
@@ -9,6 +9,8 @@ interface TradeCardProps {
 
 export function TradeCard({ trade: t }: TradeCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const sym = currencySymbol(t.currency);
+  const withSym = (v: number) => `${fmt(v, 2)}${sym ? ` ${sym}` : ''}`;
 
   return (
     <div className={`${tradeStyles.card} ${expanded ? tradeStyles.cardExpanded : ''}`}>
@@ -25,7 +27,7 @@ export function TradeCard({ trade: t }: TradeCardProps) {
         <span className={t.type === 0 ? styles.buy : styles.sell}>{t.symbol}</span>
         <span className={tradeStyles.value}>{fmt(t.closePrice, 5)}</span>
         <span className={`${t.profit >= 0 ? styles.profit : styles.loss} ${tradeStyles.right} ${tradeStyles.pnl}`}>
-          {fmtPnl(t.profit)}
+          {fmtPnl(t.profit, t.currency)}
         </span>
       </button>
 
@@ -50,13 +52,13 @@ export function TradeCard({ trade: t }: TradeCardProps) {
           <div className={tradeStyles.field}>
             <span className={tradeStyles.label}>Swap</span>
             <span className={t.swap < 0 ? styles.loss : undefined}>
-              {fmt(t.swap, 2)}
+              {withSym(t.swap)}
             </span>
           </div>
           <div className={tradeStyles.field}>
             <span className={tradeStyles.label}>Commission</span>
             <span className={t.commission < 0 ? styles.loss : styles.muted}>
-              {fmt(t.commission, 2)}
+              {withSym(t.commission)}
             </span>
           </div>
           <div className={tradeStyles.field}>

@@ -11,6 +11,7 @@ export interface Trade {
   profit: number;
   swap: number;
   commission: number;
+  currency?: string;
   openTime: string;
   closeTime: string;
 }

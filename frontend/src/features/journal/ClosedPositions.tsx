@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
-import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
+import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './Filters';
 import { TradeCard } from './TradeCard';
 import styles from './JournalPage.module.css';
@@ -76,13 +76,13 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
                 <td>{t.sl ? fmt(t.sl, 5) : '—'}</td>
                 <td>{t.tp ? fmt(t.tp, 5) : '—'}</td>
                 <td className={t.swap < 0 ? styles.loss : t.swap > 0 ? styles.profit : undefined}>
-                  {fmt(t.swap, 2)}
+                  {fmt(t.swap, 2)}{currencySymbol(t.currency) && ` ${currencySymbol(t.currency)}`}
                 </td>
                 <td className={t.commission < 0 ? styles.loss : t.commission > 0 ? styles.profit : styles.muted}>
-                  {fmt(t.commission, 2)}
+                  {fmt(t.commission, 2)}{currencySymbol(t.currency) && ` ${currencySymbol(t.currency)}`}
                 </td>
                 <td className={t.profit >= 0 ? styles.profit : styles.loss}>
-                  {fmtPnl(t.profit)}
+                  {fmtPnl(t.profit, t.currency)}
                 </td>
                 <td>{fmtLocalTime(t.openTime)}</td>
                 <td>{fmtLocalTime(t.closeTime)}</td>

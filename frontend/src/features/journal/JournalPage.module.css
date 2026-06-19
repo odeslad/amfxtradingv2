@@ -8,8 +8,7 @@
 }
 
 .tab {
-  flex: 1;
-  padding: 12px 8px;
+  padding: 12px 24px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -75,6 +74,11 @@
   .cards {
     display: block;
     margin: 0 -8px;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 8px;
   }
 }
 

@@ -1,0 +1,47 @@
+.filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.select {
+  height: 27px;
+  padding: 0 24px 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath fill='%23666' d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  outline: none;
+  transition: border-color 0.12s ease;
+  min-width: 0;
+}
+
+.select:focus {
+  border-color: var(--orange);
+}
+
+.select option {
+  background: var(--surface);
+}
+
+@media (max-width: 768px) {
+  .filters {
+    padding: 12px 0 0;
+    gap: 6px;
+  }
+
+  .select {
+    flex: 1;
+    min-width: 0;
+    height: 34px;
+    font-size: var(--text-sm);
+    padding: 0 20px 0 8px;
+    background-position: right 7px center;
+  }
+}

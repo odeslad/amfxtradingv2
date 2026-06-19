@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
 import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
+import { type FilterValues, type FilterOptions } from './Filters';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 
@@ -12,7 +13,12 @@ interface LiveBrokerPositions {
   positions: Position[];
 }
 
-export function OpenPositions() {
+interface OpenPositionsProps {
+  filters: FilterValues;
+  onOptionsChange: (options: FilterOptions) => void;
+}
+
+export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) {
   const [positions, setPositions] = useState<Position[]>([]);
 
   useEffect(() => {
@@ -30,6 +36,12 @@ export function OpenPositions() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    const brokers = [...new Set(positions.map(p => p.broker ?? '').filter(Boolean))].sort();
+    const symbols = [...new Set(positions.map(p => p.symbol).filter(Boolean))].sort();
+    onOptionsChange({ brokers, symbols });
+  }, [positions, onOptionsChange]);
 
   const handleWsMessage = useCallback((data: unknown) => {
     if (typeof data !== 'object' || data === null) return;
@@ -59,8 +71,20 @@ export function OpenPositions() {
     console.log('[positions] close', p.broker, p.ticket);
   };
 
+  const filtered = positions.filter(p => {
+    if (filters.broker && p.broker !== filters.broker) return false;
+    if (filters.symbol && p.symbol !== filters.symbol) return false;
+    if (filters.type === 'buy' && p.type !== 0) return false;
+    if (filters.type === 'sell' && p.type !== 1) return false;
+    return true;
+  });
+
   if (positions.length === 0) {
     return <div className={styles.empty}>No open positions</div>;
+  }
+
+  if (filtered.length === 0) {
+    return <div className={styles.empty}>No positions match the selected filters</div>;
   }
 
   return (
@@ -83,7 +107,7 @@ export function OpenPositions() {
             </tr>
           </thead>
           <tbody>
-            {positions.map(p => (
+            {filtered.map(p => (
               <tr key={`${p.broker}-${p.ticket}`}>
                 <td className={styles.broker}>{p.broker}</td>
                 <td className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</td>
@@ -116,7 +140,7 @@ export function OpenPositions() {
       </div>
 
       <div className={styles.cards}>
-        {positions.map(p => (
+        {filtered.map(p => (
           <PositionCard
             key={`${p.broker}-${p.ticket}`}
             position={p}

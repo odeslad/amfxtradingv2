@@ -1,10 +1,16 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
+import { type FilterValues, type FilterOptions } from './Filters';
 import { TradeCard } from './TradeCard';
 import styles from './JournalPage.module.css';
 
-export function ClosedPositions() {
+interface ClosedPositionsProps {
+  filters: FilterValues;
+  onOptionsChange: (options: FilterOptions) => void;
+}
+
+export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsProps) {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -20,9 +26,24 @@ export function ClosedPositions() {
       .finally(() => setLoading(false));
   }, []);
 
+  useEffect(() => {
+    const brokers = [...new Set(trades.map(t => t.broker).filter(Boolean))].sort();
+    const symbols = [...new Set(trades.map(t => t.symbol).filter(Boolean))].sort();
+    onOptionsChange({ brokers, symbols });
+  }, [trades, onOptionsChange]);
+
+  const filtered = trades.filter(t => {
+    if (filters.broker && t.broker !== filters.broker) return false;
+    if (filters.symbol && t.symbol !== filters.symbol) return false;
+    if (filters.type === 'buy' && t.type !== 0) return false;
+    if (filters.type === 'sell' && t.type !== 1) return false;
+    return true;
+  });
+
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;
   if (trades.length === 0) return <div className={styles.empty}>No closed trades</div>;
+  if (filtered.length === 0) return <div className={styles.empty}>No trades match the selected filters</div>;
 
   return (
     <>
@@ -45,7 +66,7 @@ export function ClosedPositions() {
             </tr>
           </thead>
           <tbody>
-            {trades.map(t => (
+            {filtered.map(t => (
               <tr key={`${t.broker}-${t.ticket}`}>
                 <td className={styles.broker}>{t.broker}</td>
                 <td className={t.type === 0 ? styles.buy : styles.sell}>{t.symbol}</td>
@@ -72,7 +93,7 @@ export function ClosedPositions() {
       </div>
 
       <div className={styles.cards}>
-        {trades.map(t => (
+        {filtered.map(t => (
           <TradeCard key={`${t.broker}-${t.ticket}`} trade={t} />
         ))}
       </div>

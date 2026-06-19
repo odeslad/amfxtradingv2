@@ -8,6 +8,7 @@ import balancesRouter from './routes/balances';
 import positionsRouter from './routes/positions';
 import settingsRouter from './routes/settings';
 import strategiesRouter from './routes/strategies';
+import symbolsRouter from './routes/symbols';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -34,5 +35,6 @@ app.use('/positions', requireAuth, positionsRouter);
 app.use('/balances', requireAuth, balancesRouter);
 app.use('/strategies', requireAuth, strategiesRouter);
 app.use('/settings', requireAuth, settingsRouter);
+app.use('/symbols', requireAuth, symbolsRouter);
 
 export default app;

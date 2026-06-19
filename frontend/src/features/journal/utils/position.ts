@@ -32,6 +32,8 @@ export interface Position {
   commission: number;
   openTime: string;
   color?: string;
+  currentBid?: number | null;
+  currentAsk?: number | null;
 }
 
 export type PositionColor = 'orange' | 'blue' | 'green' | 'red' | 'gold';
@@ -93,6 +95,11 @@ export function calcPnl(p: Position, mode: PnlMode): number {
   if (mode === 'net') return p.profit + p.swap + p.commission;
   if (mode === 'gross') return p.profit;
   const pipSize = p.symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
+  const closePrice = p.type === 0 ? p.currentBid : p.currentAsk;
+  if (closePrice != null) {
+    const direction = p.type === 0 ? 1 : -1;
+    return direction * (closePrice - p.openPrice) / pipSize;
+  }
   return p.profit / (p.lots * pipSize * 100_000);
 }
 

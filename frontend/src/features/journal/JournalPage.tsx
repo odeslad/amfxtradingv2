@@ -5,6 +5,7 @@ import { Accounts } from './Accounts';
 import { Filters, type FilterValues, type FilterOptions } from './Filters';
 import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
+import { ConfirmPanel } from './ConfirmPanel';
 import { apiUrl } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import { TYPE_LABEL, fmt } from './utils/position';
@@ -138,22 +139,16 @@ export function JournalPage() {
         onClose={() => setBulkEditOpen(false)}
       />
 
-      {bulkConfirmClose && bulk && (
-        <div className={styles.modalBackdrop} onClick={() => setBulkConfirmClose(false)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <p className={styles.modalTitle}>Close {bulk.positions.length} positions?</p>
-            <p className={styles.modalDesc}>
-              {TYPE_LABEL[bulk.type]} {bulk.symbol} — {bulk.positions.map(p => fmt(p.lots, 2)).join(' + ')} lots
-            </p>
-            <div className={styles.modalActions}>
-              <button type="button" className={styles.modalCancel} onClick={() => setBulkConfirmClose(false)}>Cancel</button>
-              <button type="button" className={styles.modalConfirm} onClick={handleBulkClose} disabled={bulkClosing}>
-                {bulkClosing ? 'Closing...' : `Close all`}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmPanel
+        open={bulkConfirmClose && !!bulk}
+        title={`Close ${bulk?.positions.length ?? 0} positions?`}
+        description={bulk ? `${TYPE_LABEL[bulk.type]} ${bulk.symbol}` : ''}
+        detail={bulk ? bulk.positions.map(p => fmt(p.lots, 2)).join(' + ') + ' lots' : ''}
+        confirmLabel="Close all"
+        confirming={bulkClosing}
+        onConfirm={handleBulkClose}
+        onClose={() => setBulkConfirmClose(false)}
+      />
 
       <div className={styles.tabContent}>
         <div className={tab === 'accounts' ? styles.tabPanel : styles.tabPanelHidden}>

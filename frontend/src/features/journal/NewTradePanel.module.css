@@ -186,9 +186,7 @@
   border-color: var(--orange);
 }
 
-.input::placeholder {
-  color: var(--muted);
-}
+.input::placeholder { color: var(--muted); }
 
 .input option {
   background: var(--surface);

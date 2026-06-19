@@ -6,6 +6,8 @@ import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { type FilterValues, type FilterOptions } from './Filters';
 import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
+import { ConfirmPanel } from './ConfirmPanel';
+import { BulkEditPanel } from './BulkEditPanel';
 import styles from './JournalPage.module.css';
 
 interface LiveBrokerPositions {
@@ -35,6 +37,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
   const [colors, setColors] = useState<Map<string, string>>(new Map());
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
   const [closing, setClosing] = useState(false);
+  const [editPosition, setEditPosition] = useState<Position | null>(null);
   const { pnlMode } = useDisplaySettings();
 
   const handleColorChange = (broker: string, ticket: number, color: string) => {
@@ -108,9 +111,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
 
   useWs(handleWsMessage);
 
-  const handleEdit = (p: Position) => {
-    console.log('[positions] edit', p.broker, p.ticket);
-  };
+  const handleEdit = (p: Position) => setEditPosition(p);
 
   const handleClose = (p: Position) => setConfirmClose(p);
 
@@ -245,23 +246,22 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
         ))}
       </div>
 
-      {confirmClose && (
-        <div className={styles.modalBackdrop} onClick={() => setConfirmClose(null)}>
-          <div className={styles.modal} onClick={e => e.stopPropagation()}>
-            <p className={styles.modalTitle}>Close position?</p>
-            <p className={styles.modalDesc}>
-              {TYPE_LABEL[confirmClose.type]} {confirmClose.symbol} — {fmt(confirmClose.lots, 2)} lots
-              <span className={styles.modalBroker}>{confirmClose.broker}</span>
-            </p>
-            <div className={styles.modalActions}>
-              <button type="button" className={styles.modalCancel} onClick={() => setConfirmClose(null)}>Cancel</button>
-              <button type="button" className={styles.modalConfirm} onClick={confirmAndClose} disabled={closing}>
-                {closing ? 'Closing...' : 'Close'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <BulkEditPanel
+        open={!!editPosition}
+        positions={editPosition ? [editPosition] : []}
+        onClose={() => setEditPosition(null)}
+      />
+
+      <ConfirmPanel
+        open={!!confirmClose}
+        title="Close position?"
+        description={confirmClose ? `${TYPE_LABEL[confirmClose.type]} ${confirmClose.symbol} — ${fmt(confirmClose.lots, 2)} lots` : ''}
+        detail={confirmClose?.broker}
+        confirmLabel="Close"
+        confirming={closing}
+        onConfirm={confirmAndClose}
+        onClose={() => setConfirmClose(null)}
+      />
     </>
   );
 }

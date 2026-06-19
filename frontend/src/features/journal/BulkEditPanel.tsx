@@ -21,10 +21,8 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
     if (!open) { setSl(''); setTp(''); setSubmitting(false); }
   }, [open]);
 
-  if (!open || positions.length === 0) return null;
-
   const first = positions[0];
-  const label = `${TYPE_LABEL[first.type]} ${first.symbol}`;
+  const label = first ? `${TYPE_LABEL[first.type]} ${first.symbol}` : '';
 
   const handleSubmit = async () => {
     if (!sl && !tp) return;
@@ -57,45 +55,43 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
   };
 
   return (
-    <div className={styles.backdrop} onClick={onClose}>
-      <div className={styles.panel} onClick={e => e.stopPropagation()}>
+    <>
+      {open && <div className={styles.backdrop} onClick={onClose} />}
+      <div className={`${styles.panel} ${open ? styles.panelOpen : ''}`}>
         <div className={styles.header}>
-          <span className={styles.title}>Edit group</span>
-          <span className={styles.meta}>{label} · {positions.length} positions</span>
+          <div className={styles.title}>Edit group</div>
           <button type="button" className={styles.closeBtn} onClick={onClose}>✕</button>
         </div>
 
-        <div className={styles.hint}>
-          Leave a field empty to keep each position's current value.
-        </div>
+        <div className={styles.form}>
+          <div className={styles.meta}>{label} · {positions.length} position{positions.length !== 1 ? 's' : ''}</div>
+          <p className={styles.hint}>Leave a field empty to keep each position's current value.</p>
 
-        <div className={styles.fields}>
-          <div className={styles.field}>
-            <label className={styles.label}>SL</label>
-            <input
-              type="number"
-              className={styles.input}
-              value={sl}
-              onChange={e => setSl(e.target.value)}
-              placeholder={fmt(first.sl, 5)}
-              step="0.00001"
-            />
+          <div className={styles.row}>
+            <div className={styles.field}>
+              <label className={styles.label}>SL</label>
+              <input
+                type="number"
+                className={styles.input}
+                value={sl}
+                onChange={e => setSl(e.target.value)}
+                placeholder={first ? fmt(first.sl, 5) : '0'}
+                step="0.00001"
+              />
+            </div>
+            <div className={styles.field}>
+              <label className={styles.label}>TP</label>
+              <input
+                type="number"
+                className={styles.input}
+                value={tp}
+                onChange={e => setTp(e.target.value)}
+                placeholder={first ? fmt(first.tp, 5) : '0.00000'}
+                step="0.00001"
+              />
+            </div>
           </div>
-          <div className={styles.field}>
-            <label className={styles.label}>TP</label>
-            <input
-              type="number"
-              className={styles.input}
-              value={tp}
-              onChange={e => setTp(e.target.value)}
-              placeholder={first.tp ? fmt(first.tp, 5) : '0'}
-              step="0.00001"
-            />
-          </div>
-        </div>
 
-        <div className={styles.actions}>
-          <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
           <button
             type="button"
             className={styles.submitBtn}
@@ -106,6 +102,6 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 }

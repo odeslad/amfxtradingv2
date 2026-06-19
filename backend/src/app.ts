@@ -5,6 +5,7 @@ import authRouter from './routes/auth';
 import commandsRouter from './routes/commands';
 import tradesRouter from './routes/trades';
 import balancesRouter from './routes/balances';
+import positionsRouter from './routes/positions';
 import strategiesRouter from './routes/strategies';
 import { requireAuth } from './middleware/requireAuth';
 
@@ -28,6 +29,7 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/auth', authRouter);
 app.use('/commands', requireAuth, commandsRouter);
 app.use('/trades', requireAuth, tradesRouter);
+app.use('/positions', requireAuth, positionsRouter);
 app.use('/balances', requireAuth, balancesRouter);
 app.use('/strategies', requireAuth, strategiesRouter);
 

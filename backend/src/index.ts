@@ -9,6 +9,7 @@ import { createWss } from './ws/ws';
 import { upsertCandles } from './services/candles';
 import { syncTrades } from './services/trades';
 import { saveDailyBalances } from './services/account';
+import { setPositions } from './store/positions';
 import { Engine } from './engine/engine';
 
 type Wss = ReturnType<typeof createWss>;
@@ -28,6 +29,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   });
 
   pipe.on('positions', (positions) => {
+    setPositions(brokerName, positions, currency, brokerOffset);
     wss.broadcastPositions(brokerName, positions, currency, brokerOffset);
   });
 

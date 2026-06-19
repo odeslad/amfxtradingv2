@@ -43,5 +43,8 @@ export function createWss(server: Server) {
     broadcastPositions(broker: string, positions: unknown, currency: string, brokerOffset: number) {
       broadcast('positions', { broker, currency, brokerOffset, positions });
     },
+    broadcastAccount(broker: string, account: unknown) {
+      broadcast('account', { broker, account });
+    },
   };
 }

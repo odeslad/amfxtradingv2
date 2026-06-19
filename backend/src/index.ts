@@ -43,6 +43,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
 
   watcher.on('account', async (account) => {
     currency = account.currency ?? currency;
+    wss.broadcastAccount(brokerName, account);
     try { await saveDailyBalances(brokerName, account); }
     catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
   });

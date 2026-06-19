@@ -8,7 +8,8 @@
 }
 
 .tab {
-  padding: 10px 20px;
+  flex: 1;
+  padding: 12px 8px;
   background: transparent;
   border: none;
   border-bottom: 2px solid transparent;
@@ -19,6 +20,7 @@
   letter-spacing: var(--tracking-widest);
   text-transform: uppercase;
   color: var(--muted);
+  text-align: center;
   transition: color 0.12s ease, border-color 0.12s ease;
 }
 

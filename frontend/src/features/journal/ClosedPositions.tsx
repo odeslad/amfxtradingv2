@@ -29,7 +29,7 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
   useEffect(() => {
     const brokers = [...new Set(trades.map(t => t.broker).filter(Boolean))].sort();
     const symbols = [...new Set(trades.map(t => t.symbol).filter(Boolean))].sort();
-    onOptionsChange({ brokers, symbols });
+    onOptionsChange({ brokers, symbols, colors: [] });
   }, [trades, onOptionsChange]);
 
   const filtered = trades.filter(t => {

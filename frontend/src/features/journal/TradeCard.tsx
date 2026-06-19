@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
+import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
 import styles from './JournalPage.module.css';
 import tradeStyles from './TradeCard.module.css';
 
@@ -50,13 +50,13 @@ export function TradeCard({ trade: t }: TradeCardProps) {
           <div className={tradeStyles.field}>
             <span className={tradeStyles.label}>Swap</span>
             <span className={t.swap < 0 ? styles.loss : undefined}>
-              {fmt(t.swap, 2)}{currencySymbol(t.currency) && ` ${currencySymbol(t.currency)}`}
+              {fmt(t.swap, 2)}
             </span>
           </div>
           <div className={tradeStyles.field}>
             <span className={tradeStyles.label}>Commission</span>
             <span className={t.commission < 0 ? styles.loss : styles.muted}>
-              {fmt(t.commission, 2)}{currencySymbol(t.currency) && ` ${currencySymbol(t.currency)}`}
+              {fmt(t.commission, 2)}
             </span>
           </div>
           <div className={tradeStyles.field}>

@@ -52,9 +52,9 @@ function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Prom
 
 router.post('/', (req, res) => {
   const body = req.body as Record<string, unknown>;
-  const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price } = body as {
+  const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price, ticket } = body as {
     action: string; id: string; broker: string; symbol: string;
-    lotsMode?: string; lots: number; sl?: number; tp?: number; price?: number;
+    lotsMode?: string; lots: number; sl?: number; tp?: number; price?: number; ticket?: number;
   };
 
   if (!action || !id || !broker || !symbol) {
@@ -100,7 +100,12 @@ router.post('/', (req, res) => {
     return;
   }
 
-  const command = { action, id, broker, symbol, lots, sl: sl ?? 0, tp: tp ?? 0, ...(price ? { price } : {}) };
+  const command = {
+    action, id, broker, symbol, lots,
+    sl: sl ?? 0, tp: tp ?? 0,
+    ...(price ? { price } : {}),
+    ...(ticket !== undefined ? { ticket } : {}),
+  };
 
   try {
     fs.writeFileSync(commandPath, JSON.stringify(command));

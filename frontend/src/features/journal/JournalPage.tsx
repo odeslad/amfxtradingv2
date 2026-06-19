@@ -36,9 +36,15 @@ export function JournalPage() {
       </div>
 
       <div className={styles.tabContent}>
-        {tab === 'accounts' && <Accounts />}
-        {tab === 'open' && <OpenPositions />}
-        {tab === 'closed' && <ClosedPositions />}
+        <div className={tab === 'accounts' ? styles.tabPanel : styles.tabPanelHidden}>
+          <Accounts />
+        </div>
+        <div className={tab === 'open' ? styles.tabPanel : styles.tabPanelHidden}>
+          <OpenPositions />
+        </div>
+        <div className={tab === 'closed' ? styles.tabPanel : styles.tabPanelHidden}>
+          <ClosedPositions />
+        </div>
       </div>
     </div>
   );

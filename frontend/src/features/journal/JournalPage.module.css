@@ -34,6 +34,14 @@
 
 .tabContent {}
 
+.tabPanel {
+  display: block;
+}
+
+.tabPanelHidden {
+  display: none;
+}
+
 .header {
   display: flex;
   align-items: baseline;

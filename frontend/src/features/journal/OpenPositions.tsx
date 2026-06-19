@@ -1,11 +1,35 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWs } from '../../lib/useWs';
+import { apiUrl } from '../../lib/api';
 import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 
+interface LiveBrokerPositions {
+  broker: string;
+  currency: string;
+  brokerOffset: number;
+  positions: Position[];
+}
+
 export function OpenPositions() {
   const [positions, setPositions] = useState<Position[]>([]);
+
+  useEffect(() => {
+    fetch(apiUrl('/positions/live'), { credentials: 'include' })
+      .then(res => res.ok ? res.json() as Promise<LiveBrokerPositions[]> : Promise.resolve([]))
+      .then((brokers) => {
+        const all = brokers.flatMap(({ broker, currency, brokerOffset, positions: ps }) =>
+          ps.map(p => ({ ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset }))
+        );
+        if (all.length > 0) {
+          setPositions(all.sort((a, b) =>
+            (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
+          ));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleWsMessage = useCallback((data: unknown) => {
     if (typeof data !== 'object' || data === null) return;

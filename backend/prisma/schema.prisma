@@ -139,6 +139,16 @@ model SettingsDisplay {
   @@map("settings_display")
 }
 
+model PositionColor {
+  id      Int    @id @default(autoincrement())
+  broker  String
+  ticket  Int
+  color   String
+
+  @@unique([broker, ticket])
+  @@map("position_colors")
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique

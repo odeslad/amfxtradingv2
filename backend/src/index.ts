@@ -12,6 +12,7 @@ import { saveDailyBalances } from './services/account';
 import { setPositions } from './store/positions';
 import { setTick } from './store/ticks';
 import { setAccount } from './store/accounts';
+import { syncColors } from './store/positionColors';
 import { setBroadcaster } from './routes/commands';
 import { Engine } from './engine/engine';
 
@@ -35,6 +36,8 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   pipe.on('positions', (positions) => {
     setPositions(brokerName, positions, currency, brokerOffset);
     wss.broadcastPositions(brokerName, positions, currency, brokerOffset);
+    const tickets = (positions as { ticket: number }[]).map(p => p.ticket);
+    syncColors(brokerName, tickets).catch(() => {});
   });
 
   pipe.on('account', (account) => {

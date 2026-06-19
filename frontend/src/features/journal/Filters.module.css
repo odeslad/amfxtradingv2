@@ -46,9 +46,13 @@
     background-position: right 7px center;
   }
 
-  /* 3 selects → all in one row */
-  .select:first-child:nth-last-child(3),
-  .select:first-child:nth-last-child(3) ~ .select {
+  /* first 3 always share one row equally */
+  .select:nth-child(-n+3) {
     flex: 1 1 0;
+  }
+
+  /* color selector always on its own second row */
+  .select:nth-child(4) {
+    flex: 1 1 100%;
   }
 }

@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useWs } from '../../lib/useWs';
-import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './position';
+import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
 

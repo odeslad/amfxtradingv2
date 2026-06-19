@@ -1,5 +1,5 @@
 import { useRef, useState, type TouchEvent } from 'react';
-import { type Position, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './position';
+import { type Position, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import styles from './PositionCard.module.css';
 
 const SWIPE_THRESHOLD = 50;

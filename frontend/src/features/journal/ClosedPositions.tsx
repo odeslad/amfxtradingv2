@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
-import { type Trade, fmt, fmtPnl, fmtLocalTime } from './position';
+import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
 import styles from './JournalPage.module.css';
 
 export function ClosedPositions() {

@@ -46,5 +46,8 @@ export function createWss(server: Server) {
     broadcastAccount(broker: string, account: unknown) {
       broadcast('account', { broker, account });
     },
+    broadcastCommandResult(id: string, status: string, ticket?: number, error?: string) {
+      broadcast('command_result', { id, status, ticket, error });
+    },
   };
 }

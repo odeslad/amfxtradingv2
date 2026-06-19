@@ -10,6 +10,9 @@ import { upsertCandles } from './services/candles';
 import { syncTrades } from './services/trades';
 import { saveDailyBalances } from './services/account';
 import { setPositions } from './store/positions';
+import { setTick } from './store/ticks';
+import { setAccount } from './store/accounts';
+import { setBroadcaster } from './routes/commands';
 import { Engine } from './engine/engine';
 
 type Wss = ReturnType<typeof createWss>;
@@ -24,6 +27,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
 
   pipe.on('ticks', (batch) => {
     if (batch.length > 0) brokerOffset = batch[0].broker_offset ?? brokerOffset;
+    for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid);
     wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
   });
@@ -35,6 +39,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
 
   pipe.on('account', (account) => {
     currency = account.currency ?? currency;
+    setAccount(brokerName, { balance: account.balance, currency: account.currency ?? currency });
     wss.broadcastAccount(brokerName, account);
   });
 
@@ -70,6 +75,7 @@ async function main() {
 
   const server = http.createServer(app);
   const wss = createWss(server);
+  setBroadcaster((id, status, ticket, error) => wss.broadcastCommandResult(id, status, ticket, error));
 
   const watchers = config.brokers.map(({ name, bridgePath }) =>
     startBroker(name, bridgePath, wss),

@@ -7,7 +7,6 @@ import { PipeReader } from './bridge/pipe-reader';
 import { FileWatcher } from './bridge/file-watcher';
 import { createWss } from './ws/ws';
 import { upsertCandles } from './services/candles';
-import { syncPositions } from './services/positions';
 import { syncTrades } from './services/trades';
 import { saveDailyBalances } from './services/account';
 import { Engine } from './engine/engine';
@@ -35,11 +34,6 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
     try { await upsertCandles(brokerName, symbol, timeframe, data); }
     catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }
-  });
-
-  watcher.on('positions', async (positions) => {
-    try { await syncPositions(brokerName, positions); }
-    catch (err) { console.error(`[DB:${brokerName}] positions sync failed`, err); }
   });
 
   watcher.on('history', async (trades) => {

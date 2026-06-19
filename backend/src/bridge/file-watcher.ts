@@ -41,7 +41,7 @@ export class FileWatcher extends EventEmitter {
   }
 
   start() {
-    console.log(`[FILE-WATCHER: ${this.brokerName}] started | polls account, positions, history, candles every ${this.intervalMs / 1000}s`);
+    console.log(`[FILE-WATCHER: ${this.brokerName}] started | polls account, history, candles every ${this.intervalMs / 1000}s`);
     this.poll();
     this.timer = setInterval(() => this.poll(), this.intervalMs);
   }
@@ -52,7 +52,6 @@ export class FileWatcher extends EventEmitter {
 
   private poll() {
     this.readJson<BridgeAccount>('account.json', (data) => this.emit('account', data));
-    this.readJson<BridgePosition[]>('positions.json', (data) => this.emit('positions', data));
     this.readJson<BridgeTrade[]>('history.json', (data) => this.emit('history', data));
     this.readCandles();
   }

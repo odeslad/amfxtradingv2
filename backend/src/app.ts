@@ -3,8 +3,8 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import authRouter from './routes/auth';
 import commandsRouter from './routes/commands';
+import tradesRouter from './routes/trades';
 import strategiesRouter from './routes/strategies';
-import positionsRouter from './routes/positions';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -26,7 +26,7 @@ app.use(cookieParser());
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.use('/auth', authRouter);
 app.use('/commands', requireAuth, commandsRouter);
+app.use('/trades', requireAuth, tradesRouter);
 app.use('/strategies', requireAuth, strategiesRouter);
-app.use('/positions', requireAuth, positionsRouter);
 
 export default app;

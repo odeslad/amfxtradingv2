@@ -23,27 +23,6 @@ model Candle {
   @@map("candles")
 }
 
-model Position {
-  ticket     Int      @id
-  broker     String
-  symbol     String
-  type       Int
-  lots       Float
-  openPrice  Float
-  sl         Float
-  tp         Float
-  profit     Float
-  swap       Float
-  commission Float
-  magic      Int
-  comment    String
-  openTime   DateTime
-  updatedAt  DateTime @updatedAt
-
-  @@index([broker])
-  @@map("positions")
-}
-
 model Trade {
   ticket     Int      @id
   broker     String

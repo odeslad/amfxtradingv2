@@ -130,6 +130,15 @@ model SettingsMirror {
   @@map("settings_mirror")
 }
 
+model SettingsDisplay {
+  id        Int      @id @default(autoincrement())
+  key       String   @unique @default("global")
+  pnlMode   String   @default("net")
+  updatedAt DateTime @updatedAt
+
+  @@map("settings_display")
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique

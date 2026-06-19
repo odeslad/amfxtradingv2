@@ -1,0 +1,6 @@
+CREATE TABLE "settings_display" (
+  "id" SERIAL PRIMARY KEY,
+  "key" TEXT NOT NULL UNIQUE DEFAULT 'global',
+  "pnlMode" TEXT NOT NULL DEFAULT 'net',
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

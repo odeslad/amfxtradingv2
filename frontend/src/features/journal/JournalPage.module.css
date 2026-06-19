@@ -26,12 +26,57 @@
   align-items: center;
 }
 
+.bulkDesktop {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.bulkDesktopEdit {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.12s, border-color 0.12s;
+}
+
+.bulkDesktopEdit:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.bulkDesktopClose {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.bulkDesktopClose:hover {
+  background: rgba(224, 92, 92, 0.12);
+}
+
 .newTradeBtn {
   height: 27px;
   padding: 0 10px;
   background: transparent;
-  border: 1px solid var(--orange);
-  color: var(--orange);
+  border: 1px solid var(--green);
+  color: var(--green);
   font-family: var(--font-sans);
   font-size: var(--text-2xs);
   letter-spacing: var(--tracking-wide);
@@ -42,7 +87,7 @@
 }
 
 .newTradeBtn:hover {
-  background: rgba(245, 166, 35, 0.15);
+  background: rgba(76, 175, 132, 0.15);
 }
 
 .newTradeBtnMobile {
@@ -162,7 +207,10 @@
 
   .newTradeBtnMobile {
     display: inline;
-    font-size: var(--text-md);
+    font-size: var(--text-2xl);
+    line-height: 1;
+    position: relative;
+    top: -2px;
   }
 
   .newTradeBtn {

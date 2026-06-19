@@ -1,7 +1,72 @@
+.wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.firstRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .filters {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex: 1;
+}
+
+.colorRow {
+  display: flex;
+}
+
+.colorSelect {
+  flex: 1;
+}
+
+.bulkActions {
+  display: none;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.bulkEdit {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--orange);
+  color: var(--orange);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.bulkEdit:hover {
+  background: rgba(245, 166, 35, 0.12);
+}
+
+.bulkClose {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s;
+}
+
+.bulkClose:hover {
+  background: rgba(224, 92, 92, 0.12);
 }
 
 .select {
@@ -30,15 +95,37 @@
   background: var(--surface);
 }
 
+/* Desktop: show bulk buttons inline */
+@media (min-width: 769px) {
+  .bulkActions {
+    display: flex;
+  }
+}
+
 @media (max-width: 768px) {
-  .filters {
+  .wrapper {
     padding: 12px 0 0;
     gap: 6px;
-    flex-wrap: wrap;
+  }
+
+  .firstRow {
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.2s ease;
+  }
+
+  .firstRowSlid .filters {
+    transform: translateX(-100%);
+    pointer-events: none;
+  }
+
+  .filters {
+    transition: transform 0.2s ease;
+    flex-wrap: nowrap;
   }
 
   .select {
-    flex: 1 1 calc(50% - 3px);
+    flex: 1;
     min-width: 0;
     height: 34px;
     font-size: var(--text-sm);
@@ -46,13 +133,28 @@
     background-position: right 7px center;
   }
 
-  /* first 3 always share one row equally */
-  .select:nth-child(-n+3) {
-    flex: 1 1 0;
+  /* Mobile bulk actions — slide in from the right */
+  .bulkActions {
+    display: flex;
+    position: absolute;
+    right: 0;
+    top: 0;
+    bottom: 0;
+    align-items: center;
+    transform: translateX(100%);
+    transition: transform 0.2s ease;
+    background: var(--bg);
+    padding-left: 6px;
   }
 
-  /* color selector always on its own second row */
-  .select:nth-child(4) {
-    flex: 1 1 100%;
+  .firstRowSlid .bulkActions {
+    transform: translateX(0);
+  }
+
+  .bulkEdit,
+  .bulkClose {
+    height: 34px;
+    font-size: var(--text-sm);
+    padding: 0 12px;
   }
 }

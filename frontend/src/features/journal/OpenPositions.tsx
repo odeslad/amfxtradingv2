@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
 import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
@@ -15,15 +15,22 @@ interface LiveBrokerPositions {
   positions: Position[];
 }
 
+export interface BulkGroup {
+  symbol: string;
+  type: number;
+  positions: Position[];
+}
+
 interface OpenPositionsProps {
   filters: FilterValues;
   onOptionsChange: (options: FilterOptions) => void;
+  onBulkChange: (group: BulkGroup | null) => void;
 }
 
 function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
 
-export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) {
+export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
   const [positions, setPositions] = useState<Position[]>([]);
   const [colors, setColors] = useState<Map<string, string>>(new Map());
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
@@ -132,14 +139,27 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
     }
   };
 
-  const filtered = positions.filter(p => {
+  const filtered = useMemo(() => positions.filter(p => {
     if (filters.broker && p.broker !== filters.broker) return false;
     if (filters.symbol && p.symbol !== filters.symbol) return false;
     if (filters.type === 'buy' && p.type !== 0) return false;
     if (filters.type === 'sell' && p.type !== 1) return false;
     if (filters.color && colors.get(posKey(p.broker!, p.ticket)) !== filters.color) return false;
     return true;
-  });
+  }), [positions, filters, colors]);
+
+  const bulkGroup = useMemo(() => {
+    if (filtered.length < 1) return null;
+    const symbol = filtered[0].symbol;
+    const type = filtered[0].type;
+    return filtered.every(p => p.symbol === symbol && p.type === type)
+      ? { symbol, type, positions: filtered }
+      : null;
+  }, [filtered]);
+
+  useEffect(() => {
+    onBulkChange(bulkGroup);
+  }, [bulkGroup, onBulkChange]);
 
   if (positions.length === 0) {
     return <div className={styles.empty}>No open positions</div>;

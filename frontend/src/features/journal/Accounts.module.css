@@ -1,0 +1,85 @@
+.card {
+  padding: 0 2px;
+  border-left: 2px solid transparent;
+}
+
+.cardExpanded {
+  border-left: 2px solid var(--blue);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 10px 5px;
+  background: var(--bg);
+  border: none;
+  border-top: 1px solid var(--border-bright);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+}
+
+.summaryActive {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.right {
+  text-align: right;
+  justify-self: end;
+}
+
+.accountName {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  color: var(--text);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
+.pnl {
+  font-size: var(--text-3xl);
+}
+
+.pnlCol {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+
+.details {
+  display: flex;
+  flex-direction: column;
+  padding: 0 5px;
+  background: var(--bg);
+}
+
+.field,
+.fieldWide {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--text);
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.fieldValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--text);
+}

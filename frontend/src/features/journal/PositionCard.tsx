@@ -67,12 +67,10 @@ export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps
         >
           <span className={styles.label}>Symbol</span>
           <span className={styles.label}>Open</span>
-          <span className={styles.label}>Lots</span>
           <span className={`${styles.label} ${styles.right}`}>P&amp;L</span>
 
           <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
           <span className={styles.value}>{fmt(p.openPrice, 5)}</span>
-          <span className={styles.value}>{fmt(p.lots, 2)}</span>
           <span className={`${p.profit >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
             {fmtPnl(p.profit, p.currency)}
           </span>
@@ -81,6 +79,10 @@ export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps
 
       {expanded && (
         <div className={styles.details}>
+          <div className={styles.field}>
+            <span className={styles.label}>Lots</span>
+            <span>{fmt(p.lots, 2)}</span>
+          </div>
           <div className={styles.field}>
             <span className={styles.label}>SL</span>
             <span>{p.sl ? fmt(p.sl, 5) : '—'}</span>
@@ -97,8 +99,12 @@ export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps
             <span className={styles.label}>Commission</span>
             <span className={p.commission < 0 ? styles.loss : styles.muted}>{fmt(p.commission, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}</span>
           </div>
-          <div className={styles.fieldWide}>
+          <div className={styles.field}>
+            <span className={styles.label}>Broker</span>
             <span className={styles.brokerName}>{p.broker}</span>
+          </div>
+          <div className={styles.field}>
+            <span className={styles.label}>Open Time</span>
             <span className={styles.date}>{fmtLocalTime(p.openTime, p.brokerOffset)}</span>
           </div>
         </div>

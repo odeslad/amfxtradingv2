@@ -3,6 +3,7 @@ import type { Server } from 'http';
 import type { IncomingMessage } from 'http';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
+import { getBid, getAsk } from '../store/ticks';
 
 function authenticate(req: IncomingMessage): boolean {
   const cookie = req.headers.cookie ?? '';
@@ -41,7 +42,12 @@ export function createWss(server: Server) {
       broadcast('ticks', { broker, ticks: batch });
     },
     broadcastPositions(broker: string, positions: unknown, currency: string, brokerOffset: number) {
-      broadcast('positions', { broker, currency, brokerOffset, positions });
+      const enriched = (positions as { symbol: string }[]).map(p => ({
+        ...p,
+        currentBid: getBid(broker, p.symbol) ?? null,
+        currentAsk: getAsk(broker, p.symbol) ?? null,
+      }));
+      broadcast('positions', { broker, currency, brokerOffset, positions: enriched });
     },
     broadcastAccount(broker: string, account: unknown) {
       broadcast('account', { broker, account });

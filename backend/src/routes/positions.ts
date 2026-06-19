@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { getAllPositions } from '../store/positions';
 import { setColor, getAllColors } from '../store/positionColors';
+import { getBid, getAsk } from '../store/ticks';
 
 const router = Router();
 
@@ -10,9 +11,11 @@ router.get('/live', async (_req, res) => {
   const enriched = brokers.map(({ broker, positions, ...rest }) => ({
     broker,
     ...rest,
-    positions: (positions as { ticket: number }[]).map(p => ({
+    positions: (positions as { ticket: number; symbol: string }[]).map(p => ({
       ...p,
       color: colors.get(`${broker}:${p.ticket}`) ?? '',
+      currentBid: getBid(broker, p.symbol) ?? null,
+      currentAsk: getAsk(broker, p.symbol) ?? null,
     })),
   }));
   res.json(enriched);

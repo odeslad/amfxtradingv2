@@ -28,7 +28,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
 
   pipe.on('ticks', (batch) => {
     if (batch.length > 0) brokerOffset = batch[0].broker_offset ?? brokerOffset;
-    for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid);
+    for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid, tick.ask);
     wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
   });

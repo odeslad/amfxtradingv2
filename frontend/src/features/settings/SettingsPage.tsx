@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
+import type { PnlMode } from '../journal/utils/position';
 import styles from './SettingsPage.module.css';
 
 interface MirrorBroker {
@@ -16,12 +17,13 @@ interface Balance {
 
 export function SettingsPage() {
   const [mirror, setMirror] = useState<MirrorBroker[]>([]);
+  const [pnlMode, setPnlMode] = useState<PnlMode>('net');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[] }>,
+      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode } }>,
       fetch(apiUrl('/balances'), { credentials: 'include' }).then(r => r.json()) as Promise<Balance[]>,
     ]).then(([settings, balances]) => {
       const existing = new Map(settings.mirror.map(m => [m.broker, m]));
@@ -32,6 +34,7 @@ export function SettingsPage() {
         lots: 0.01,
       });
       setMirror(merged);
+      if (settings.display?.pnlMode) setPnlMode(settings.display.pnlMode);
     }).catch(() => {});
   }, []);
 
@@ -47,7 +50,7 @@ export function SettingsPage() {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mirror }),
+        body: JSON.stringify({ mirror, display: { pnlMode } }),
       });
       setSaved(true);
     } finally {
@@ -106,6 +109,39 @@ export function SettingsPage() {
           {mirror.length === 0 && (
             <div className={styles.empty}>No brokers connected</div>
           )}
+        </div>
+
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.saveBtn}
+            onClick={handleSave}
+            disabled={saving}
+          >
+            {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      <div className={styles.section}>
+        <div className={styles.sectionHeader}>
+          <h2 className={styles.sectionTitle}>Display</h2>
+          <p className={styles.sectionDesc}>Customize how data is shown across the app.</p>
+        </div>
+
+        <div className={styles.brokerList}>
+          <div className={styles.displayRow}>
+            <span className={styles.displayLabel}>P&amp;L Mode</span>
+            <select
+              className={styles.select}
+              value={pnlMode}
+              onChange={e => { setPnlMode(e.target.value as PnlMode); setSaved(false); }}
+            >
+              <option value="net">Net (profit + swap + commission)</option>
+              <option value="gross">Gross (profit only)</option>
+              <option value="pips">Pips</option>
+            </select>
+          </div>
         </div>
 
         <div className={styles.actions}>

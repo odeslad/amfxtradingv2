@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
-import { type Position, fmt, fmtPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol } from './utils/position';
+import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { type FilterValues, type FilterOptions } from './Filters';
 import { PositionCard } from './PositionCard';
 import styles from './JournalPage.module.css';
@@ -20,6 +21,7 @@ interface OpenPositionsProps {
 
 export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) {
   const [positions, setPositions] = useState<Position[]>([]);
+  const { pnlMode } = useDisplaySettings();
 
   useEffect(() => {
     fetch(apiUrl('/positions/live'), { credentials: 'include' })
@@ -121,8 +123,8 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
                 <td className={p.commission < 0 ? styles.loss : p.commission > 0 ? styles.profit : styles.muted}>
                   {fmt(p.commission, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}
                 </td>
-                <td className={p.profit >= 0 ? styles.profit : styles.loss}>
-                  {fmtPnl(p.profit, p.currency)}
+                <td className={calcPnl(p, pnlMode) >= 0 ? styles.profit : styles.loss}>
+                  {fmtPnlMode(p, pnlMode)}
                 </td>
                 <td>{fmtLocalTime(p.openTime, p.brokerOffset)}</td>
                 <td className={styles.actionsCell}>
@@ -144,6 +146,7 @@ export function OpenPositions({ filters, onOptionsChange }: OpenPositionsProps) 
           <PositionCard
             key={`${p.broker}-${p.ticket}`}
             position={p}
+            pnlMode={pnlMode}
             onEdit={handleEdit}
             onClose={handleClose}
           />

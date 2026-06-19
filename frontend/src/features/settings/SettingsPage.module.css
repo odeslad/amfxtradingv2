@@ -179,6 +179,21 @@
   cursor: not-allowed;
 }
 
+.displayRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 12px 0;
+}
+
+.displayLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+  letter-spacing: var(--tracking-normal);
+}
+
 .empty {
   padding: 40px 0;
   text-align: center;

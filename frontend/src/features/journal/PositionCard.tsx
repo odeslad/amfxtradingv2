@@ -1,5 +1,5 @@
 import { useRef, useState, type TouchEvent } from 'react';
-import { type Position, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
+import { type Position, type PnlMode, fmt, fmtPnlMode, calcPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import styles from './PositionCard.module.css';
 
 const SWIPE_THRESHOLD = 50;
@@ -7,11 +7,12 @@ const TAP_TOLERANCE = 8;
 
 interface PositionCardProps {
   position: Position;
+  pnlMode: PnlMode;
   onEdit: (p: Position) => void;
   onClose: (p: Position) => void;
 }
 
-export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps) {
+export function PositionCard({ position: p, pnlMode, onEdit, onClose }: PositionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -37,12 +38,11 @@ export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps
 
   const onSummaryClick = () => {
     if (moved.current) return;
-    if (open) {
-      setOpen(false);
-      return;
-    }
+    if (open) { setOpen(false); return; }
     setExpanded(prev => !prev);
   };
+
+  const pnlValue = calcPnl(p, pnlMode);
 
   return (
     <div className={`${styles.card} ${expanded ? styles.cardExpanded : ''}`}>
@@ -71,8 +71,8 @@ export function PositionCard({ position: p, onEdit, onClose }: PositionCardProps
 
           <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
           <span className={styles.value}>{fmt(p.openPrice, 5)}</span>
-          <span className={`${p.profit >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
-            {fmtPnl(p.profit, p.currency)}
+          <span className={`${pnlValue >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
+            {fmtPnlMode(p, pnlMode)}
           </span>
         </button>
       </div>

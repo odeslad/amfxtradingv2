@@ -58,6 +58,29 @@ export function fmtPnl(n: number, currency?: string): string {
   return (n >= 0 ? '+' : '') + fmt(n) + (sym ? ` ${sym}` : '');
 }
 
+export type PnlMode = 'net' | 'gross' | 'pips';
+
+export const PNL_MODES: PnlMode[] = ['net', 'gross', 'pips'];
+
+export const PNL_LABEL: Record<PnlMode, string> = {
+  net: 'P&L Net',
+  gross: 'P&L Gross',
+  pips: 'Pips',
+};
+
+export function calcPnl(p: Position, mode: PnlMode): number {
+  if (mode === 'net') return p.profit + p.swap + p.commission;
+  if (mode === 'gross') return p.profit;
+  const pipSize = p.symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
+  return p.profit / (p.lots * pipSize * 100_000);
+}
+
+export function fmtPnlMode(p: Position, mode: PnlMode): string {
+  const value = calcPnl(p, mode);
+  if (mode === 'pips') return (value >= 0 ? '+' : '') + value.toFixed(1) + ' pips';
+  return fmtPnl(value, p.currency);
+}
+
 export function fmtDate(raw: string): string {
   return raw.replace(/\./g, '-').slice(0, 16);
 }

@@ -119,6 +119,17 @@ model BacktestTrade {
   @@map("backtest_trades")
 }
 
+model SettingsMirror {
+  id        Int      @id @default(autoincrement())
+  broker    String   @unique
+  enabled   Boolean  @default(false)
+  lotsMode  String   @default("fixed")
+  lots      Float    @default(0.01)
+  updatedAt DateTime @updatedAt
+
+  @@map("settings_mirror")
+}
+
 model User {
   id           Int      @id @default(autoincrement())
   email        String   @unique

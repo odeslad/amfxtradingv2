@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime } from './utils/position';
+import { TradeCard } from './TradeCard';
 import styles from './JournalPage.module.css';
 
 export function ClosedPositions() {
@@ -34,6 +35,8 @@ export function ClosedPositions() {
               <th>Lots</th>
               <th>Open Price</th>
               <th>Close Price</th>
+              <th>SL</th>
+              <th>TP</th>
               <th>Swap</th>
               <th>Commission</th>
               <th>P&amp;L</th>
@@ -49,6 +52,8 @@ export function ClosedPositions() {
                 <td>{fmt(t.lots, 2)}</td>
                 <td>{fmt(t.openPrice, 5)}</td>
                 <td>{fmt(t.closePrice, 5)}</td>
+                <td>{t.sl ? fmt(t.sl, 5) : '—'}</td>
+                <td>{t.tp ? fmt(t.tp, 5) : '—'}</td>
                 <td className={t.swap < 0 ? styles.loss : t.swap > 0 ? styles.profit : undefined}>
                   {fmt(t.swap, 2)}
                 </td>
@@ -68,28 +73,7 @@ export function ClosedPositions() {
 
       <div className={styles.cards}>
         {trades.map(t => (
-          <div key={`${t.broker}-${t.ticket}`} className={styles.tradeCard}>
-            <div className={styles.tradeCardHeader}>
-              <span className={t.type === 0 ? styles.buy : styles.sell}>{t.symbol}</span>
-              <span className={t.profit >= 0 ? styles.profit : styles.loss}>{fmtPnl(t.profit)}</span>
-            </div>
-            <div className={styles.tradeCardRow}>
-              <span className={styles.tradeLabel}>Open</span>
-              <span>{fmt(t.openPrice, 5)}</span>
-              <span className={styles.tradeLabel}>Close</span>
-              <span>{fmt(t.closePrice, 5)}</span>
-            </div>
-            <div className={styles.tradeCardRow}>
-              <span className={styles.tradeLabel}>Lots</span>
-              <span>{fmt(t.lots, 2)}</span>
-              <span className={styles.tradeLabel}>Broker</span>
-              <span className={styles.broker}>{t.broker}</span>
-            </div>
-            <div className={styles.tradeCardFooter}>
-              <span>{fmtLocalTime(t.openTime)}</span>
-              <span>{fmtLocalTime(t.closeTime)}</span>
-            </div>
-          </div>
+          <TradeCard key={`${t.broker}-${t.ticket}`} trade={t} />
         ))}
       </div>
     </>

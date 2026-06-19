@@ -33,6 +33,11 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     wss.broadcastPositions(brokerName, positions, currency, brokerOffset);
   });
 
+  pipe.on('account', (account) => {
+    currency = account.currency ?? currency;
+    wss.broadcastAccount(brokerName, account);
+  });
+
   watcher.on('candles', async ({ symbol, timeframe, ...data }) => {
     try { await upsertCandles(brokerName, symbol, timeframe, data); }
     catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }

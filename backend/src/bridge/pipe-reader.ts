@@ -45,6 +45,9 @@ export class PipeReader extends EventEmitter {
               this.emit('ticks', parsed as TickBatch);
             } else if (parsed?.type === 'positions') {
               this.emit('positions', parsed.positions);
+            } else if (parsed?.type === 'account') {
+              const { type: _, ...account } = parsed;
+              this.emit('account', account);
             }
           } catch {
             console.warn(`[PIPE-READER:${this.brokerName}] Failed to parse pipe message`);

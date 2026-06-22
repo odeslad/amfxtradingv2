@@ -140,26 +140,33 @@
     display: none;
   }
 
+  .tools {
+    flex: 1;
+    gap: 6px;
+  }
+
   .filtersBtn {
     display: flex;
     align-items: center;
+    justify-content: center;
+    flex: 1;
     height: 34px;
   }
 
-  .indicatorsBtnText {
-    display: none;
-  }
-
-  .indicatorsBtnIcon {
-    display: flex;
-  }
-
   .indicatorsBtn {
-    width: 34px;
+    flex: 1;
+    width: auto;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    flex-shrink: 0;
+  }
+
+  .indicatorsBtnText {
+    display: inline;
+  }
+
+  .indicatorsBtnIcon {
+    display: none;
   }
 }

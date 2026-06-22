@@ -227,6 +227,7 @@ int OnInit() {
       WriteHistoricalCandles(g_symbols[i], PERIOD_D1,  5000);
    }
 
+   lastStateSend = GetTickCount64();
    Print("[STATE] Init complete | ready to stream ticks");
    return INIT_SUCCEEDED;
 }

@@ -31,7 +31,11 @@ export function ChartPage() {
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
       .then(r => r.json() as Promise<{ broker: string }[]>)
-      .then(data => setBrokers(data.map(b => b.broker)))
+      .then(data => {
+        const list = data.map(b => b.broker);
+        setBrokers(list);
+        if (list.length > 0) setBroker(list[0]);
+      })
       .catch(() => {});
   }, []);
 
@@ -39,7 +43,10 @@ export function ChartPage() {
     if (!broker) { setSymbols([]); setSymbol(''); return; }
     fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
       .then(r => r.json() as Promise<string[]>)
-      .then(list => { setSymbols(list); setSymbol(''); })
+      .then(list => {
+        setSymbols(list);
+        setSymbol(list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
+      })
       .catch(() => {});
   }, [broker]);
 
@@ -75,7 +82,7 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} />
+          ? <LightweightChart candles={candles} timeframe={timeframe} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

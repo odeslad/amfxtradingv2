@@ -1,6 +1,6 @@
 import styles from './ChartToolbar.module.css';
 
-const TIMEFRAMES = ['M1', 'M5', 'M15', 'M30', 'H1', 'H4', 'D1'];
+const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
 
 interface ChartToolbarProps {
   brokers: string[];

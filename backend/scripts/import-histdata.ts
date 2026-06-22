@@ -135,7 +135,7 @@ async function processSymbol(symbol: string, zipFiles: string[]) {
   for (const zipPath of zipFiles) {
     process.stdout.write(`  ${path.basename(zipPath)}... `);
     const candles = readM1FromZip(zipPath);
-    allM1.push(...candles);
+    for (const c of candles) allM1.push(c);
     console.log(`${candles.length} velas M1`);
   }
 

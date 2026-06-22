@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
-import { type FilterValues, type FilterOptions } from './Filters';
+import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { TradeCard } from './TradeCard';
 import styles from './JournalPage.module.css';
 

@@ -3,7 +3,7 @@ import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
 import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
-import { type FilterValues, type FilterOptions } from './Filters';
+import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
 import { ConfirmPanel } from './ConfirmPanel';

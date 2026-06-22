@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { OpenPositions, type BulkGroup } from './OpenPositions';
 import { ClosedPositions } from './ClosedPositions';
 import { Accounts } from './Accounts';
-import { Filters, type FilterValues, type FilterOptions } from './Filters';
+import { FiltersPanel, type FilterValues, type FilterOptions } from './FiltersPanel';
 import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
@@ -24,12 +24,14 @@ export function JournalPage() {
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [closedOptions, setClosedOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [panelOpen, setPanelOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [bulk, setBulk] = useState<BulkGroup | null>(null);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkConfirmClose, setBulkConfirmClose] = useState(false);
   const [bulkClosing, setBulkClosing] = useState(false);
 
   const filterOptions = tab === 'open' ? openOptions : closedOptions;
+  const hasActiveFilters = !!(filters.broker || filters.symbol || filters.type || filters.color);
 
   const handleTabChange = (next: Tab) => {
     setTab(next);
@@ -99,17 +101,30 @@ export function JournalPage() {
         </div>
 
         <div className={styles.tabBarRight}>
+          {tab === 'open' && bulk && (
+            <>
+              <button type="button" className={styles.bulkEditBtn} onClick={() => setBulkEditOpen(true)}>
+                <span className={styles.btnDesktop}>Edit</span>
+              </button>
+              <button type="button" className={styles.bulkCloseBtn} onClick={() => setBulkConfirmClose(true)}>
+                <span className={styles.btnDesktop}>Close</span>
+              </button>
+            </>
+          )}
           {tab !== 'accounts' && (
-            <div className={styles.desktopFilters}>
-              <Filters
-                values={filters}
-                options={filterOptions}
-                onChange={setFilters}
-                bulk={tab === 'open' ? bulk : null}
-                onBulkEdit={() => setBulkEditOpen(true)}
-                onBulkClose={() => setBulkConfirmClose(true)}
-              />
-            </div>
+            <button
+              type="button"
+              className={`${styles.filtersBtn} ${hasActiveFilters ? styles.filtersBtnActive : ''}`}
+              onClick={() => setFiltersOpen(true)}
+            >
+              <span className={styles.filtersBtnDesktop}>Filters</span>
+              <span className={styles.filtersBtnMobile}>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
+                </svg>
+              </span>
+              {hasActiveFilters && <span className={styles.filtersDot} />}
+            </button>
           )}
           <button type="button" className={styles.newTradeBtn} onClick={() => setPanelOpen(true)}>
             <span className={styles.newTradeBtnDesktop}>+ New Trade</span>
@@ -118,20 +133,15 @@ export function JournalPage() {
         </div>
       </div>
 
-      {tab !== 'accounts' && (
-        <div className={styles.mobileFilters}>
-          <Filters
-            values={filters}
-            options={filterOptions}
-            onChange={setFilters}
-            bulk={tab === 'open' ? bulk : null}
-            onBulkEdit={() => setBulkEditOpen(true)}
-            onBulkClose={() => setBulkConfirmClose(true)}
-          />
-        </div>
-      )}
-
       <NewTradePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
+
+      <FiltersPanel
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        values={filters}
+        options={filterOptions}
+        onChange={setFilters}
+      />
 
       <BulkEditPanel
         open={bulkEditOpen}

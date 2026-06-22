@@ -21,38 +21,26 @@
   padding-bottom: 4px;
 }
 
-.desktopFilters {
-  display: flex;
-  align-items: center;
-}
-
-.bulkDesktop {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.bulkDesktopEdit {
+.bulkEditBtn {
   height: 27px;
   padding: 0 10px;
   background: transparent;
-  border: 1px solid var(--border-bright);
-  color: var(--muted);
+  border: 1px solid var(--orange);
+  color: var(--orange);
   font-family: var(--font-sans);
   font-size: var(--text-2xs);
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  transition: color 0.12s, border-color 0.12s;
+  transition: background 0.12s ease;
 }
 
-.bulkDesktopEdit:hover {
-  color: var(--text);
-  border-color: var(--text);
+.bulkEditBtn:hover {
+  background: rgba(245, 166, 35, 0.12);
 }
 
-.bulkDesktopClose {
+.bulkCloseBtn {
   height: 27px;
   padding: 0 10px;
   background: transparent;
@@ -64,12 +52,54 @@
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
-  transition: background 0.12s;
+  transition: background 0.12s ease;
 }
 
-.bulkDesktopClose:hover {
+.bulkCloseBtn:hover {
   background: rgba(224, 92, 92, 0.12);
 }
+
+.filtersBtn {
+  position: relative;
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.filtersBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.filtersBtnActive {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.filtersBtnMobile {
+  display: none;
+}
+
+.filtersDot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--orange);
+  flex-shrink: 0;
+}
+
 
 .newTradeBtn {
   height: 27px;
@@ -94,9 +124,6 @@
   display: none;
 }
 
-.mobileFilters {
-  display: none;
-}
 
 .tab {
   padding: 12px 24px;
@@ -183,49 +210,64 @@
   }
 
   .tabBar {
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     gap: 0;
     margin-bottom: 0;
+    border-bottom: none;
   }
 
   .tabs {
-    flex: 1;
-  }
-
-  .desktopFilters {
-    display: none;
+    flex: 1 0 100%;
+    border-bottom: 1px solid var(--border);
   }
 
   .tabBarRight {
     padding-bottom: 0;
     align-self: center;
+    width: 100%;
+    justify-content: stretch;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--border);
+    margin-top: 8px;
   }
 
-  .newTradeBtnDesktop {
+  .tabBarRight > * {
+    flex: auto;
+  }
+
+  .bulkEditBtn,
+  .bulkCloseBtn {
+    height: 34px;
+    font-size: var(--text-2xs);
+    padding: 0 8px;
+  }
+
+  .filtersBtnMobile {
     display: none;
   }
 
+  .filtersBtn {
+    height: 34px;
+    padding: 0;
+    justify-content: center;
+  }
+
+  .filtersDot {
+    position: static;
+    width: 5px;
+    height: 5px;
+  }
+
   .newTradeBtnMobile {
-    display: inline;
-    font-size: var(--text-2xl);
-    line-height: 1;
-    position: relative;
-    top: -2px;
+    display: none;
   }
 
   .newTradeBtn {
-    width: 34px;
     height: 34px;
     padding: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-  }
-
-  .mobileFilters {
-    display: block;
-    width: 100%;
-    padding: 0;
   }
 
   .tabContent {

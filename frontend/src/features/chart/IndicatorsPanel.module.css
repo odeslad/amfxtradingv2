@@ -87,18 +87,14 @@
 }
 
 .emaRow {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.emaRowTop {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+}
+
+.colorPickerWrap {
+  position: relative;
+  flex-shrink: 0;
 }
 
 .colorSwatch {
@@ -107,24 +103,60 @@
   border-radius: 2px;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.2);
-  flex-shrink: 0;
   display: block;
-  position: relative;
+  padding: 0;
+  transition: border-color 0.12s;
 }
 
-.colorInput {
-  opacity: 0;
+.colorSwatch:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+.colorPopover {
   position: absolute;
-  width: 0;
-  height: 0;
-  pointer-events: none;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 10;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  padding: 6px;
+  display: grid;
+  grid-template-columns: repeat(4, 20px);
+  gap: 4px;
 }
 
-.emaName {
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  color: var(--text);
+.paletteCell {
+  width: 20px;
+  height: 20px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  transition: border-color 0.12s;
+}
+
+.paletteCell:hover {
+  border-color: rgba(255, 255, 255, 0.6);
+}
+
+.paletteCellActive {
+  border-color: #fff;
+}
+
+.inputPeriod {
+  width: 60px;
+  flex-shrink: 0;
+}
+
+.inputStyle {
   flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.inputWidth {
+  width: 56px;
+  flex-shrink: 0;
 }
 
 .removeBtn {
@@ -141,11 +173,6 @@
 
 .removeBtn:hover {
   color: var(--red);
-}
-
-.emaRowFields {
-  display: flex;
-  gap: 8px;
 }
 
 /* ── shared field ── */
@@ -174,7 +201,6 @@
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   outline: none;
-  width: 100%;
   box-sizing: border-box;
   transition: border-color 0.12s ease;
   appearance: none;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import {
-  createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType,
+  createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType, CrosshairMode,
   type IChartApi, type ISeriesApi, type CandlestickData, type Time,
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
@@ -182,8 +182,9 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore, e
         horzLines: { color: 'rgba(255,255,255,0.04)' },
       },
       crosshair: {
-        vertLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#1e1e1e' },
-        horzLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#1e1e1e' },
+        mode: CrosshairMode.Normal,
+        vertLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623' },
+        horzLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623' },
       },
       rightPriceScale: {
         borderColor: 'rgba(255,255,255,0.08)',
@@ -297,6 +298,7 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore, e
       });
       isLoadingMoreRef.current = false;
     } else if (!isPrepend && chartRef.current && containerRef.current) {
+      seriesRef.current.priceScale().applyOptions({ autoScale: true });
       const barSpacing = 6;
       chartRef.current.timeScale().applyOptions({ barSpacing });
       const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);

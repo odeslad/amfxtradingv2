@@ -62,10 +62,12 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
           </div>
         </div>
 
-        <button
-          type="button"
+        <div
+          role="button"
+          tabIndex={0}
           className={`${styles.summary} ${expanded ? styles.summaryActive : ''}`}
           onClick={onSummaryClick}
+          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onSummaryClick(); }}
           aria-expanded={expanded}
         >
           <span className={styles.label}>Symbol</span>
@@ -80,7 +82,7 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
           <span className={`${pnlValue >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
             {fmtPnlMode(p, pnlMode)}
           </span>
-        </button>
+        </div>
       </div>
 
       {expanded && (

@@ -27,33 +27,29 @@ function getPricePrecision(candles: Candle[]): number {
   return dot === -1 ? 0 : sample.length - dot - 1;
 }
 
-function lastSundayOf(year: number, month: number): Date {
-  const d = new Date(Date.UTC(year, month + 1, 0));
-  d.setUTCDate(d.getUTCDate() - d.getUTCDay());
-  return d;
-}
-
-function isCEST(utcMs: number): boolean {
-  const year = new Date(utcMs).getUTCFullYear();
-  const marchTransition = lastSundayOf(year, 2);
-  marchTransition.setUTCHours(1, 0, 0, 0);
-  const octTransition = lastSundayOf(year, 9);
-  octTransition.setUTCHours(1, 0, 0, 0);
-  return utcMs >= marchTransition.getTime() && utcMs < octTransition.getTime();
-}
 
 function getRolloverTimes(fromSec: number, toSec: number): number[] {
   const times: number[] = [];
   const cursor = new Date((fromSec - 86400) * 1000);
   cursor.setUTCHours(0, 0, 0, 0);
 
-  while (cursor.getTime() / 1000 <= toSec + 86400) {
-    const candidateMs = cursor.getTime();
-    const rolloverHour = isCEST(candidateMs + 21 * 3600 * 1000) ? 21 : 22;
-    const rolloverSec = candidateMs / 1000 + rolloverHour * 3600;
-    if (rolloverSec >= fromSec && rolloverSec <= toSec) {
-      times.push(rolloverSec);
+  while (cursor.getTime() / 1000 <= toSec + 4 * 86400) {
+    const dayOfWeek = cursor.getUTCDay(); // 0=Sun, 1=Mon...5=Fri, 6=Sat
+    const midnightSec = cursor.getTime() / 1000;
+
+    if (dayOfWeek === 5) {
+      // Friday: line at 23:00 broker time
+      const fridayLine = midnightSec + 23 * 3600;
+      if (fridayLine >= fromSec && fridayLine <= toSec + 86400) times.push(fridayLine);
+      // Monday 00:00 broker time = Friday + 3 days
+      const mondayLine = midnightSec + 3 * 86400;
+      if (mondayLine >= fromSec && mondayLine <= toSec + 4 * 86400) times.push(mondayLine);
+    } else if (dayOfWeek !== 0 && dayOfWeek !== 6) {
+      // Mon–Thu: rollover at 23:00 broker time
+      const rolloverSec = midnightSec + 23 * 3600;
+      if (rolloverSec >= fromSec && rolloverSec <= toSec + 86400) times.push(rolloverSec);
     }
+
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
 
@@ -143,6 +139,12 @@ export function LightweightChart({ candles, timeframe }: LightweightChartProps) 
     chartRef.current = chart;
     seriesRef.current = series;
 
+    // Initialize overlay canvas size immediately
+    if (overlayRef.current && containerRef.current) {
+      overlayRef.current.width = containerRef.current.clientWidth;
+      overlayRef.current.height = containerRef.current.clientHeight;
+    }
+
     chart.timeScale().subscribeVisibleLogicalRangeChange(drawRollovers);
 
     const ro = new ResizeObserver(() => {
@@ -175,13 +177,20 @@ export function LightweightChart({ candles, timeframe }: LightweightChartProps) 
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
     });
 
-    const data: CandlestickData[] = candles.map(c => ({
-      time: c.time as Time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    const data: CandlestickData[] = candles
+      .filter(c => {
+        const day = new Date(c.time * 1000).getUTCDay();
+        if (day === 6) return false;                    // broker Saturday
+        if (day === 0) return false;                    // broker Sunday
+        return true;
+      })
+      .map(c => ({
+        time: c.time as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
     seriesRef.current.setData(data);
 
     const timeScale = chartRef.current?.timeScale();

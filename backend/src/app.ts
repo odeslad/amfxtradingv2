@@ -10,6 +10,7 @@ import settingsRouter from './routes/settings';
 import strategiesRouter from './routes/strategies';
 import symbolsRouter from './routes/symbols';
 import candlesRouter from './routes/candles';
+import chartIndicatorsRouter from './routes/chart-indicators';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -38,5 +39,6 @@ app.use('/strategies', requireAuth, strategiesRouter);
 app.use('/settings', requireAuth, settingsRouter);
 app.use('/symbols', requireAuth, symbolsRouter);
 app.use('/candles', requireAuth, candlesRouter);
+app.use('/chart-indicators', requireAuth, chartIndicatorsRouter);
 
 export default app;

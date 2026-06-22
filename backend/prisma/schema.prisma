@@ -151,12 +151,22 @@ model PositionColor {
 }
 
 model User {
-  id           Int      @id @default(autoincrement())
-  email        String   @unique
-  passwordHash String
-  createdAt    DateTime @default(now())
+  id                Int               @id @default(autoincrement())
+  email             String            @unique
+  passwordHash      String
+  createdAt         DateTime          @default(now())
+  chartIndicators   ChartIndicators?
 
   @@map("users")
+}
+
+model ChartIndicators {
+  id     Int  @id @default(autoincrement())
+  userId Int  @unique
+  user   User @relation(fields: [userId], references: [id])
+  emas   Json @default("[]")
+
+  @@map("chart_indicators")
 }
 
 model Balance {

@@ -14,6 +14,15 @@ export function setBroadcaster(fn: Broadcaster) {
   broadcaster = fn;
 }
 
+type QueueTask = () => Promise<void>;
+const brokerQueues = new Map<string, Promise<void>>();
+
+function enqueue(broker: string, task: QueueTask): void {
+  const prev = brokerQueues.get(broker) ?? Promise.resolve();
+  const next = prev.then(task).catch(() => {});
+  brokerQueues.set(broker, next);
+}
+
 const router = Router();
 
 function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Promise<Record<string, unknown>> {
@@ -95,11 +104,6 @@ router.post('/', (req, res) => {
   const commandPath = path.join(brokerConfig.bridgePath, 'command.json');
   const resultPath = path.join(brokerConfig.bridgePath, 'result.json');
 
-  if (fs.existsSync(commandPath)) {
-    res.status(409).json({ error: 'A command is already pending for this broker' });
-    return;
-  }
-
   const command = {
     action, id, broker, symbol, lots,
     sl: sl ?? 0, tp: tp ?? 0,
@@ -107,27 +111,30 @@ router.post('/', (req, res) => {
     ...(ticket !== undefined ? { ticket } : {}),
   };
 
-  try {
-    fs.writeFileSync(commandPath, JSON.stringify(command));
-    res.status(202).json({ status: 'pending', id });
-  } catch (err) {
-    console.error(`[CMD:${broker}] Failed to write command.json`, err);
-    res.status(500).json({ error: 'Failed to write command' });
-    return;
-  }
+  res.status(202).json({ status: 'pending', id });
 
-  waitForResult(resultPath, id as string)
-    .then((result) => {
-      const status = String(result['status'] ?? 'unknown');
-      const ticket = typeof result['ticket'] === 'number' ? result['ticket'] : undefined;
-      const code = result['code'] !== undefined ? ` (code ${result['code']})` : '';
-      broadcaster?.(id as string, status, ticket, status !== 'ok' ? `EA error${code}` : undefined);
-      console.log(`[CMD:${broker}] result id=${id} status=${status} ticket=${ticket ?? '-'}`);
-    })
-    .catch(() => {
-      broadcaster?.(id as string, 'timeout', undefined, 'No response from EA');
-      console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
-    });
+  enqueue(broker, async () => {
+    try {
+      fs.writeFileSync(commandPath, JSON.stringify(command));
+    } catch (err) {
+      console.error(`[CMD:${broker}] Failed to write command.json`, err);
+      broadcaster?.(id as string, 'error', undefined, 'Failed to write command');
+      return;
+    }
+
+    await waitForResult(resultPath, id as string)
+      .then((result) => {
+        const status = String(result['status'] ?? 'unknown');
+        const ticket = typeof result['ticket'] === 'number' ? result['ticket'] : undefined;
+        const code = result['code'] !== undefined ? ` (code ${result['code']})` : '';
+        broadcaster?.(id as string, status, ticket, status !== 'ok' ? `EA error${code}` : undefined);
+        console.log(`[CMD:${broker}] result id=${id} status=${status} ticket=${ticket ?? '-'}`);
+      })
+      .catch(() => {
+        broadcaster?.(id as string, 'timeout', undefined, 'No response from EA');
+        console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
+      });
+  });
 });
 
 export default router;

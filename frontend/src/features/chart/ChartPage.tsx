@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
@@ -39,6 +39,11 @@ export function ChartPage() {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const candlesRef = useRef<Candle[]>([]);
+
+  useEffect(() => { candlesRef.current = candles; }, [candles]);
 
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
@@ -84,7 +89,8 @@ export function ChartPage() {
 
   useEffect(() => {
     if (!broker || !symbol) { setCandles([]); return; }
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}`), { credentials: 'include' })
+    setHasMore(true);
+    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
         const parsed = data.map(c => ({
@@ -99,6 +105,29 @@ export function ChartPage() {
       })
       .catch(() => {});
   }, [broker, symbol, timeframe]);
+
+  const loadMoreCandles = useCallback(() => {
+    if (isLoadingMore || !hasMore || !broker || !symbol) return;
+    const oldest = candlesRef.current[0]?.time;
+    if (!oldest) return;
+    setIsLoadingMore(true);
+    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include' })
+      .then(r => r.json() as Promise<RawCandle[]>)
+      .then(data => {
+        if (data.length === 0) { setHasMore(false); return; }
+        const parsed = data.map(c => ({
+          time: Math.floor(new Date(c.openTime).getTime() / 1000),
+          open: c.open,
+          high: c.high,
+          low: c.low,
+          close: c.close,
+        }));
+        parsed.sort((a, b) => a.time - b.time);
+        setCandles(prev => [...parsed, ...prev]);
+      })
+      .catch(() => {})
+      .finally(() => setIsLoadingMore(false));
+  }, [isLoadingMore, hasMore, broker, symbol, timeframe]);
 
   return (
     <div className={styles.page}>
@@ -116,7 +145,7 @@ export function ChartPage() {
       <IndicatorsPanel open={indicatorsOpen} onClose={() => setIndicatorsOpen(false)} />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} timeframe={timeframe} liveCandle={liveCandle} />
+          ? <LightweightChart candles={candles} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

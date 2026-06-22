@@ -19,6 +19,7 @@ interface LightweightChartProps {
   candles: Candle[];
   timeframe: string;
   liveCandle?: Candle | null;
+  onLoadMore?: () => void;
 }
 
 function getPricePrecision(candles: Candle[]): number {
@@ -57,7 +58,7 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
-export function LightweightChart({ candles, timeframe, liveCandle }: LightweightChartProps) {
+export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -65,6 +66,10 @@ export function LightweightChart({ candles, timeframe, liveCandle }: Lightweight
   const candlesRef = useRef<Candle[]>([]);
   const timeframeRef = useRef<string>(timeframe);
   const liveCandleTimeRef = useRef<number | null>(null);
+  const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
+  const isLoadingMoreRef = useRef(false);
+
+  useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
   const drawRollovers = useCallback(() => {
     const canvas = overlayRef.current;
@@ -161,7 +166,14 @@ export function LightweightChart({ candles, timeframe, liveCandle }: Lightweight
       overlayRef.current.height = containerRef.current.clientHeight;
     }
 
-    chart.timeScale().subscribeVisibleLogicalRangeChange(drawRollovers);
+    chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+      drawRollovers();
+      if (!range || isLoadingMoreRef.current || !onLoadMoreRef.current) return;
+      if (range.from <= 30) {
+        isLoadingMoreRef.current = true;
+        onLoadMoreRef.current();
+      }
+    });
 
     const ro = new ResizeObserver(() => {
       if (!containerRef.current || !overlayRef.current) return;
@@ -185,6 +197,14 @@ export function LightweightChart({ candles, timeframe, liveCandle }: Lightweight
   useEffect(() => {
     if (!seriesRef.current || candles.length === 0) return;
 
+    const oldCandles = candlesRef.current;
+    const isPrepend = oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
+
+    let savedRange: { from: number; to: number } | null = null;
+    if (isPrepend && chartRef.current) {
+      savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    }
+
     candlesRef.current = candles;
     timeframeRef.current = timeframe;
 
@@ -193,28 +213,31 @@ export function LightweightChart({ candles, timeframe, liveCandle }: Lightweight
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
     });
 
-    const data: CandlestickData[] = candles
-      .filter(c => {
-        const day = new Date(c.time * 1000).getUTCDay();
-        if (day === 6) return false;                    // broker Saturday
-        if (day === 0) return false;                    // broker Sunday
-        return true;
-      })
-      .map(c => ({
-        time: c.time as Time,
-        open: c.open,
-        high: c.high,
-        low: c.low,
-        close: c.close,
-      }));
+    const filterWeekend = (arr: Candle[]) =>
+      arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
+
+    const filteredNew = filterWeekend(candles);
+    const data: CandlestickData[] = filteredNew.map(c => ({
+      time: c.time as Time,
+      open: c.open,
+      high: c.high,
+      low: c.low,
+      close: c.close,
+    }));
     seriesRef.current.setData(data);
 
-    const timeScale = chartRef.current?.timeScale();
-    if (timeScale && containerRef.current) {
+    if (isPrepend && savedRange && chartRef.current) {
+      const prependCount = filteredNew.length - filterWeekend(oldCandles).length;
+      chartRef.current.timeScale().setVisibleLogicalRange({
+        from: savedRange.from + prependCount,
+        to: savedRange.to + prependCount,
+      });
+      isLoadingMoreRef.current = false;
+    } else if (!isPrepend && chartRef.current && containerRef.current) {
       const barSpacing = 6;
-      timeScale.applyOptions({ barSpacing });
+      chartRef.current.timeScale().applyOptions({ barSpacing });
       const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);
-      timeScale.scrollToPosition(Math.floor(visibleBars * 0.3), false);
+      chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
     }
 
     drawRollovers();

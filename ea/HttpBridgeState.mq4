@@ -218,13 +218,13 @@ int OnInit() {
          " | symbol count: ", g_symbolCount,
          " | state every: ", STATE_EVERY_S, "s");
 
-   Print("[STATE] Writing historical candles (", g_symbolCount, " symbols × 5 timeframes × 5000 bars)...");
+   Print("[STATE] Writing historical candles (", g_symbolCount, " symbols × 5 timeframes × all available bars)...");
    for (int i = 0; i < g_symbolCount; i++) {
-      WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  5000);
-      WriteHistoricalCandles(g_symbols[i], PERIOD_M15, 5000);
-      WriteHistoricalCandles(g_symbols[i], PERIOD_H1,  5000);
-      WriteHistoricalCandles(g_symbols[i], PERIOD_H4,  5000);
-      WriteHistoricalCandles(g_symbols[i], PERIOD_D1,  5000);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_M5,  999999);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_M15, 999999);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_H1,  999999);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_H4,  999999);
+      WriteHistoricalCandles(g_symbols[i], PERIOD_D1,  999999);
    }
 
    lastStateSend = (ulong)GetTickCount();
@@ -418,23 +418,28 @@ void WriteHistoricalCandles(string sym, int period, int maxBars) {
    int    limit        = MathMin(total - 1, maxBars);
    int    brokerOffset = (int)(TimeCurrent() - TimeGMT());
    string label        = PeriodToLabel(period);
+   string filename     = "bridge\\candles_" + sym + "_" + label + ".json";
 
-   string candles = "";
-   bool first = true;
-   for (int i = limit; i >= 0; i--) {
-      if (!first) candles += ",";
-      candles += "{";
-      candles += "\"time\":"  + IntegerToString(iTime(sym, period, i)) + ",";
-      candles += "\"open\":"  + DoubleToString(iOpen(sym,  period, i), 5) + ",";
-      candles += "\"high\":"  + DoubleToString(iHigh(sym,  period, i), 5) + ",";
-      candles += "\"low\":"   + DoubleToString(iLow(sym,   period, i), 5) + ",";
-      candles += "\"close\":" + DoubleToString(iClose(sym, period, i), 5);
-      candles += "}";
-      first = false;
+   int handle = FileOpen(filename, FILE_WRITE | FILE_TXT | FILE_ANSI);
+   if (handle == INVALID_HANDLE) {
+      Print("[STATE] ERROR: could not write candles file: ", filename);
+      return;
    }
 
-   string json = "{\"brokerOffset\":" + IntegerToString(brokerOffset) + ",\"candles\":[" + candles + "]}";
-   WriteFile("candles_" + sym + "_" + label + ".json", json);
+   FileWriteString(handle, "{\"brokerOffset\":" + IntegerToString(brokerOffset) + ",\"candles\":[");
+
+   for (int i = limit; i >= 0; i--) {
+      string entry = "{\"time\":"  + IntegerToString(iTime(sym, period, i))  +
+                     ",\"open\":"  + DoubleToString(iOpen(sym,  period, i), 5) +
+                     ",\"high\":"  + DoubleToString(iHigh(sym,  period, i), 5) +
+                     ",\"low\":"   + DoubleToString(iLow(sym,   period, i), 5) +
+                     ",\"close\":" + DoubleToString(iClose(sym, period, i), 5) + "}";
+      if (i < limit) FileWriteString(handle, ",");
+      FileWriteString(handle, entry);
+   }
+
+   FileWriteString(handle, "]}");
+   FileClose(handle);
 }
 
 void WriteFile(string filename, string content) {

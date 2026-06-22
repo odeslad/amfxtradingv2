@@ -68,7 +68,7 @@ export function ChartPage() {
   }, [broker]);
 
   useWs(useCallback((msg: unknown) => {
-    const m = msg as { type: string; broker: string; ticks: Record<string, string | number>[] };
+    const m = msg as { type: string; broker: string; ticks: ({ symbol: string } & Record<string, number>)[] };
     if (m.type !== 'ticks' || m.broker !== broker) return;
     const keys = TF_KEYS[timeframe];
     if (!keys) return;

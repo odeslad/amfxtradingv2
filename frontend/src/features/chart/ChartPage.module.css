@@ -1,0 +1,35 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  /* break out of AppLayout .main padding (20px top/bottom, 24px sides) */
+  margin: -20px -24px;
+  height: calc(100% + 40px);
+  overflow: hidden;
+}
+
+.chartArea {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  .page {
+    margin: -16px -16px;
+    height: calc(100% + 32px);
+  }
+}

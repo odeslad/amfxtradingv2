@@ -20,11 +20,5 @@ export async function upsertCandles(
     close: c.close,
   }));
 
-  for (const record of records) {
-    await db.candle.upsert({
-      where: { broker_symbol_timeframe_time: { broker: record.broker, symbol: record.symbol, timeframe: record.timeframe, time: record.time } },
-      update: { open: record.open, high: record.high, low: record.low, close: record.close },
-      create: record,
-    });
-  }
+  await db.candle.createMany({ data: records, skipDuplicates: true });
 }

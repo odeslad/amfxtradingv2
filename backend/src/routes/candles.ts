@@ -11,7 +11,7 @@ router.get('/', async (req, res) => {
     return;
   }
 
-  const take = Math.min(parseInt(limit ?? '1000', 10), 5000);
+  const take = limit ? Math.min(parseInt(limit, 10), 10000) : undefined;
 
   const candles = await db.candle.findMany({
     where: { broker, symbol, timeframe: tf },

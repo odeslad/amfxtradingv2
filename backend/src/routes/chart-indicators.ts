@@ -10,7 +10,7 @@ router.get('/', async (req: AuthRequest, res) => {
 });
 
 router.put('/', async (req: AuthRequest, res) => {
-  const { emas } = req.body as { emas: unknown };
+  const { emas } = req.body as { emas: object };
   const record = await db.chartIndicators.upsert({
     where:  { userId: req.userId! },
     update: { emas },

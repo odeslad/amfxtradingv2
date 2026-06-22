@@ -1,0 +1,13 @@
+﻿{
+  "assets": {
+    "EURUSD": {
+      "enabled": true
+    },
+    "AUDCAD": {
+      "enabled": false
+    },
+    "AUDJPY": {
+      "enabled": false
+    }
+  }
+}

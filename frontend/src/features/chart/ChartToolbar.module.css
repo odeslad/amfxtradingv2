@@ -105,7 +105,47 @@
   align-items: center;
 }
 
+.filtersBtn {
+  display: none;
+  height: 34px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+  flex-shrink: 0;
+}
+
+.filtersBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.tfSelect {
+  display: none;
+  min-width: 70px;
+}
+
 @media (max-width: 768px) {
+  .toolbar {
+    height: 48px;
+    padding: 0 8px;
+  }
+
+  .selects {
+    display: none;
+  }
+
+  .filtersBtn {
+    display: flex;
+    align-items: center;
+    height: 34px;
+  }
+
   .indicatorsBtnText {
     display: none;
   }
@@ -121,38 +161,5 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
-  }
-}
-
-.tfSelect {
-  display: none;
-  min-width: 70px;
-}
-
-@media (max-width: 768px) {
-  .toolbar {
-    height: 48px;
-    padding: 0 8px;
-  }
-
-  .selects {
-    flex: 1;
-    gap: 6px;
-  }
-
-  .select {
-    flex: 1;
-    min-width: 0;
-    height: 34px;
-  }
-
-  .tfGroup {
-    display: none;
-  }
-
-  .tfSelect {
-    display: block;
-    flex: 0 0 auto;
-    width: 70px;
   }
 }

@@ -13,11 +13,12 @@ interface ChartToolbarProps {
   onSymbolChange: (v: string) => void;
   onTimeframeChange: (v: string) => void;
   onIndicators: () => void;
+  onFilters: () => void;
 }
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
-  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators,
+  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -55,6 +56,9 @@ export function ChartToolbar({
       </div>
 
       <div className={styles.tools}>
+        <button type="button" className={styles.filtersBtn} onClick={onFilters}>
+          Filters
+        </button>
         <button type="button" className={styles.indicatorsBtn} onClick={onIndicators}>
           <span className={styles.indicatorsBtnText}>Indicators</span>
           <span className={styles.indicatorsBtnIcon}><IconIndicators size={14} /></span>

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
+import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { LightweightChart } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import type { Ema } from './chart.types';
@@ -40,6 +41,7 @@ export function ChartPage() {
   const [candles, setCandles] = useState<Candle[]>([]);
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -161,6 +163,19 @@ export function ChartPage() {
         onSymbolChange={setSymbol}
         onTimeframeChange={setTimeframe}
         onIndicators={() => setIndicatorsOpen(true)}
+        onFilters={() => setFiltersOpen(true)}
+      />
+      <ChartFiltersPanel
+        open={filtersOpen}
+        onClose={() => setFiltersOpen(false)}
+        brokers={brokers}
+        symbols={symbols}
+        broker={broker}
+        symbol={symbol}
+        timeframe={timeframe}
+        onBrokerChange={setBroker}
+        onSymbolChange={setSymbol}
+        onTimeframeChange={setTimeframe}
       />
       <IndicatorsPanel
         open={indicatorsOpen}

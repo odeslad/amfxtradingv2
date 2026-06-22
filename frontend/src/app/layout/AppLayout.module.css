@@ -185,6 +185,7 @@
     margin-left: 0;
     padding: 16px;
     padding-bottom: calc(56px + env(safe-area-inset-bottom));
+    position: relative;
   }
 
   .bottomNav {

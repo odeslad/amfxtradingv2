@@ -61,6 +61,17 @@ export function IconSettings({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconIndicators({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1" y1="14" x2="15" y2="14" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="3" y1="14" x2="3" y2="6" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="7" y1="14" x2="7" y2="2" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="11" y1="14" x2="11" y2="8" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconJournal({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

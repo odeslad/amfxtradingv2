@@ -1,16 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
+import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { LightweightChart } from './LightweightChart';
+import { IndicatorsPanel } from './IndicatorsPanel';
 import styles from './ChartPage.module.css';
-
-interface Candle {
-  time: number;
-  open: number;
-  high: number;
-  low: number;
-  close: number;
-}
 
 interface RawCandle {
   openTime: string | number;
@@ -20,6 +14,22 @@ interface RawCandle {
   close: number;
 }
 
+interface Candle {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+}
+
+const TF_KEYS: Record<string, { time: string; open: string; high: string; low: string }> = {
+  M5:  { time: 'm5_time',  open: 'm5_open',  high: 'm5_high',  low: 'm5_low'  },
+  M15: { time: 'm15_time', open: 'm15_open', high: 'm15_high', low: 'm15_low' },
+  H1:  { time: 'h1_time',  open: 'h1_open',  high: 'h1_high',  low: 'h1_low'  },
+  H4:  { time: 'h4_time',  open: 'h4_open',  high: 'h4_high',  low: 'h4_low'  },
+  D1:  { time: 'd1_time',  open: 'd1_open',  high: 'd1_high',  low: 'd1_low'  },
+};
+
 export function ChartPage() {
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -27,6 +37,8 @@ export function ChartPage() {
   const [symbol, setSymbol] = useState('');
   const [timeframe, setTimeframe] = useState('H1');
   const [candles, setCandles] = useState<Candle[]>([]);
+  const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
+  const [indicatorsOpen, setIndicatorsOpen] = useState(false);
 
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
@@ -49,6 +61,26 @@ export function ChartPage() {
       })
       .catch(() => {});
   }, [broker]);
+
+  useWs(useCallback((msg: unknown) => {
+    const m = msg as { type: string; broker: string; ticks: Record<string, number>[] };
+    if (m.type !== 'ticks' || m.broker !== broker) return;
+    const keys = TF_KEYS[timeframe];
+    if (!keys) return;
+    const last = m.ticks.findLast((t) => t.symbol === symbol);
+    if (!last) return;
+    setLiveCandle({
+      time: last[keys.time],
+      open: last[keys.open],
+      high: last[keys.high],
+      low: last[keys.low],
+      close: last.bid,
+    });
+  }, [broker, symbol, timeframe]));
+
+  useEffect(() => {
+    setLiveCandle(null);
+  }, [broker, symbol, timeframe]);
 
   useEffect(() => {
     if (!broker || !symbol) { setCandles([]); return; }
@@ -79,10 +111,12 @@ export function ChartPage() {
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
         onTimeframeChange={setTimeframe}
+        onIndicators={() => setIndicatorsOpen(true)}
       />
+      <IndicatorsPanel open={indicatorsOpen} onClose={() => setIndicatorsOpen(false)} />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} timeframe={timeframe} />
+          ? <LightweightChart candles={candles} timeframe={timeframe} liveCandle={liveCandle} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

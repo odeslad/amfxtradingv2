@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import {
-  createChart, CandlestickSeries,
+  createChart, CandlestickSeries, TickMarkType,
   type IChartApi, type ISeriesApi, type CandlestickData, type Time,
 } from 'lightweight-charts';
 import styles from './LightweightChart.module.css';
@@ -18,6 +18,7 @@ const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1']);
 interface LightweightChartProps {
   candles: Candle[];
   timeframe: string;
+  liveCandle?: Candle | null;
 }
 
 function getPricePrecision(candles: Candle[]): number {
@@ -56,13 +57,14 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
-export function LightweightChart({ candles, timeframe }: LightweightChartProps) {
+export function LightweightChart({ candles, timeframe, liveCandle }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const candlesRef = useRef<Candle[]>([]);
   const timeframeRef = useRef<string>(timeframe);
+  const liveCandleTimeRef = useRef<number | null>(null);
 
   const drawRollovers = useCallback(() => {
     const canvas = overlayRef.current;
@@ -122,6 +124,18 @@ export function LightweightChart({ candles, timeframe }: LightweightChartProps) 
         borderColor: 'rgba(255,255,255,0.08)',
         timeVisible: true,
         secondsVisible: false,
+        tickMarkFormatter: (time: number, type: TickMarkType) => {
+          if (liveCandleTimeRef.current !== null && time === liveCandleTimeRef.current) return '';
+          const d = new Date(time * 1000);
+          if (type === TickMarkType.Year) return String(d.getUTCFullYear());
+          if (type === TickMarkType.Month) {
+            return d.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
+          }
+          if (type === TickMarkType.DayOfMonth) return String(d.getUTCDate());
+          const hh = String(d.getUTCHours()).padStart(2, '0');
+          const mm = String(d.getUTCMinutes()).padStart(2, '0');
+          return `${hh}:${mm}`;
+        },
       },
       handleScroll: true,
       handleScale: true,
@@ -134,6 +148,8 @@ export function LightweightChart({ candles, timeframe }: LightweightChartProps) 
       borderDownColor: 'rgba(255,255,255,0.8)',
       wickUpColor: 'rgba(255,255,255,0.8)',
       wickDownColor: 'rgba(255,255,255,0.8)',
+      priceLineColor: 'rgba(180,180,180,0.4)',
+      priceLineWidth: 1,
     });
 
     chartRef.current = chart;
@@ -203,6 +219,22 @@ export function LightweightChart({ candles, timeframe }: LightweightChartProps) 
 
     drawRollovers();
   }, [candles, drawRollovers]);
+
+  useEffect(() => {
+    if (!seriesRef.current || !liveCandle || liveCandle.time < 1_000_000_000) return;
+    liveCandleTimeRef.current = liveCandle.time;
+    try {
+      seriesRef.current.update({
+        time: liveCandle.time as Time,
+        open: liveCandle.open,
+        high: liveCandle.high,
+        low: liveCandle.low,
+        close: liveCandle.close,
+      });
+    } catch {
+      // live candle time is older than last bar — skip silently
+    }
+  }, [liveCandle]);
 
   return (
     <div ref={containerRef} className={styles.chart}>

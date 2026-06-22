@@ -1,3 +1,4 @@
+import { IconIndicators } from '../../shared/ui/icons';
 import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -11,11 +12,12 @@ interface ChartToolbarProps {
   onBrokerChange: (v: string) => void;
   onSymbolChange: (v: string) => void;
   onTimeframeChange: (v: string) => void;
+  onIndicators: () => void;
 }
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
-  onBrokerChange, onSymbolChange, onTimeframeChange,
+  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -42,10 +44,21 @@ export function ChartToolbar({
             </button>
           ))}
         </div>
+
+        <select
+          className={`${styles.select} ${styles.tfSelect}`}
+          value={timeframe}
+          onChange={e => onTimeframeChange(e.target.value)}
+        >
+          {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
+        </select>
       </div>
 
       <div className={styles.tools}>
-        {/* future drawing tools */}
+        <button type="button" className={styles.indicatorsBtn} onClick={onIndicators}>
+          <span className={styles.indicatorsBtnText}>Indicators</span>
+          <span className={styles.indicatorsBtnIcon}><IconIndicators size={14} /></span>
+        </button>
       </div>
     </div>
   );

@@ -79,19 +79,65 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+}
+
+.indicatorsBtn {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.indicatorsBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.indicatorsBtnIcon {
+  display: none;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .indicatorsBtnText {
+    display: none;
+  }
+
+  .indicatorsBtnIcon {
+    display: flex;
+  }
+
+  .indicatorsBtn {
+    width: 34px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+}
+
+.tfSelect {
+  display: none;
+  min-width: 70px;
 }
 
 @media (max-width: 768px) {
   .toolbar {
-    height: auto;
-    flex-wrap: wrap;
-    padding: 8px;
-    gap: 6px;
+    height: 48px;
+    padding: 0 8px;
   }
 
   .selects {
-    flex-wrap: wrap;
-    width: 100%;
+    flex: 1;
+    gap: 6px;
   }
 
   .select {
@@ -101,13 +147,12 @@
   }
 
   .tfGroup {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
+    display: none;
   }
 
-  .tfBtn {
-    flex: 1;
-    height: 34px;
+  .tfSelect {
+    display: block;
+    flex: 0 0 auto;
+    width: 70px;
   }
 }

@@ -282,13 +282,40 @@
     width: 100%;
     border-left: none;
     border-top: 1px solid var(--border-bright);
-    top: 40px;
+    top: 48px;
     bottom: 0;
     height: auto;
-    transform: translateY(calc(100% + 40px));
+    transform: translateY(calc(100% + 48px));
   }
 
   .panelOpen {
     transform: translateY(0);
+  }
+
+  .input {
+    height: 44px;
+    font-size: var(--text-xl);
+  }
+
+  .colorSwatch {
+    width: 44px;
+    height: 44px;
+  }
+
+  .addBtn {
+    height: 44px;
+    font-size: var(--text-sm);
+  }
+
+  .removeBtn {
+    font-size: var(--text-lg);
+  }
+
+  .inputPeriod {
+    width: 72px;
+  }
+
+  .inputWidth {
+    width: 64px;
   }
 }

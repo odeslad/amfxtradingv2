@@ -1,8 +1,9 @@
 import { useEffect, useRef, useCallback } from 'react';
 import {
-  createChart, CandlestickSeries, TickMarkType,
+  createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType,
   type IChartApi, type ISeriesApi, type CandlestickData, type Time,
 } from 'lightweight-charts';
+import type { Ema } from './chart.types';
 import styles from './LightweightChart.module.css';
 
 interface Candle {
@@ -15,11 +16,18 @@ interface Candle {
 
 const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1']);
 
+const LINE_STYLE: Record<string, LineStyle> = {
+  solid:  LineStyle.Solid,
+  dashed: LineStyle.Dashed,
+  dotted: LineStyle.Dotted,
+};
+
 interface LightweightChartProps {
   candles: Candle[];
   timeframe: string;
   liveCandle?: Candle | null;
   onLoadMore?: () => void;
+  emas: Ema[];
 }
 
 function getPricePrecision(candles: Candle[]): number {
@@ -29,6 +37,17 @@ function getPricePrecision(candles: Candle[]): number {
   return dot === -1 ? 0 : sample.length - dot - 1;
 }
 
+function calcEma(candles: Candle[], period: number): { time: Time; value: number }[] {
+  if (candles.length < period) return [];
+  const k = 2 / (period + 1);
+  let ema = candles.slice(0, period).reduce((s, c) => s + c.close, 0) / period;
+  const result: { time: Time; value: number }[] = [{ time: candles[period - 1].time as Time, value: ema }];
+  for (let i = period; i < candles.length; i++) {
+    ema = candles[i].close * k + ema * (1 - k);
+    result.push({ time: candles[i].time as Time, value: ema });
+  }
+  return result;
+}
 
 function getRolloverTimes(fromSec: number, toSec: number): number[] {
   const times: number[] = [];
@@ -36,18 +55,15 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   cursor.setUTCHours(0, 0, 0, 0);
 
   while (cursor.getTime() / 1000 <= toSec + 4 * 86400) {
-    const dayOfWeek = cursor.getUTCDay(); // 0=Sun, 1=Mon...5=Fri, 6=Sat
+    const dayOfWeek = cursor.getUTCDay();
     const midnightSec = cursor.getTime() / 1000;
 
     if (dayOfWeek === 5) {
-      // Friday: line at 23:00 broker time
       const fridayLine = midnightSec + 23 * 3600;
       if (fridayLine >= fromSec && fridayLine <= toSec + 86400) times.push(fridayLine);
-      // Monday 00:00 broker time = Friday + 3 days
       const mondayLine = midnightSec + 3 * 86400;
       if (mondayLine >= fromSec && mondayLine <= toSec + 4 * 86400) times.push(mondayLine);
     } else if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      // Mon–Thu: rollover at 23:00 broker time
       const rolloverSec = midnightSec + 23 * 3600;
       if (rolloverSec >= fromSec && rolloverSec <= toSec + 86400) times.push(rolloverSec);
     }
@@ -58,12 +74,14 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
-export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }: LightweightChartProps) {
+export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore, emas }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
+  const emaSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const candlesRef = useRef<Candle[]>([]);
+  const emasRef = useRef<Ema[]>(emas);
   const timeframeRef = useRef<string>(timeframe);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
@@ -101,6 +119,51 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }:
       ctx.moveTo(px, 0);
       ctx.lineTo(px, canvas.height);
       ctx.stroke();
+    }
+  }, []);
+
+  const syncEmaSeries = useCallback(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
+    const currentCandles = candlesRef.current;
+    const currentEmas = emasRef.current;
+
+    const existingIds = new Set(emaSeriesRef.current.keys());
+
+    for (const ema of currentEmas) {
+      if (!emaSeriesRef.current.has(ema.id)) {
+        const series = chart.addSeries(LineSeries, {
+          color: ema.color,
+          lineWidth: ema.width,
+          lineStyle: LINE_STYLE[ema.style],
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        emaSeriesRef.current.set(ema.id, series);
+      } else {
+        emaSeriesRef.current.get(ema.id)!.applyOptions({
+          color: ema.color,
+          lineWidth: ema.width,
+          lineStyle: LINE_STYLE[ema.style],
+        });
+      }
+      existingIds.delete(ema.id);
+    }
+
+    for (const id of existingIds) {
+      chart.removeSeries(emaSeriesRef.current.get(id)!);
+      emaSeriesRef.current.delete(id);
+    }
+
+    const filterWeekend = (arr: Candle[]) =>
+      arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
+    const filteredCandles = filterWeekend(currentCandles);
+
+    for (const ema of currentEmas) {
+      const series = emaSeriesRef.current.get(ema.id)!;
+      const data = calcEma(filteredCandles, ema.period);
+      series.setData(data);
     }
   }, []);
 
@@ -160,7 +223,6 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }:
     chartRef.current = chart;
     seriesRef.current = series;
 
-    // Initialize overlay canvas size immediately
     if (overlayRef.current && containerRef.current) {
       overlayRef.current.width = containerRef.current.clientWidth;
       overlayRef.current.height = containerRef.current.clientHeight;
@@ -191,6 +253,7 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }:
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      emaSeriesRef.current.clear();
     };
   }, [drawRollovers]);
 
@@ -240,8 +303,14 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }:
       chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
     }
 
+    syncEmaSeries();
     drawRollovers();
-  }, [candles, drawRollovers]);
+  }, [candles, drawRollovers, syncEmaSeries]);
+
+  useEffect(() => {
+    emasRef.current = emas;
+    syncEmaSeries();
+  }, [emas, syncEmaSeries]);
 
   useEffect(() => {
     if (!seriesRef.current || !liveCandle || liveCandle.time < 1_000_000_000) return;
@@ -255,7 +324,7 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore }:
         close: liveCandle.close,
       });
     } catch {
-      // live candle time is older than last bar — skip silently
+      // live candle time older than last bar — skip silently
     }
   }, [liveCandle]);
 

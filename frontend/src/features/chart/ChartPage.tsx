@@ -4,6 +4,7 @@ import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { LightweightChart } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
+import type { Ema } from './chart.types';
 import styles from './ChartPage.module.css';
 
 interface RawCandle {
@@ -41,9 +42,35 @@ export function ChartPage() {
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [emas, setEmas] = useState<Ema[]>([]);
   const candlesRef = useRef<Candle[]>([]);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const emasInitialized = useRef(false);
 
   useEffect(() => { candlesRef.current = candles; }, [candles]);
+
+  useEffect(() => {
+    fetch(apiUrl('/chart-indicators'), { credentials: 'include' })
+      .then(r => r.json() as Promise<{ emas: Ema[] }>)
+      .then(data => {
+        setEmas(data.emas ?? []);
+        emasInitialized.current = true;
+      })
+      .catch(() => { emasInitialized.current = true; });
+  }, []);
+
+  useEffect(() => {
+    if (!emasInitialized.current) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch(apiUrl('/chart-indicators'), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emas }),
+      }).catch(() => {});
+    }, 600);
+  }, [emas]);
 
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
@@ -142,10 +169,15 @@ export function ChartPage() {
         onTimeframeChange={setTimeframe}
         onIndicators={() => setIndicatorsOpen(true)}
       />
-      <IndicatorsPanel open={indicatorsOpen} onClose={() => setIndicatorsOpen(false)} />
+      <IndicatorsPanel
+        open={indicatorsOpen}
+        onClose={() => setIndicatorsOpen(false)}
+        emas={emas}
+        onEmasChange={setEmas}
+      />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} />
+          ? <LightweightChart candles={candles} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

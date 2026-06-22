@@ -57,19 +57,17 @@
   color: var(--text);
 }
 
+/* ── body ── */
+
 .body {
   flex: 1;
-  padding: 16px 20px;
+  padding: 20px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 20px;
 }
 
-.sectionHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
+/* ── section ── */
 
 .sectionTitle {
   font-family: var(--font-sans);
@@ -77,27 +75,35 @@
   letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
   color: var(--muted);
+  margin-bottom: 8px;
 }
+
+/* ── ema rows ── */
 
 .emaList {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 
 .emaRow {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   background: var(--surface2);
   border: 1px solid var(--border);
-  padding: 8px 10px;
-  border-radius: 2px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.emaRowTop {
+  display: flex;
+  align-items: center;
+  gap: 10px;
 }
 
 .colorSwatch {
-  width: 20px;
-  height: 20px;
+  width: 28px;
+  height: 28px;
   border-radius: 2px;
   cursor: pointer;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -114,60 +120,14 @@
   pointer-events: none;
 }
 
-.fieldGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.fieldLabel {
-  font-family: var(--font-sans);
-  font-size: var(--text-2xs);
-  color: var(--muted);
-  letter-spacing: var(--tracking-tight);
-}
-
-.periodInput {
-  width: 48px;
-  background: var(--bg);
-  border: 1px solid var(--border-bright);
-  color: var(--text);
+.emaName {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  padding: 4px 6px;
-  outline: none;
-  transition: border-color 0.12s;
-  -moz-appearance: textfield;
-}
-
-.periodInput::-webkit-outer-spin-button,
-.periodInput::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
-}
-
-.periodInput:focus {
-  border-color: var(--orange);
-}
-
-.select {
-  background: var(--bg);
-  border: 1px solid var(--border-bright);
   color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  padding: 4px 6px;
-  outline: none;
-  cursor: pointer;
-  transition: border-color 0.12s;
-}
-
-.select:focus {
-  border-color: var(--orange);
+  flex: 1;
 }
 
 .removeBtn {
-  margin-left: auto;
   background: transparent;
   border: none;
   color: var(--muted);
@@ -183,55 +143,112 @@
   color: var(--red);
 }
 
-.addRow {
+.emaRowFields {
   display: flex;
   gap: 8px;
-  align-items: center;
 }
 
-.addPeriodInput {
-  width: 72px;
+/* ── shared field ── */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.input {
+  height: 34px;
+  padding: 0 10px;
   background: var(--bg);
   border: 1px solid var(--border-bright);
   color: var(--text);
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  padding: 6px 8px;
   outline: none;
-  transition: border-color 0.12s;
+  width: 100%;
+  box-sizing: border-box;
+  transition: border-color 0.12s ease;
+  appearance: none;
   -moz-appearance: textfield;
 }
 
-.addPeriodInput::-webkit-outer-spin-button,
-.addPeriodInput::-webkit-inner-spin-button {
+.input::-webkit-outer-spin-button,
+.input::-webkit-inner-spin-button {
   -webkit-appearance: none;
   margin: 0;
 }
 
-.addPeriodInput:focus {
+.input:focus {
   border-color: var(--orange);
 }
 
-.addPeriodInput::placeholder {
-  color: #333;
+.input option {
+  background: var(--surface);
+}
+
+/* ── add form ── */
+
+.addForm {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.addFormFields {
+  display: flex;
+  gap: 8px;
 }
 
 .addBtn {
+  height: 34px;
   background: transparent;
   border: 1px solid var(--border-bright);
   color: var(--muted);
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-  padding: 0 12px;
-  height: 29px;
+  letter-spacing: var(--tracking-normal);
+  text-transform: uppercase;
   cursor: pointer;
   transition: color 0.12s, border-color 0.12s;
-  white-space: nowrap;
+  width: 100%;
 }
 
 .addBtn:hover {
   color: var(--text);
   border-color: var(--orange);
+}
+
+.saveBtn {
+  height: 48px;
+  border: none;
+  background: var(--orange);
+  color: #000;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  width: 100%;
+  transition: opacity 0.12s ease;
+  margin-top: auto;
+}
+
+.saveBtn:hover {
+  opacity: 0.85;
+}
+
+.saveBtn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 @media (max-width: 768px) {

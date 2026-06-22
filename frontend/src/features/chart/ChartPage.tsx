@@ -44,33 +44,26 @@ export function ChartPage() {
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [emas, setEmas] = useState<Ema[]>([]);
   const candlesRef = useRef<Candle[]>([]);
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const emasInitialized = useRef(false);
+  const emasRef = useRef<Ema[]>([]);
 
   useEffect(() => { candlesRef.current = candles; }, [candles]);
+  useEffect(() => { emasRef.current = emas; }, [emas]);
 
   useEffect(() => {
     fetch(apiUrl('/chart-indicators'), { credentials: 'include' })
       .then(r => r.json() as Promise<{ emas: Ema[] }>)
-      .then(data => {
-        setEmas(data.emas ?? []);
-        emasInitialized.current = true;
-      })
-      .catch(() => { emasInitialized.current = true; });
+      .then(data => setEmas(data.emas ?? []))
+      .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (!emasInitialized.current) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => {
-      fetch(apiUrl('/chart-indicators'), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emas }),
-      }).catch(() => {});
-    }, 600);
-  }, [emas]);
+  const saveEmas = useCallback(async () => {
+    await fetch(apiUrl('/chart-indicators'), {
+      method: 'PUT',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emas: emasRef.current }),
+    });
+  }, []);
 
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
@@ -174,6 +167,7 @@ export function ChartPage() {
         onClose={() => setIndicatorsOpen(false)}
         emas={emas}
         onEmasChange={setEmas}
+        onSave={saveEmas}
       />
       <div className={styles.chartArea}>
         {broker && symbol

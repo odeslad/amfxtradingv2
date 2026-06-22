@@ -7,6 +7,7 @@ interface IndicatorsPanelProps {
   onClose: () => void;
   emas: Ema[];
   onEmasChange: (emas: Ema[]) => void;
+  onSave: () => Promise<void>;
 }
 
 const DEFAULT_COLORS = ['#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840', '#a78bfa', '#22d3ee'];
@@ -15,20 +16,28 @@ function nextColor(emas: Ema[]): string {
   return DEFAULT_COLORS[emas.length % DEFAULT_COLORS.length];
 }
 
-export function IndicatorsPanel({ open, onClose, emas, onEmasChange }: IndicatorsPanelProps) {
+export function IndicatorsPanel({ open, onClose, emas, onEmasChange, onSave }: IndicatorsPanelProps) {
   const [newPeriod, setNewPeriod] = useState('20');
+  const [newStyle, setNewStyle] = useState<Ema['style']>('solid');
+  const [newWidth, setNewWidth] = useState<Ema['width']>(1);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave();
+    setSaving(false);
+  }
 
   function addEma() {
     const period = parseInt(newPeriod, 10);
     if (!period || period < 1) return;
-    const ema: Ema = {
+    onEmasChange([...emas, {
       id: crypto.randomUUID(),
       period,
       color: nextColor(emas),
-      style: 'solid',
-      width: 1,
-    };
-    onEmasChange([...emas, ema]);
+      style: newStyle,
+      width: newWidth,
+    }]);
   }
 
   function updateEma(id: string, patch: Partial<Ema>) {
@@ -49,85 +58,122 @@ export function IndicatorsPanel({ open, onClose, emas, onEmasChange }: Indicator
         </div>
 
         <div className={styles.body}>
-          <div className={styles.sectionHeader}>
-            <span className={styles.sectionTitle}>EMA</span>
+
+          {/* EMA list */}
+          <div>
+            <div className={styles.sectionTitle}>EMA</div>
+            {emas.length > 0 && (
+              <div className={styles.emaList}>
+                {emas.map(ema => (
+                  <div key={ema.id} className={styles.emaRow}>
+                    <div className={styles.emaRowTop}>
+                      <label className={styles.colorSwatch} style={{ background: ema.color }}>
+                        <input
+                          type="color"
+                          value={ema.color}
+                          onChange={e => updateEma(ema.id, { color: e.target.value })}
+                          className={styles.colorInput}
+                        />
+                      </label>
+                      <span className={styles.emaName}>EMA {ema.period}</span>
+                      <button type="button" className={styles.removeBtn} onClick={() => removeEma(ema.id)}>✕</button>
+                    </div>
+                    <div className={styles.emaRowFields}>
+                      <div className={styles.field}>
+                        <span className={styles.label}>Period</span>
+                        <input
+                          type="number"
+                          className={styles.input}
+                          value={ema.period}
+                          min={1}
+                          max={500}
+                          onChange={e => {
+                            const v = parseInt(e.target.value, 10);
+                            if (v >= 1) updateEma(ema.id, { period: v });
+                          }}
+                        />
+                      </div>
+                      <div className={styles.field}>
+                        <span className={styles.label}>Style</span>
+                        <select
+                          className={styles.input}
+                          value={ema.style}
+                          onChange={e => updateEma(ema.id, { style: e.target.value as Ema['style'] })}
+                        >
+                          <option value="solid">Solid</option>
+                          <option value="dashed">Dashed</option>
+                          <option value="dotted">Dotted</option>
+                        </select>
+                      </div>
+                      <div className={styles.field}>
+                        <span className={styles.label}>Width</span>
+                        <select
+                          className={styles.input}
+                          value={ema.width}
+                          onChange={e => updateEma(ema.id, { width: parseInt(e.target.value, 10) as Ema['width'] })}
+                        >
+                          <option value={1}>1</option>
+                          <option value={2}>2</option>
+                          <option value={3}>3</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
-          {emas.length > 0 && (
-            <div className={styles.emaList}>
-              {emas.map(ema => (
-                <div key={ema.id} className={styles.emaRow}>
-                  <label className={styles.colorSwatch} style={{ background: ema.color }}>
-                    <input
-                      type="color"
-                      value={ema.color}
-                      onChange={e => updateEma(ema.id, { color: e.target.value })}
-                      className={styles.colorInput}
-                    />
-                  </label>
-
-                  <div className={styles.fieldGroup}>
-                    <span className={styles.fieldLabel}>Period</span>
-                    <input
-                      type="number"
-                      className={styles.periodInput}
-                      value={ema.period}
-                      min={1}
-                      max={500}
-                      onChange={e => {
-                        const v = parseInt(e.target.value, 10);
-                        if (v >= 1) updateEma(ema.id, { period: v });
-                      }}
-                    />
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <span className={styles.fieldLabel}>Style</span>
-                    <select
-                      className={styles.select}
-                      value={ema.style}
-                      onChange={e => updateEma(ema.id, { style: e.target.value as Ema['style'] })}
-                    >
-                      <option value="solid">Solid</option>
-                      <option value="dashed">Dashed</option>
-                      <option value="dotted">Dotted</option>
-                    </select>
-                  </div>
-
-                  <div className={styles.fieldGroup}>
-                    <span className={styles.fieldLabel}>Width</span>
-                    <select
-                      className={styles.select}
-                      value={ema.width}
-                      onChange={e => updateEma(ema.id, { width: parseInt(e.target.value, 10) as Ema['width'] })}
-                    >
-                      <option value={1}>1</option>
-                      <option value={2}>2</option>
-                      <option value={3}>3</option>
-                    </select>
-                  </div>
-
-                  <button type="button" className={styles.removeBtn} onClick={() => removeEma(ema.id)}>✕</button>
-                </div>
-              ))}
+          {/* Add EMA form */}
+          <div className={styles.addForm}>
+            <div className={styles.sectionTitle}>Add EMA</div>
+            <div className={styles.addFormFields}>
+              <div className={styles.field}>
+                <span className={styles.label}>Period</span>
+                <input
+                  type="number"
+                  className={styles.input}
+                  value={newPeriod}
+                  min={1}
+                  max={500}
+                  onChange={e => setNewPeriod(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') addEma(); }}
+                />
+              </div>
+              <div className={styles.field}>
+                <span className={styles.label}>Style</span>
+                <select
+                  className={styles.input}
+                  value={newStyle}
+                  onChange={e => setNewStyle(e.target.value as Ema['style'])}
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <span className={styles.label}>Width</span>
+                <select
+                  className={styles.input}
+                  value={newWidth}
+                  onChange={e => setNewWidth(parseInt(e.target.value, 10) as Ema['width'])}
+                >
+                  <option value={1}>1</option>
+                  <option value={2}>2</option>
+                  <option value={3}>3</option>
+                </select>
+              </div>
             </div>
-          )}
-
-          <div className={styles.addRow}>
-            <input
-              type="number"
-              className={styles.addPeriodInput}
-              value={newPeriod}
-              min={1}
-              max={500}
-              placeholder="Period"
-              onChange={e => setNewPeriod(e.target.value)}
-              onKeyDown={e => { if (e.key === 'Enter') addEma(); }}
-            />
             <button type="button" className={styles.addBtn} onClick={addEma}>
-              + Add EMA
+              + Add
             </button>
           </div>
+
+          <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving}>
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+
         </div>
       </div>
     </>

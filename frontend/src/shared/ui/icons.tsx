@@ -101,6 +101,22 @@ export function IconPositions({ size = 14, color = 'currentColor' }: IconProps) 
   );
 }
 
+export function IconFullscreen({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 6V2h4M14 6V2h-4M2 10v4h4M14 10v4h-4" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+export function IconFullscreenExit({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 2v4H2M10 2v4h4M6 14v-4H2M10 14v-4h4" stroke={color} strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconJournal({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

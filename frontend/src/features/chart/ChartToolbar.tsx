@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit } from '../../shared/ui/icons';
 import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -18,12 +18,14 @@ interface ChartToolbarProps {
   trendlineActive?: boolean;
   onPositions?: () => void;
   positionsActive?: boolean;
+  onFullscreen?: () => void;
+  isFullscreen?: boolean;
 }
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, onTrendline, trendlineActive,
-  onPositions, positionsActive,
+  onPositions, positionsActive, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -99,6 +101,17 @@ export function ChartToolbar({
         >
           <IconIndicators size={16} />
         </button>
+        {onFullscreen && (
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${isFullscreen ? styles.iconBtnActive : ''}`}
+            onClick={onFullscreen}
+            title="Fullscreen"
+            aria-label="Fullscreen"
+          >
+            {isFullscreen ? <IconFullscreenExit size={16} /> : <IconFullscreen size={16} />}
+          </button>
+        )}
       </div>
     </div>
   );

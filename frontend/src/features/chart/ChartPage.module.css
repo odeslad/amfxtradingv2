@@ -7,6 +7,14 @@
   overflow: hidden;
 }
 
+.page:fullscreen {
+  margin: 0;
+  height: 100%;
+  width: 100%;
+  background: var(--bg);
+  padding: 8px;
+}
+
 .chartArea {
   flex: 1;
   position: relative;

@@ -61,16 +61,32 @@ export function ChartPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [trendlines, setTrendlines] = useState<PersistedTrendline[] | null>(null);
-  const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed' });
+  const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const pageRef = useRef<HTMLDivElement>(null);
   const candlesRef = useRef<Candle[]>([]);
   const emasRef = useRef<Ema[]>([]);
 
   useEffect(() => { candlesRef.current = candles; }, [candles]);
   useEffect(() => { emasRef.current = emas; }, [emas]);
+
+  useEffect(() => {
+    const onChange = () => setIsFullscreen(document.fullscreenElement === pageRef.current);
+    document.addEventListener('fullscreenchange', onChange);
+    return () => document.removeEventListener('fullscreenchange', onChange);
+  }, []);
+
+  const toggleFullscreen = useCallback(() => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+    } else {
+      pageRef.current?.requestFullscreen();
+    }
+  }, []);
 
   useEffect(() => {
     fetch(apiUrl('/chart-indicators'), { credentials: 'include' })
@@ -81,14 +97,16 @@ export function ChartPage() {
 
   useEffect(() => {
     fetch(apiUrl('/settings'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ display: { trendlineColor?: string; trendlineStyle?: string } }>)
+      .then(r => r.json() as Promise<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number } }>)
       .then(data => {
         const color = data.display?.trendlineColor;
         const style = data.display?.trendlineStyle;
-        if (color || style) {
+        const width = data.display?.trendlineWidth;
+        if (color || style || width) {
           setTrendlineAppearance(prev => ({
             color: color ?? prev.color,
             style: (style as TrendlineAppearance['style']) ?? prev.style,
+            width: width ?? prev.width,
           }));
         }
       })
@@ -281,7 +299,7 @@ export function ChartPage() {
   }, [positions]);
 
   return (
-    <div className={styles.page}>
+    <div className={styles.page} ref={pageRef}>
       <ChartToolbar
         brokers={brokers}
         symbols={symbols}
@@ -297,6 +315,8 @@ export function ChartPage() {
         trendlineActive={trendlineActive}
         onPositions={() => setPositionsVisible(prev => !prev)}
         positionsActive={positionsVisible}
+        onFullscreen={toggleFullscreen}
+        isFullscreen={isFullscreen}
       />
       <ChartFiltersPanel
         open={filtersOpen}

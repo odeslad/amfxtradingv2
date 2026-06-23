@@ -11,6 +11,13 @@
   z-index: 2;
 }
 
+.trendlineCanvas {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  cursor: crosshair;
+}
+
 .legend {
   position: absolute;
   top: 8px;

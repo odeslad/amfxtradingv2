@@ -14,11 +14,13 @@ interface ChartToolbarProps {
   onTimeframeChange: (v: string) => void;
   onIndicators: () => void;
   onFilters: () => void;
+  onTrendline?: () => void;
+  trendlineActive?: boolean;
 }
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
-  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters,
+  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, onTrendline, trendlineActive,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -56,6 +58,14 @@ export function ChartToolbar({
         >
           {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
         </select>
+        <button
+          type="button"
+          className={`${styles.filtersBtn} ${trendlineActive ? styles.btnActive : ''}`}
+          onClick={onTrendline}
+          title="Trendline tool (Shift for horizontal, Del to delete)"
+        >
+          Trendline
+        </button>
         <button type="button" className={styles.filtersBtn} onClick={onFilters}>
           Filters
         </button>

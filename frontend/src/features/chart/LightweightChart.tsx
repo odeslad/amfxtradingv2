@@ -4,6 +4,7 @@ import {
   type IChartApi, type ISeriesApi, type CandlestickData, type Time,
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
+import { TrendlineManager } from './TrendlineTools';
 import styles from './LightweightChart.module.css';
 
 interface Candle {
@@ -75,9 +76,14 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
-export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoadMore, emas }: LightweightChartProps) {
+interface LightweightChartExtendedProps extends LightweightChartProps {
+  trendlineActive?: boolean;
+}
+
+export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive }: LightweightChartExtendedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const emaSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
@@ -87,6 +93,15 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const isLoadingMoreRef = useRef(false);
+  const trendlineManagerRef = useRef<TrendlineManager | null>(null);
+
+  useEffect(() => {
+    if (trendlineActive) {
+      trendlineManagerRef.current?.startDrawing();
+    } else {
+      trendlineManagerRef.current?.stopDrawing();
+    }
+  }, [trendlineActive]);
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
@@ -331,9 +346,40 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
     }
   }, [liveCandle]);
 
+  useEffect(() => {
+    if (!trendlineCanvasRef.current) return;
+    trendlineManagerRef.current = new TrendlineManager(trendlineCanvasRef.current);
+    return () => {
+      trendlineManagerRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!trendlineCanvasRef.current || !containerRef.current) return;
+    const w = containerRef.current.clientWidth;
+    const h = containerRef.current.clientHeight;
+    trendlineCanvasRef.current.width = w;
+    trendlineCanvasRef.current.height = h;
+    trendlineManagerRef.current?.redraw();
+  }, []);
+
+  useEffect(() => {
+    const resizeObserver = new ResizeObserver(() => {
+      if (!trendlineCanvasRef.current || !containerRef.current) return;
+      const w = containerRef.current.clientWidth;
+      const h = containerRef.current.clientHeight;
+      trendlineCanvasRef.current.width = w;
+      trendlineCanvasRef.current.height = h;
+      trendlineManagerRef.current?.redraw();
+    });
+    if (containerRef.current) resizeObserver.observe(containerRef.current);
+    return () => resizeObserver.disconnect();
+  }, []);
+
   return (
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
+      <canvas ref={trendlineCanvasRef} className={styles.trendlineCanvas} />
       {symbol && <div className={styles.legend}>{symbol} · {timeframe}</div>}
     </div>
   );

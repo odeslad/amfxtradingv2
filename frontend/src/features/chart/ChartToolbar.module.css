@@ -125,6 +125,11 @@
   border-color: var(--text);
 }
 
+.btnActive {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
 .tfSelect {
   display: none;
   min-width: 70px;

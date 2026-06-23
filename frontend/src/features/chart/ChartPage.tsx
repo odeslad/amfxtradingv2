@@ -53,6 +53,7 @@ export function ChartPage() {
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [trendlineActive, setTrendlineActive] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -177,6 +178,8 @@ export function ChartPage() {
         onTimeframeChange={setTimeframe}
         onIndicators={() => setIndicatorsOpen(true)}
         onFilters={() => setFiltersOpen(true)}
+        onTrendline={() => setTrendlineActive(prev => !prev)}
+        trendlineActive={trendlineActive}
       />
       <ChartFiltersPanel
         open={filtersOpen}
@@ -197,7 +200,7 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} />
+          ? <LightweightChart candles={candles} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

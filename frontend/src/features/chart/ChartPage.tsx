@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
@@ -33,11 +34,21 @@ const TF_KEYS: Record<string, { time: string; open: string; high: string; low: s
 };
 
 export function ChartPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initBroker = searchParams.get('broker') ?? '';
+  const initSymbol = searchParams.get('symbol') ?? '';
+  const initTimeframe = searchParams.get('timeframe') ?? 'H1';
+
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
-  const [broker, setBroker] = useState('');
-  const [symbol, setSymbol] = useState('');
-  const [timeframe, setTimeframe] = useState('H1');
+  const [broker, setBroker] = useState(initBroker);
+  const [symbol, setSymbol] = useState(initSymbol);
+  const [timeframe, setTimeframe] = useState(initTimeframe);
+
+  useEffect(() => {
+    if (searchParams.toString()) setSearchParams({}, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [candles, setCandles] = useState<Candle[]>([]);
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
@@ -73,9 +84,10 @@ export function ChartPage() {
       .then(data => {
         const list = data.map(b => b.broker);
         setBrokers(list);
-        if (list.length > 0) setBroker(list[0]);
+        if (!initBroker && list.length > 0) setBroker(list[0]);
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -84,9 +96,10 @@ export function ChartPage() {
       .then(r => r.json() as Promise<string[]>)
       .then(list => {
         setSymbols(list);
-        setSymbol(list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
+        if (!initSymbol) setSymbol(list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
       })
       .catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broker]);
 
   useWs(useCallback((msg: unknown) => {

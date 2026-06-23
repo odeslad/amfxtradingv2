@@ -5,6 +5,7 @@ import styles from './PositionCard.module.css';
 
 const SWIPE_THRESHOLD = 50;
 const TAP_TOLERANCE = 8;
+const DOUBLE_TAP_MS = 300;
 
 interface PositionCardProps {
   position: Position;
@@ -13,15 +14,17 @@ interface PositionCardProps {
   onColorChange: (broker: string, ticket: number, color: string) => void;
   onEdit: (p: Position) => void;
   onClose: (p: Position) => void;
+  onOpenChart?: (p: Position) => void;
 }
 
-export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdit, onClose }: PositionCardProps) {
+export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdit, onClose, onOpenChart }: PositionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(false);
 
   const startX = useRef(0);
   const lastDx = useRef(0);
   const moved = useRef(false);
+  const lastTapTime = useRef(0);
 
   const onTouchStart = (e: TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -42,6 +45,14 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
   const onSummaryClick = () => {
     if (moved.current) return;
     if (open) { setOpen(false); return; }
+
+    const now = Date.now();
+    if (now - lastTapTime.current < DOUBLE_TAP_MS) {
+      onOpenChart?.(p);
+      lastTapTime.current = 0;
+      return;
+    }
+    lastTapTime.current = now;
     setExpanded(prev => !prev);
   };
 
@@ -67,6 +78,7 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
           tabIndex={0}
           className={`${styles.summary} ${expanded ? styles.summaryActive : ''}`}
           onClick={onSummaryClick}
+          onDoubleClick={() => onOpenChart?.(p)}
           onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onSummaryClick(); }}
           aria-expanded={expanded}
         >

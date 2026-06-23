@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
 import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
@@ -33,6 +34,7 @@ function generateId() { return `${Date.now()}-${Math.random().toString(36).slice
 function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
 
 export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
+  const navigate = useNavigate();
   const [positions, setPositions] = useState<Position[]>([]);
   const [colors, setColors] = useState<Map<string, string>>(new Map());
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
@@ -110,6 +112,11 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
   }, []);
 
   useWs(handleWsMessage);
+
+  const handleOpenChart = useCallback((p: Position) => {
+    const params = new URLSearchParams({ broker: p.broker ?? '', symbol: p.symbol, timeframe: 'H1' });
+    navigate(`/chart?${params.toString()}`);
+  }, [navigate]);
 
   const handleEdit = (p: Position) => setEditPosition(p);
 
@@ -191,7 +198,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
           </thead>
           <tbody>
             {filtered.map(p => (
-              <tr key={`${p.broker}-${p.ticket}`}>
+              <tr key={`${p.broker}-${p.ticket}`} onDoubleClick={() => handleOpenChart(p)} style={{ cursor: 'pointer' }}>
                 <td className={styles.broker}>{p.broker}</td>
                 <td>
                   <span className={styles.symbolCell}>
@@ -242,6 +249,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
             onColorChange={handleColorChange}
             onEdit={handleEdit}
             onClose={handleClose}
+            onOpenChart={handleOpenChart}
           />
         ))}
       </div>

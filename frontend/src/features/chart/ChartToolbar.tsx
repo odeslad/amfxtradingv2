@@ -1,4 +1,5 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconMarkerUp, IconMarkerDown } from '../../shared/ui/icons';
+import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -14,8 +15,8 @@ interface ChartToolbarProps {
   onTimeframeChange: (v: string) => void;
   onIndicators: () => void;
   onFilters: () => void;
-  onTrendline?: () => void;
-  trendlineActive?: boolean;
+  drawMode?: DrawMode | null;
+  onDrawMode?: (mode: DrawMode) => void;
   onPositions?: () => void;
   positionsActive?: boolean;
   onFullscreen?: () => void;
@@ -24,7 +25,7 @@ interface ChartToolbarProps {
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
-  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, onTrendline, trendlineActive,
+  onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
   onPositions, positionsActive, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   return (
@@ -76,12 +77,39 @@ export function ChartToolbar({
         </button>
         <button
           type="button"
-          className={`${styles.iconBtn} ${trendlineActive ? styles.iconBtnActive : ''}`}
-          onClick={onTrendline}
-          title="Trendline (Shift = horizontal, Del = delete)"
+          className={`${styles.iconBtn} ${drawMode === 'line' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('line')}
+          title="Trendline (Shift = horizontal, Ctrl+drag = duplicate, Del = delete)"
           aria-label="Trendline"
         >
           <IconTrendline size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'rect' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('rect')}
+          title="Rectangle"
+          aria-label="Rectangle"
+        >
+          <IconRect size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'markerBuy' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('markerBuy')}
+          title="Buy marker"
+          aria-label="Buy marker"
+        >
+          <IconMarkerUp size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'markerSell' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('markerSell')}
+          title="Sell marker"
+          aria-label="Sell marker"
+        >
+          <IconMarkerDown size={16} />
         </button>
         <button
           type="button"

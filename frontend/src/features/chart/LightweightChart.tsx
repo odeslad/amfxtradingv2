@@ -8,7 +8,16 @@ import {
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
-import { TrendlineManager, type PersistedTrendline, type TrendlineAppearance } from './TrendlineTools';
+import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection } from './DrawingTools';
+
+export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell';
+
+function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection } {
+  if (mode === 'rect') return { kind: 'rect', direction: 'buy' };
+  if (mode === 'markerBuy') return { kind: 'marker', direction: 'buy' };
+  if (mode === 'markerSell') return { kind: 'marker', direction: 'sell' };
+  return { kind: 'line', direction: 'buy' };
+}
 import styles from './LightweightChart.module.css';
 
 interface Candle {
@@ -159,17 +168,17 @@ function getMonthStartTimes(candles: Candle[]): Set<number> {
 }
 
 interface LightweightChartExtendedProps extends LightweightChartProps {
-  trendlineActive?: boolean;
-  onTrendlineDone?: () => void;
+  drawMode?: DrawMode | null;
+  onDrawDone?: () => void;
   positions?: Position[];
   onEditPosition?: (ticket: number) => void;
   onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
-  initialTrendlines?: PersistedTrendline[] | null;
-  onTrendlinesChange?: (lines: PersistedTrendline[]) => void;
+  initialDrawings?: PersistedDrawing[] | null;
+  onDrawingsChange?: (items: PersistedDrawing[]) => void;
   trendlineAppearance?: TrendlineAppearance;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition, initialTrendlines, onTrendlinesChange, trendlineAppearance }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -183,7 +192,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const isLoadingMoreRef = useRef(false);
-  const trendlineManagerRef = useRef<TrendlineManager | null>(null);
+  const trendlineManagerRef = useRef<DrawingManager | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
@@ -194,20 +203,21 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const precisionRef = useRef(5);
   const onModifyRef = useRef(onModifyPosition);
   useEffect(() => { onModifyRef.current = onModifyPosition; }, [onModifyPosition]);
-  const onTrendlinesChangeRef = useRef(onTrendlinesChange);
-  useEffect(() => { onTrendlinesChangeRef.current = onTrendlinesChange; }, [onTrendlinesChange]);
+  const onDrawingsChangeRef = useRef(onDrawingsChange);
+  useEffect(() => { onDrawingsChangeRef.current = onDrawingsChange; }, [onDrawingsChange]);
   const [hasSelection, setHasSelection] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
-  const onTrendlineDoneRef = useRef(onTrendlineDone);
-  useEffect(() => { onTrendlineDoneRef.current = onTrendlineDone; }, [onTrendlineDone]);
+  const onDrawDoneRef = useRef(onDrawDone);
+  useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
 
   useEffect(() => {
-    if (trendlineActive) {
-      trendlineManagerRef.current?.startDrawing(() => onTrendlineDoneRef.current?.());
+    if (drawMode) {
+      const { kind, direction } = drawModeToKind(drawMode);
+      trendlineManagerRef.current?.startDrawing(kind, () => onDrawDoneRef.current?.(), direction);
     } else {
       trendlineManagerRef.current?.stopDrawing();
     }
-  }, [trendlineActive]);
+  }, [drawMode]);
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
@@ -217,25 +227,25 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (trendlineAppearance) trendlineManagerRef.current?.setAppearance(trendlineAppearance);
   }, [trendlineAppearance]);
 
-  const loadedTrendlinesRef = useRef<PersistedTrendline[] | null | undefined>(null);
-  const initialTrendlinesRef = useRef(initialTrendlines);
+  const loadedDrawingsRef = useRef<PersistedDrawing[] | null | undefined>(null);
+  const initialDrawingsRef = useRef(initialDrawings);
 
   // Reset loaded guard when the chart context changes so a new fetch triggers a reload.
   useEffect(() => {
-    loadedTrendlinesRef.current = null;
+    loadedDrawingsRef.current = null;
   }, [broker, symbol, timeframe]);
 
   // null = fetch in flight (ignore). array = confirmed (load, even if empty to clear canvas).
   // Only load if candle index is ready; otherwise the candles effect picks it up.
   useEffect(() => {
-    initialTrendlinesRef.current = initialTrendlines;
-    if (initialTrendlines == null) return;
-    if (loadedTrendlinesRef.current === initialTrendlines) return;
+    initialDrawingsRef.current = initialDrawings;
+    if (initialDrawings == null) return;
+    if (loadedDrawingsRef.current === initialDrawings) return;
     const manager = trendlineManagerRef.current;
     if (!manager || manager.candleIndexLength() === 0) return;
-    loadedTrendlinesRef.current = initialTrendlines;
-    manager.loadPersisted(initialTrendlines);
-  }, [initialTrendlines]);
+    loadedDrawingsRef.current = initialDrawings;
+    manager.loadPersisted(initialDrawings);
+  }, [initialDrawings]);
 
   const repositionLabels = useCallback(() => {
     const series = seriesRef.current;
@@ -451,9 +461,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (trendlineCanvas && containerRef.current) {
       trendlineCanvas.width = containerRef.current.clientWidth;
       trendlineCanvas.height = containerRef.current.clientHeight;
-      const manager = new TrendlineManager(trendlineCanvas, chart, series);
+      const manager = new DrawingManager(trendlineCanvas, chart, series);
       manager.setOnSelectionChange(setHasSelection);
-      manager.setOnChange(() => onTrendlinesChangeRef.current?.(manager.getPersisted()));
+      manager.setOnChange(() => onDrawingsChangeRef.current?.(manager.getPersisted()));
       if (trendlineAppearanceRef.current) manager.setAppearance(trendlineAppearanceRef.current);
       trendlineManagerRef.current = manager;
       if (candlesRef.current.length > 0) {
@@ -561,9 +571,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     const manager = trendlineManagerRef.current;
     if (manager) {
       manager.setCandleIndex(filteredNew);
-      const pending = initialTrendlinesRef.current;
-      if (Array.isArray(pending) && loadedTrendlinesRef.current !== pending) {
-        loadedTrendlinesRef.current = pending;
+      const pending = initialDrawingsRef.current;
+      if (Array.isArray(pending) && loadedDrawingsRef.current !== pending) {
+        loadedDrawingsRef.current = pending;
         manager.loadPersisted(pending);
       }
     }
@@ -834,9 +844,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           type="button"
           className={styles.deleteTrendlineBtn}
           onClick={() => trendlineManagerRef.current?.deleteSelected()}
-          title="Delete trendline"
+          title="Delete drawing"
         >
-          Delete line
+          Delete
         </button>
       )}
     </div>

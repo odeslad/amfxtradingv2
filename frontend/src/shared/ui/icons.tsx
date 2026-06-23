@@ -101,6 +101,30 @@ export function IconPositions({ size = 14, color = 'currentColor' }: IconProps) 
   );
 }
 
+export function IconRect({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2.5" y="4" width="11" height="8" stroke={color} strokeWidth="1.2" fill="none" />
+    </svg>
+  );
+}
+
+export function IconMarkerUp({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 2l4 5h-2.5v7h-3V7H4z" fill={color} />
+    </svg>
+  );
+}
+
+export function IconMarkerDown({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 14l4-5h-2.5V2h-3v7H4z" fill={color} />
+    </svg>
+  );
+}
+
 export function IconFullscreen({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -5,7 +5,8 @@ import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { LightweightChart } from './LightweightChart';
-import type { PersistedTrendline, TrendlineAppearance } from './TrendlineTools';
+import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
+import type { DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
 import type { Ema } from './chart.types';
@@ -56,11 +57,11 @@ export function ChartPage() {
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [trendlineActive, setTrendlineActive] = useState(false);
+  const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
-  const [trendlines, setTrendlines] = useState<PersistedTrendline[] | null>(null);
+  const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
   const isLoadingMoreRef = useRef(false);
@@ -220,30 +221,30 @@ export function ChartPage() {
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
-    setTrendlines(null);
+    setDrawings(null);
     if (!broker || !symbol) return;
     const params = new URLSearchParams({ broker, symbol, timeframe });
-    fetch(apiUrl(`/trendlines?${params.toString()}`), { credentials: 'include' })
-      .then(r => r.ok ? r.json() as Promise<{ lines: PersistedTrendline[] }> : Promise.resolve({ lines: [] }))
-      .then(data => setTrendlines(data.lines ?? []))
-      .catch(() => setTrendlines([]));
+    fetch(apiUrl(`/drawings?${params.toString()}`), { credentials: 'include' })
+      .then(r => r.ok ? r.json() as Promise<{ items: PersistedDrawing[] }> : Promise.resolve({ items: [] }))
+      .then(data => setDrawings(data.items ?? []))
+      .catch(() => setDrawings([]));
   }, [broker, symbol, timeframe]);
 
-  const saveTrendlines = useCallback((lines: PersistedTrendline[]) => {
+  const saveDrawings = useCallback((items: PersistedDrawing[]) => {
     if (!broker || !symbol) return;
-    fetch(apiUrl('/trendlines'), {
+    fetch(apiUrl('/drawings'), {
       method: 'PUT',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ broker, symbol, timeframe, lines }),
+      body: JSON.stringify({ broker, symbol, timeframe, items }),
     }).catch(() => {});
   }, [broker, symbol, timeframe]);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleTrendlinesChange = useCallback((lines: PersistedTrendline[]) => {
+  const handleDrawingsChange = useCallback((items: PersistedDrawing[]) => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => saveTrendlines(lines), 600);
-  }, [saveTrendlines]);
+    saveTimerRef.current = setTimeout(() => saveDrawings(items), 600);
+  }, [saveDrawings]);
 
   const loadMoreCandles = useCallback(() => {
     if (isLoadingMoreRef.current || !hasMoreRef.current || !broker || !symbol) return;
@@ -311,8 +312,8 @@ export function ChartPage() {
         onTimeframeChange={setTimeframe}
         onIndicators={() => setIndicatorsOpen(true)}
         onFilters={() => setFiltersOpen(true)}
-        onTrendline={() => setTrendlineActive(prev => !prev)}
-        trendlineActive={trendlineActive}
+        drawMode={drawMode}
+        onDrawMode={mode => setDrawMode(prev => (prev === mode ? null : mode))}
         onPositions={() => setPositionsVisible(prev => !prev)}
         positionsActive={positionsVisible}
         onFullscreen={toggleFullscreen}
@@ -337,7 +338,7 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialTrendlines={trendlines ?? undefined} onTrendlinesChange={handleTrendlinesChange} trendlineAppearance={trendlineAppearance} />
+          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
 import type { PnlMode } from '../journal/utils/position';
-import type { TrendlineStyle } from '../chart/TrendlineTools';
+import type { TrendlineStyle } from '../chart/DrawingTools';
 import styles from './SettingsPage.module.css';
 
 interface MirrorBroker {

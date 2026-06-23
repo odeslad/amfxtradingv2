@@ -60,7 +60,7 @@ export function ChartPage() {
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
-  const [trendlines, setTrendlines] = useState<PersistedTrendline[]>([]);
+  const [trendlines, setTrendlines] = useState<PersistedTrendline[] | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
@@ -185,12 +185,13 @@ export function ChartPage() {
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
-    if (!broker || !symbol) { setTrendlines([]); return; }
+    setTrendlines(null);
+    if (!broker || !symbol) return;
     const params = new URLSearchParams({ broker, symbol, timeframe });
     fetch(apiUrl(`/trendlines?${params.toString()}`), { credentials: 'include' })
       .then(r => r.ok ? r.json() as Promise<{ lines: PersistedTrendline[] }> : Promise.resolve({ lines: [] }))
       .then(data => setTrendlines(data.lines ?? []))
-      .catch(() => {});
+      .catch(() => setTrendlines([]));
   }, [broker, symbol, timeframe]);
 
   const saveTrendlines = useCallback((lines: PersistedTrendline[]) => {
@@ -299,7 +300,7 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialTrendlines={trendlines} onTrendlinesChange={handleTrendlinesChange} />
+          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialTrendlines={trendlines ?? undefined} onTrendlinesChange={handleTrendlinesChange} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

@@ -163,7 +163,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   positions?: Position[];
   onEditPosition?: (ticket: number) => void;
   onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
-  initialTrendlines?: PersistedTrendline[];
+  initialTrendlines?: PersistedTrendline[] | null;
   onTrendlinesChange?: (lines: PersistedTrendline[]) => void;
 }
 
@@ -216,12 +216,11 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     loadedTrendlinesRef.current = null;
   }, [broker, symbol, timeframe]);
 
-  // When trendlines arrive: only load if candle index is already populated
-  // and the array is non-empty (empty = fetch in flight, not "no lines").
-  // If candleIndex is not ready yet, the candles effect will pick them up.
+  // null = fetch in flight (ignore). array = confirmed (load, even if empty to clear canvas).
+  // Only load if candle index is ready; otherwise the candles effect picks it up.
   useEffect(() => {
     initialTrendlinesRef.current = initialTrendlines;
-    if (!initialTrendlines || initialTrendlines.length === 0) return;
+    if (initialTrendlines === null) return;
     if (loadedTrendlinesRef.current === initialTrendlines) return;
     const manager = trendlineManagerRef.current;
     if (!manager || manager.candleIndexLength() === 0) return;
@@ -553,7 +552,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (manager) {
       manager.setCandleIndex(filteredNew);
       const pending = initialTrendlinesRef.current;
-      if (pending && pending.length > 0 && loadedTrendlinesRef.current !== pending) {
+      if (pending !== null && loadedTrendlinesRef.current !== pending) {
         loadedTrendlinesRef.current = pending;
         manager.loadPersisted(pending);
       }

@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { apiUrl } from '../../lib/api';
 import type { PnlMode } from '../journal/utils/position';
+import type { TrendlineStyle } from '../chart/TrendlineTools';
 import styles from './SettingsPage.module.css';
 
 interface MirrorBroker {
@@ -18,12 +19,14 @@ interface Balance {
 export function SettingsPage() {
   const [mirror, setMirror] = useState<MirrorBroker[]>([]);
   const [pnlMode, setPnlMode] = useState<PnlMode>('net');
+  const [trendlineColor, setTrendlineColor] = useState('#8c8c8c');
+  const [trendlineStyle, setTrendlineStyle] = useState<TrendlineStyle>('dashed');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode } }>,
+      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle } }>,
       fetch(apiUrl('/balances'), { credentials: 'include' }).then(r => r.json()) as Promise<Balance[]>,
     ]).then(([settings, balances]) => {
       const existing = new Map(settings.mirror.map(m => [m.broker, m]));
@@ -35,6 +38,8 @@ export function SettingsPage() {
       });
       setMirror(merged);
       if (settings.display?.pnlMode) setPnlMode(settings.display.pnlMode);
+      if (settings.display?.trendlineColor) setTrendlineColor(settings.display.trendlineColor);
+      if (settings.display?.trendlineStyle) setTrendlineStyle(settings.display.trendlineStyle);
     }).catch(() => {});
   }, []);
 
@@ -50,7 +55,7 @@ export function SettingsPage() {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mirror, display: { pnlMode } }),
+        body: JSON.stringify({ mirror, display: { pnlMode, trendlineColor, trendlineStyle } }),
       });
       setSaved(true);
     } finally {
@@ -141,6 +146,29 @@ export function SettingsPage() {
               <option value="gross">Gross (profit only)</option>
               <option value="pips">Pips</option>
             </select>
+          </div>
+
+          <div className={styles.displayRow}>
+            <span className={styles.displayLabel}>Trendline style</span>
+            <select
+              className={styles.select}
+              value={trendlineStyle}
+              onChange={e => { setTrendlineStyle(e.target.value as TrendlineStyle); setSaved(false); }}
+            >
+              <option value="solid">Solid</option>
+              <option value="dashed">Dashed</option>
+              <option value="dotted">Dotted</option>
+            </select>
+          </div>
+
+          <div className={styles.displayRow}>
+            <span className={styles.displayLabel}>Trendline color</span>
+            <input
+              type="color"
+              className={styles.colorInput}
+              value={trendlineColor}
+              onChange={e => { setTrendlineColor(e.target.value); setSaved(false); }}
+            />
           </div>
         </div>
 

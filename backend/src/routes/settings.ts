@@ -8,13 +8,20 @@ router.get('/', async (_req, res) => {
     db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
     db.settingsDisplay.findFirst({ where: { key: 'global' } }),
   ]);
-  res.json({ mirror, display: { pnlMode: display?.pnlMode ?? 'net' } });
+  res.json({
+    mirror,
+    display: {
+      pnlMode: display?.pnlMode ?? 'net',
+      trendlineColor: display?.trendlineColor ?? '#8c8c8c',
+      trendlineStyle: display?.trendlineStyle ?? 'dashed',
+    },
+  });
 });
 
 router.put('/', async (req, res) => {
   const { mirror, display } = req.body as {
     mirror?: { broker: string; enabled: boolean; lotsMode: string; lots: number }[];
-    display?: { pnlMode: string };
+    display?: { pnlMode: string; trendlineColor?: string; trendlineStyle?: string };
   };
 
   const ops: Promise<unknown>[] = [];
@@ -37,8 +44,17 @@ router.put('/', async (req, res) => {
     ops.push(
       db.settingsDisplay.upsert({
         where: { key: 'global' },
-        update: { pnlMode: display.pnlMode },
-        create: { key: 'global', pnlMode: display.pnlMode },
+        update: {
+          pnlMode: display.pnlMode,
+          ...(display.trendlineColor !== undefined ? { trendlineColor: display.trendlineColor } : {}),
+          ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
+        },
+        create: {
+          key: 'global',
+          pnlMode: display.pnlMode,
+          trendlineColor: display.trendlineColor ?? '#8c8c8c',
+          trendlineStyle: display.trendlineStyle ?? 'dashed',
+        },
       })
     );
   }
@@ -50,7 +66,14 @@ router.put('/', async (req, res) => {
     db.settingsDisplay.findFirst({ where: { key: 'global' } }),
   ]);
 
-  res.json({ mirror: updatedMirror, display: { pnlMode: updatedDisplay?.pnlMode ?? 'net' } });
+  res.json({
+    mirror: updatedMirror,
+    display: {
+      pnlMode: updatedDisplay?.pnlMode ?? 'net',
+      trendlineColor: updatedDisplay?.trendlineColor ?? '#8c8c8c',
+      trendlineStyle: updatedDisplay?.trendlineStyle ?? 'dashed',
+    },
+  });
 });
 
 export default router;

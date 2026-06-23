@@ -5,7 +5,7 @@ import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { LightweightChart } from './LightweightChart';
-import type { PersistedTrendline } from './TrendlineTools';
+import type { PersistedTrendline, TrendlineAppearance } from './TrendlineTools';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
 import type { Ema } from './chart.types';
@@ -61,6 +61,7 @@ export function ChartPage() {
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [trendlines, setTrendlines] = useState<PersistedTrendline[] | null>(null);
+  const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed' });
   const [hasMore, setHasMore] = useState(true);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
@@ -75,6 +76,22 @@ export function ChartPage() {
     fetch(apiUrl('/chart-indicators'), { credentials: 'include' })
       .then(r => r.json() as Promise<{ emas: Ema[] }>)
       .then(data => setEmas(data.emas ?? []))
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    fetch(apiUrl('/settings'), { credentials: 'include' })
+      .then(r => r.json() as Promise<{ display: { trendlineColor?: string; trendlineStyle?: string } }>)
+      .then(data => {
+        const color = data.display?.trendlineColor;
+        const style = data.display?.trendlineStyle;
+        if (color || style) {
+          setTrendlineAppearance(prev => ({
+            color: color ?? prev.color,
+            style: (style as TrendlineAppearance['style']) ?? prev.style,
+          }));
+        }
+      })
       .catch(() => {});
   }, []);
 
@@ -300,7 +317,7 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialTrendlines={trendlines ?? undefined} onTrendlinesChange={handleTrendlinesChange} />
+          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialTrendlines={trendlines ?? undefined} onTrendlinesChange={handleTrendlinesChange} trendlineAppearance={trendlineAppearance} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

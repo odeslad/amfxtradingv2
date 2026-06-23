@@ -20,9 +20,15 @@ export interface PersistedTrendline {
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
 const HIT_RADIUS_TOUCH = 22;
-const LINE_COLOR = 'rgba(140,140,140,0.85)';
 const HANDLE_COLOR = 'rgba(200,200,200,0.9)';
 const HANDLE_ACTIVE_COLOR = '#f5a623';
+
+export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
+
+export interface TrendlineAppearance {
+  color: string;
+  style: TrendlineStyle;
+}
 
 type Handle = 'start' | 'end' | 'line';
 type Point = { x: number; y: number };
@@ -44,6 +50,7 @@ export class TrendlineManager {
   private dragHandle: Handle | null = null;
   private dragLastLogical: Logical | null = null;
 
+  private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed' };
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
   private onChange: (() => void) | null = null;
@@ -411,9 +418,12 @@ export class TrendlineManager {
 
   private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false) {
     const ctx = this.ctx;
-    ctx.strokeStyle = LINE_COLOR;
+    const { color, style } = preview ? { color: HANDLE_COLOR, style: 'dashed' as TrendlineStyle } : this.appearance;
+    ctx.strokeStyle = color;
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
+    if (style === 'dashed') ctx.setLineDash([4, 4]);
+    else if (style === 'dotted') ctx.setLineDash([1, 4]);
+    else ctx.setLineDash([]);
     ctx.beginPath();
     ctx.moveTo(px.x1, px.y1);
     ctx.lineTo(px.x2, px.y2);
@@ -421,9 +431,9 @@ export class TrendlineManager {
     ctx.setLineDash([]);
 
     if (selected || preview) {
-      const color = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
-      this.paintHandle(px.x1, px.y1, color);
-      this.paintHandle(px.x2, px.y2, color);
+      const handleColor = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
+      this.paintHandle(px.x1, px.y1, handleColor);
+      this.paintHandle(px.x2, px.y2, handleColor);
     }
   }
 
@@ -471,6 +481,11 @@ export class TrendlineManager {
 
   setOnChange(cb: () => void) {
     this.onChange = cb;
+  }
+
+  setAppearance(appearance: TrendlineAppearance) {
+    this.appearance = appearance;
+    this.redraw();
   }
 
   // ─── persistence (time/price absolute, stable across sessions) ────────────

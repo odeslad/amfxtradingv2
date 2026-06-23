@@ -132,10 +132,12 @@ model SettingsMirror {
 }
 
 model SettingsDisplay {
-  id        Int      @id @default(autoincrement())
-  key       String   @unique @default("global")
-  pnlMode   String   @default("net")
-  updatedAt DateTime @updatedAt
+  id             Int      @id @default(autoincrement())
+  key            String   @unique @default("global")
+  pnlMode        String   @default("net")
+  trendlineColor String   @default("#8c8c8c")
+  trendlineStyle String   @default("dashed")
+  updatedAt      DateTime @updatedAt
 
   @@map("settings_display")
 }

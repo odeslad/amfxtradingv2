@@ -8,7 +8,7 @@ import {
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
-import { TrendlineManager, type PersistedTrendline } from './TrendlineTools';
+import { TrendlineManager, type PersistedTrendline, type TrendlineAppearance } from './TrendlineTools';
 import styles from './LightweightChart.module.css';
 
 interface Candle {
@@ -166,9 +166,10 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
   initialTrendlines?: PersistedTrendline[] | null;
   onTrendlinesChange?: (lines: PersistedTrendline[]) => void;
+  trendlineAppearance?: TrendlineAppearance;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition, initialTrendlines, onTrendlinesChange }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition, initialTrendlines, onTrendlinesChange, trendlineAppearance }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -209,6 +210,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   }, [trendlineActive]);
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
+
+  useEffect(() => {
+    if (trendlineAppearance) trendlineManagerRef.current?.setAppearance(trendlineAppearance);
+  }, [trendlineAppearance]);
 
   const loadedTrendlinesRef = useRef<PersistedTrendline[] | null | undefined>(null);
   const initialTrendlinesRef = useRef(initialTrendlines);

@@ -208,7 +208,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
-  const loadedTrendlinesRef = useRef<PersistedTrendline[] | null>(null);
+  const loadedTrendlinesRef = useRef<PersistedTrendline[] | null | undefined>(null);
   const initialTrendlinesRef = useRef(initialTrendlines);
 
   // Reset loaded guard when the chart context changes so a new fetch triggers a reload.
@@ -220,7 +220,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   // Only load if candle index is ready; otherwise the candles effect picks it up.
   useEffect(() => {
     initialTrendlinesRef.current = initialTrendlines;
-    if (initialTrendlines === null) return;
+    if (initialTrendlines == null) return;
     if (loadedTrendlinesRef.current === initialTrendlines) return;
     const manager = trendlineManagerRef.current;
     if (!manager || manager.candleIndexLength() === 0) return;
@@ -552,7 +552,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (manager) {
       manager.setCandleIndex(filteredNew);
       const pending = initialTrendlinesRef.current;
-      if (pending !== null && loadedTrendlinesRef.current !== pending) {
+      if (Array.isArray(pending) && loadedTrendlinesRef.current !== pending) {
         loadedTrendlinesRef.current = pending;
         manager.loadPersisted(pending);
       }

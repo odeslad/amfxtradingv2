@@ -62,7 +62,6 @@ export function ChartPage() {
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [trendlines, setTrendlines] = useState<PersistedTrendline[]>([]);
   const [hasMore, setHasMore] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -215,7 +214,6 @@ export function ChartPage() {
     const oldest = candlesRef.current[0]?.time;
     if (!oldest) return;
     isLoadingMoreRef.current = true;
-    setIsLoadingMore(true);
     fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
@@ -231,7 +229,7 @@ export function ChartPage() {
         setCandles(prev => [...parsed, ...prev]);
       })
       .catch(() => {})
-      .finally(() => { isLoadingMoreRef.current = false; setIsLoadingMore(false); });
+      .finally(() => { isLoadingMoreRef.current = false; });
   }, [broker, symbol, timeframe]);
 
   const chartPositions = useMemo(

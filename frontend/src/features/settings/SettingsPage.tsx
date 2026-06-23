@@ -16,17 +16,21 @@ interface Balance {
   broker: string;
 }
 
+const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
+const TRENDLINE_WIDTHS = [1, 2, 3];
+
 export function SettingsPage() {
   const [mirror, setMirror] = useState<MirrorBroker[]>([]);
   const [pnlMode, setPnlMode] = useState<PnlMode>('net');
   const [trendlineColor, setTrendlineColor] = useState('#8c8c8c');
   const [trendlineStyle, setTrendlineStyle] = useState<TrendlineStyle>('dashed');
+  const [trendlineWidth, setTrendlineWidth] = useState(1);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     Promise.all([
-      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle } }>,
+      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle; trendlineWidth: number } }>,
       fetch(apiUrl('/balances'), { credentials: 'include' }).then(r => r.json()) as Promise<Balance[]>,
     ]).then(([settings, balances]) => {
       const existing = new Map(settings.mirror.map(m => [m.broker, m]));
@@ -40,6 +44,7 @@ export function SettingsPage() {
       if (settings.display?.pnlMode) setPnlMode(settings.display.pnlMode);
       if (settings.display?.trendlineColor) setTrendlineColor(settings.display.trendlineColor);
       if (settings.display?.trendlineStyle) setTrendlineStyle(settings.display.trendlineStyle);
+      if (settings.display?.trendlineWidth) setTrendlineWidth(settings.display.trendlineWidth);
     }).catch(() => {});
   }, []);
 
@@ -55,7 +60,7 @@ export function SettingsPage() {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mirror, display: { pnlMode, trendlineColor, trendlineStyle } }),
+        body: JSON.stringify({ mirror, display: { pnlMode, trendlineColor, trendlineStyle, trendlineWidth } }),
       });
       setSaved(true);
     } finally {
@@ -162,13 +167,30 @@ export function SettingsPage() {
           </div>
 
           <div className={styles.displayRow}>
+            <span className={styles.displayLabel}>Trendline width</span>
+            <select
+              className={styles.select}
+              value={trendlineWidth}
+              onChange={e => { setTrendlineWidth(Number(e.target.value)); setSaved(false); }}
+            >
+              {TRENDLINE_WIDTHS.map(w => <option key={w} value={w}>{w}px</option>)}
+            </select>
+          </div>
+
+          <div className={styles.displayRow}>
             <span className={styles.displayLabel}>Trendline color</span>
-            <input
-              type="color"
-              className={styles.colorInput}
-              value={trendlineColor}
-              onChange={e => { setTrendlineColor(e.target.value); setSaved(false); }}
-            />
+            <div className={styles.colorSwatches}>
+              {TRENDLINE_COLORS.map(c => (
+                <button
+                  key={c}
+                  type="button"
+                  className={`${styles.colorSwatch} ${trendlineColor === c ? styles.colorSwatchActive : ''}`}
+                  style={{ background: c }}
+                  onClick={() => { setTrendlineColor(c); setSaved(false); }}
+                  aria-label={`Color ${c}`}
+                />
+              ))}
+            </div>
           </div>
         </div>
 

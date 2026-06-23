@@ -9,6 +9,16 @@ const hasCerts = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH);
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'lightweight-charts': ['lightweight-charts'],
+          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+  },
   server:
     command === 'serve' && hasCerts
       ? {

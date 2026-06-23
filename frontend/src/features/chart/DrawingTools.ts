@@ -536,8 +536,10 @@ export class DrawingManager {
   }
 
   private strokeStyleFor(preview: boolean) {
+    // Preview uses the configured color so what you draw matches what you'll get;
+    // only the dash hints that it's not yet committed.
     return preview
-      ? { color: HANDLE_COLOR, style: 'dashed' as TrendlineStyle, width: 1 }
+      ? { color: this.appearance.color, style: 'dashed' as TrendlineStyle, width: this.appearance.width }
       : this.appearance;
   }
 

@@ -495,7 +495,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   }, [drawRollovers]);
 
   useEffect(() => {
-    if (!seriesRef.current || candles.length === 0) return;
+    if (!seriesRef.current || !chartRef.current || candles.length === 0) return;
 
     const oldCandles = candlesRef.current;
     const isPrepend = oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
@@ -518,8 +518,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
 
     const filteredNew = filterWeekend(candles);
+    const seen = new Set<number>();
     const data: CandlestickData[] = filteredNew
-      .filter(c => Number.isFinite(c.time))
+      .filter(c => Number.isFinite(c.time) && !seen.has(c.time) && seen.add(c.time) !== undefined)
+      .sort((a, b) => a.time - b.time)
       .map(c => ({
         time: c.time as Time,
         open: c.open,
@@ -530,12 +532,14 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (data.length === 0) return;
     seriesRef.current.setData(data);
 
-    if (isPrepend && savedRange && chartRef.current) {
-      const prependCount = filteredNew.length - filterWeekend(oldCandles).length;
-      chartRef.current.timeScale().setVisibleLogicalRange({
-        from: savedRange.from + prependCount,
-        to: savedRange.to + prependCount,
-      });
+    if (isPrepend && chartRef.current) {
+      if (savedRange) {
+        const prependCount = filteredNew.length - filterWeekend(oldCandles).length;
+        chartRef.current.timeScale().setVisibleLogicalRange({
+          from: savedRange.from + prependCount,
+          to: savedRange.to + prependCount,
+        });
+      }
       isLoadingMoreRef.current = false;
     } else if (!isPrepend && chartRef.current && containerRef.current) {
       seriesRef.current.priceScale().applyOptions({ autoScale: true });

@@ -63,6 +63,8 @@ export function ChartPage() {
   const [trendlines, setTrendlines] = useState<PersistedTrendline[]>([]);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const isLoadingMoreRef = useRef(false);
+  const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
   const candlesRef = useRef<Candle[]>([]);
   const emasRef = useRef<Ema[]>([]);
@@ -164,7 +166,9 @@ export function ChartPage() {
 
   useEffect(() => {
     if (!broker || !symbol) { setCandles([]); return; }
+    setCandles([]);
     setHasMore(true);
+    hasMoreRef.current = true;
     fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
@@ -207,14 +211,15 @@ export function ChartPage() {
   }, [saveTrendlines]);
 
   const loadMoreCandles = useCallback(() => {
-    if (isLoadingMore || !hasMore || !broker || !symbol) return;
+    if (isLoadingMoreRef.current || !hasMoreRef.current || !broker || !symbol) return;
     const oldest = candlesRef.current[0]?.time;
     if (!oldest) return;
+    isLoadingMoreRef.current = true;
     setIsLoadingMore(true);
     fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
-        if (data.length === 0) { setHasMore(false); return; }
+        if (data.length === 0) { hasMoreRef.current = false; setHasMore(false); return; }
         const parsed = data.map(c => ({
           time: Math.floor(new Date(c.openTime).getTime() / 1000),
           open: c.open,
@@ -226,8 +231,8 @@ export function ChartPage() {
         setCandles(prev => [...parsed, ...prev]);
       })
       .catch(() => {})
-      .finally(() => setIsLoadingMore(false));
-  }, [isLoadingMore, hasMore, broker, symbol, timeframe]);
+      .finally(() => { isLoadingMoreRef.current = false; setIsLoadingMore(false); });
+  }, [broker, symbol, timeframe]);
 
   const chartPositions = useMemo(
     () => (positionsVisible ? positions.filter(p => p.symbol === symbol) : []),

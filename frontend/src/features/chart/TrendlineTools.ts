@@ -481,7 +481,28 @@ export class TrendlineManager {
   private candleIndex: { time: number }[] = [];
 
   setCandleIndex(candles: { time: number }[]) {
+    // Before updating the index, snapshot existing trendlines as absolute times
+    // so we can remap their logical indices to the new array (handles loadMore prepend).
+    const snapshots = this.trendlines.map(l => ({
+      id: l.id,
+      time1: this.logicalToTime(l.logical1),
+      price1: l.price1,
+      time2: this.logicalToTime(l.logical2),
+      price2: l.price2,
+    }));
+
     this.candleIndex = candles;
+
+    // Remap logical indices using the new candle array
+    for (let i = 0; i < this.trendlines.length; i++) {
+      const snap = snapshots[i];
+      if (snap.time1 === null || snap.time2 === null) continue;
+      const logical1 = this.timeToLogical(snap.time1);
+      const logical2 = this.timeToLogical(snap.time2);
+      if (logical1 === null || logical2 === null) continue;
+      this.trendlines[i].logical1 = logical1;
+      this.trendlines[i].logical2 = logical2;
+    }
   }
 
   candleIndexLength(): number {
@@ -532,11 +553,9 @@ export class TrendlineManager {
 
   getPersisted(): PersistedTrendline[] {
     const out: PersistedTrendline[] = [];
-    console.log('[getPersisted] trendlines:', this.trendlines.length, 'candleIndex:', this.candleIndex.length);
     for (const l of this.trendlines) {
       const t1 = this.logicalToTime(l.logical1);
       const t2 = this.logicalToTime(l.logical2);
-      console.log('[getPersisted] logical1:', l.logical1, '→ t1:', t1, '| logical2:', l.logical2, '→ t2:', t2);
       if (t1 === null || t2 === null) continue;
       out.push({ time1: t1, price1: l.price1, time2: t2, price2: l.price2 });
     }
@@ -545,18 +564,15 @@ export class TrendlineManager {
 
   loadPersisted(lines: PersistedTrendline[]) {
     this.trendlines = [];
-    console.log('[load] candleIndex.length:', this.candleIndex.length, 'lines:', lines.length);
     for (const l of lines) {
       const logical1 = this.timeToLogical(l.time1);
       const logical2 = this.timeToLogical(l.time2);
-      console.log('[load] time1:', l.time1, '→ logical1:', logical1, '| time2:', l.time2, '→ logical2:', logical2);
       if (logical1 === null || logical2 === null) continue;
       this.trendlines.push({
         id: `tl-${this.trendlines.length}-${l.time1}`,
         logical1, price1: l.price1, logical2, price2: l.price2,
       });
     }
-    console.log('[load] trendlines loaded:', this.trendlines.length);
     this.redraw();
   }
 

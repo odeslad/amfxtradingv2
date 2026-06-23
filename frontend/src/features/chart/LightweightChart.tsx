@@ -7,7 +7,7 @@ import {
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
-import { TrendlineManager } from './TrendlineTools';
+import { TrendlineManager, type PersistedTrendline } from './TrendlineTools';
 import styles from './LightweightChart.module.css';
 
 interface Candle {
@@ -163,9 +163,11 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   positions?: Position[];
   onEditPosition?: (ticket: number) => void;
   onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
+  initialTrendlines?: PersistedTrendline[];
+  onTrendlinesChange?: (lines: PersistedTrendline[]) => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition, initialTrendlines, onTrendlinesChange }: LightweightChartExtendedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -189,6 +191,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const precisionRef = useRef(5);
   const onModifyRef = useRef(onModifyPosition);
   useEffect(() => { onModifyRef.current = onModifyPosition; }, [onModifyPosition]);
+  const onTrendlinesChangeRef = useRef(onTrendlinesChange);
+  useEffect(() => { onTrendlinesChangeRef.current = onTrendlinesChange; }, [onTrendlinesChange]);
   const [hasSelection, setHasSelection] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
   const onTrendlineDoneRef = useRef(onTrendlineDone);
@@ -203,6 +207,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   }, [trendlineActive]);
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
+
+  // load persisted trendlines once data is available to map time -> logical.
+  // guard so it loads only once per initialTrendlines identity (avoids wiping
+  // in-progress edits when candles change on tick/loadMore).
+  const loadedTrendlinesRef = useRef<PersistedTrendline[] | null>(null);
+  useEffect(() => {
+    const manager = trendlineManagerRef.current;
+    if (!manager || !initialTrendlines || candles.length === 0) return;
+    if (loadedTrendlinesRef.current === initialTrendlines) return;
+    loadedTrendlinesRef.current = initialTrendlines;
+    manager.loadPersisted(initialTrendlines);
+  }, [initialTrendlines, candles.length]);
 
   const repositionLabels = useCallback(() => {
     const series = seriesRef.current;
@@ -420,6 +436,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       trendlineCanvas.height = containerRef.current.clientHeight;
       const manager = new TrendlineManager(trendlineCanvas, chart, series);
       manager.setOnSelectionChange(setHasSelection);
+      manager.setOnChange(() => onTrendlinesChangeRef.current?.(manager.getPersisted()));
       trendlineManagerRef.current = manager;
     }
 

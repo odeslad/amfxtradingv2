@@ -8,6 +8,15 @@ export interface Trendline {
   price2: number;
 }
 
+// Stored in BD using absolute time + price so lines survive across sessions and
+// dataset changes. Reconstructed to logical indices on load.
+export interface PersistedTrendline {
+  time1: number;
+  price1: number;
+  time2: number;
+  price2: number;
+}
+
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
 const HIT_RADIUS_TOUCH = 22;
@@ -37,6 +46,7 @@ export class TrendlineManager {
 
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
+  private onChange: (() => void) | null = null;
   private rafId = 0;
   private lastSignature = '';
 
@@ -236,6 +246,7 @@ export class TrendlineManager {
         this.isDrawing = false;
         this.redraw();
         this.onDone?.();
+        this.onChange?.();
       }
       return true;
     }
@@ -297,8 +308,10 @@ export class TrendlineManager {
   }
 
   private endDrag() {
+    const wasDragging = this.dragHandle !== null;
     this.dragHandle = null;
     this.dragLastLogical = null;
+    if (wasDragging) this.onChange?.();
   }
 
   private setSelected(id: string | null) {
@@ -450,10 +463,50 @@ export class TrendlineManager {
     this.trendlines = this.trendlines.filter(l => l.id !== this.selectedId);
     this.setSelected(null);
     this.redraw();
+    this.onChange?.();
   }
 
   setOnSelectionChange(cb: (hasSelection: boolean) => void) {
     this.onSelectionChange = cb;
+  }
+
+  setOnChange(cb: () => void) {
+    this.onChange = cb;
+  }
+
+  // ─── persistence (time/price absolute, stable across sessions) ────────────
+
+  getPersisted(): PersistedTrendline[] {
+    const out: PersistedTrendline[] = [];
+    for (const l of this.trendlines) {
+      const t1 = this.chart.timeScale().coordinateToTime(
+        this.chart.timeScale().logicalToCoordinate(l.logical1 as ChartLogical) ?? NaN,
+      ) as number | null;
+      const t2 = this.chart.timeScale().coordinateToTime(
+        this.chart.timeScale().logicalToCoordinate(l.logical2 as ChartLogical) ?? NaN,
+      ) as number | null;
+      if (t1 === null || t2 === null) continue;
+      out.push({ time1: t1, price1: l.price1, time2: t2, price2: l.price2 });
+    }
+    return out;
+  }
+
+  loadPersisted(lines: PersistedTrendline[]) {
+    this.trendlines = [];
+    for (const l of lines) {
+      const logical1 = this.chart.timeScale().coordinateToLogical(
+        this.chart.timeScale().timeToCoordinate(l.time1 as never) ?? NaN,
+      ) as number | null;
+      const logical2 = this.chart.timeScale().coordinateToLogical(
+        this.chart.timeScale().timeToCoordinate(l.time2 as never) ?? NaN,
+      ) as number | null;
+      if (logical1 === null || logical2 === null) continue;
+      this.trendlines.push({
+        id: `tl-${this.trendlines.length}-${l.time1}`,
+        logical1, price1: l.price1, logical2, price2: l.price2,
+      });
+    }
+    this.redraw();
   }
 
   hasSelection(): boolean {

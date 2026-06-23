@@ -65,7 +65,7 @@
   pointer-events: auto;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--orange);
+  color: var(--muted);
   letter-spacing: var(--tracking-normal);
   line-height: 1;
   cursor: default;
@@ -73,6 +73,7 @@
 }
 
 .legendClickable {
+  color: var(--orange);
   cursor: pointer;
 }
 

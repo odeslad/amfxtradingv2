@@ -1,9 +1,12 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
 import {
   createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType, CrosshairMode,
-  type IChartApi, type ISeriesApi, type CandlestickData, type Time,
+  createSeriesMarkers,
+  type IChartApi, type ISeriesApi, type CandlestickData, type Time, type IPriceLine,
+  type SeriesMarker, type ISeriesMarkersPluginApi,
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
+import type { Position } from '../journal/utils/position';
 import { TrendlineManager } from './TrendlineTools';
 import styles from './LightweightChart.module.css';
 
@@ -15,7 +18,14 @@ interface Candle {
   close: number;
 }
 
-const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1']);
+const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1', 'H4', 'D1']);
+// timeframes that only show the weekly (sunday) rollover line, not the daily ones
+const WEEKLY_ONLY_TIMEFRAMES = new Set(['H4']);
+// timeframes that show month-start lines
+const MONTH_START_TIMEFRAMES = new Set(['H4', 'D1']);
+
+// Candle times come 1h ahead of broker time; shift only the displayed labels.
+const DISPLAY_TIME_SHIFT_SEC = 3600;
 
 const LINE_STYLE: Record<string, LineStyle> = {
   solid: LineStyle.Solid,
@@ -31,6 +41,52 @@ interface LightweightChartProps {
   liveCandle?: Candle | null;
   onLoadMore?: () => void;
   emas: Ema[];
+}
+
+function fmtLots(lots: number): string {
+  return lots.toFixed(2);
+}
+
+function fmtPrice(price: number, precision: number): string {
+  return price.toFixed(precision);
+}
+
+// openTime comes in broker time as "YYYY.MM.DD HH:MM[:SS]". Treat the components
+// as UTC and subtract the broker offset to get the real UTC instant — same basis
+// as the candle `time` values. Mirrors fmtLocalTime in journal/utils/position.
+function openTimeToUtcSec(raw: string, brokerOffsetSec: number): number {
+  const m = raw.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  if (!m) return 0;
+  const [, y, mo, d, h, mi, s] = m.map(Number);
+  const utcMs = Date.UTC(y, mo - 1, d, h, mi, s || 0) - brokerOffsetSec * 1000;
+  return Math.floor(utcMs / 1000);
+}
+
+interface PositionLabel {
+  id: string;
+  ticket: number;
+  text: string;
+  color: string;
+  price: number;
+  top: number;
+  visible: boolean;
+}
+
+interface DraggableLevel {
+  id: string;
+  kind: 'sl' | 'tp';
+  ticket: number;
+  broker: string;
+  symbol: string;
+  lots: number;
+  price: number;
+  sl: number;
+  tp: number;
+}
+
+interface DragState {
+  level: DraggableLevel;
+  currentPrice: number;
 }
 
 function getPricePrecision(candles: Candle[]): number {
@@ -52,8 +108,13 @@ function calcEma(candles: Candle[], period: number): { time: Time; value: number
   return result;
 }
 
-function getRolloverTimes(fromSec: number, toSec: number): number[] {
-  const times: number[] = [];
+interface RolloverLine {
+  time: number;
+  weekly: boolean;
+}
+
+function getRolloverTimes(fromSec: number, toSec: number): RolloverLine[] {
+  const times: RolloverLine[] = [];
   const cursor = new Date((fromSec - 86400) * 1000);
   cursor.setUTCHours(0, 0, 0, 0);
 
@@ -61,14 +122,16 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
     const dayOfWeek = cursor.getUTCDay();
     const midnightSec = cursor.getTime() / 1000;
 
-    if (dayOfWeek === 5) {
-      const fridayLine = midnightSec + 23 * 3600;
-      if (fridayLine >= fromSec && fridayLine <= toSec + 86400) times.push(fridayLine);
-      const mondayLine = midnightSec + 3 * 86400;
-      if (mondayLine >= fromSec && mondayLine <= toSec + 4 * 86400) times.push(mondayLine);
-    } else if (dayOfWeek !== 0 && dayOfWeek !== 6) {
-      const rolloverSec = midnightSec + 23 * 3600;
-      if (rolloverSec >= fromSec && rolloverSec <= toSec + 86400) times.push(rolloverSec);
+    // rollover sits at 23:00 broker time. Candle times run DISPLAY_TIME_SHIFT_SEC
+    // ahead of broker time, so add that shift to the line position.
+    if (dayOfWeek === 6) {
+      // saturday: market closed, no line
+    } else {
+      const rolloverSec = midnightSec + 23 * 3600 + DISPLAY_TIME_SHIFT_SEC;
+      if (rolloverSec >= fromSec && rolloverSec <= toSec + 86400) {
+        // sunday 23:00 = weekly market reopen, highlighted brighter
+        times.push({ time: rolloverSec, weekly: dayOfWeek === 0 });
+      }
     }
 
     cursor.setUTCDate(cursor.getUTCDate() + 1);
@@ -77,12 +140,32 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
+// First operational candle of each month. Detected from real candle data so a
+// month that opens on a sunday lands on its actual first bar. Times are compared
+// in broker time (candle.time shifted back by DISPLAY_TIME_SHIFT_SEC).
+function getMonthStartTimes(candles: Candle[]): Set<number> {
+  const result = new Set<number>();
+  let prevMonth = -1;
+  for (const c of candles) {
+    const brokerDate = new Date((c.time - DISPLAY_TIME_SHIFT_SEC) * 1000);
+    const month = brokerDate.getUTCMonth();
+    if (month !== prevMonth) {
+      result.add(c.time);
+      prevMonth = month;
+    }
+  }
+  return result;
+}
+
 interface LightweightChartExtendedProps extends LightweightChartProps {
   trendlineActive?: boolean;
   onTrendlineDone?: () => void;
+  positions?: Position[];
+  onEditPosition?: (ticket: number) => void;
+  onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition }: LightweightChartExtendedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -96,7 +179,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const isLoadingMoreRef = useRef(false);
   const trendlineManagerRef = useRef<TrendlineManager | null>(null);
+  const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
+  const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
+  const draggableRef = useRef<DraggableLevel[]>([]);
+  const dragStateRef = useRef<DragState | null>(null);
+  // optimistic SL/TP overrides (id -> price) kept until server feedback matches
+  const pendingPriceRef = useRef<Map<string, number>>(new Map());
+  const precisionRef = useRef(5);
+  const onModifyRef = useRef(onModifyPosition);
+  useEffect(() => { onModifyRef.current = onModifyPosition; }, [onModifyPosition]);
   const [hasSelection, setHasSelection] = useState(false);
+  const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
   const onTrendlineDoneRef = useRef(onTrendlineDone);
   useEffect(() => { onTrendlineDoneRef.current = onTrendlineDone; }, [onTrendlineDone]);
 
@@ -109,6 +203,45 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   }, [trendlineActive]);
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
+
+  const repositionLabels = useCallback(() => {
+    const series = seriesRef.current;
+    const container = containerRef.current;
+    if (!series || !container) { setPositionLabels([]); return; }
+    const height = container.clientHeight;
+    setPositionLabels(positionLevelsRef.current.map(l => {
+      const y = series.priceToCoordinate(l.price);
+      return {
+        ...l,
+        top: y ?? 0,
+        visible: y !== null && y >= 0 && y <= height,
+      };
+    }));
+  }, []);
+  const repositionLabelsRef = useRef(repositionLabels);
+  useEffect(() => { repositionLabelsRef.current = repositionLabels; }, [repositionLabels]);
+
+  useEffect(() => {
+    let raf = 0;
+    let lastSig = '';
+    const tick = () => {
+      const series = seriesRef.current;
+      if (series && positionLevelsRef.current.length > 0) {
+        const sig = positionLevelsRef.current
+          .map(l => `${(series.priceToCoordinate(l.price) ?? -1) | 0}`)
+          .join('|');
+        if (sig !== lastSig) {
+          lastSig = sig;
+          repositionLabelsRef.current();
+        }
+      } else if (lastSig !== '') {
+        lastSig = '';
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
 
   const drawRollovers = useCallback(() => {
     const canvas = overlayRef.current;
@@ -126,20 +259,43 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    const rolloverTimes = getRolloverTimes(data[0].time, data[data.length - 1].time);
+    const tf = timeframeRef.current;
+    const weeklyOnly = WEEKLY_ONLY_TIMEFRAMES.has(tf);
+    const showMonthly = MONTH_START_TIMEFRAMES.has(tf);
+    const isDaily = tf === 'D1';
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
+    const monthStarts = showMonthly ? getMonthStartTimes(data) : new Set<number>();
+
+    // stop lines before the time axis so they don't overlap the date labels
+    const bottom = canvas.height - chart.timeScale().height();
+
+    const drawLine = (time: number, color: string) => {
+      const x = chart.timeScale().timeToCoordinate(time as Time);
+      if (x === null) return;
+      const px = Math.round(x) + 0.5;
+      ctx.strokeStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, bottom);
+      ctx.stroke();
+    };
+
     ctx.lineWidth = 1;
     ctx.setLineDash([1, 3]);
 
-    for (const t of rolloverTimes) {
-      const x = chart.timeScale().timeToCoordinate(t as Time);
-      if (x === null) continue;
-      const px = Math.round(x) + 0.5;
-      ctx.beginPath();
-      ctx.moveTo(px, 0);
-      ctx.lineTo(px, canvas.height);
-      ctx.stroke();
+    // D1 only shows month-start lines; other TFs show daily/weekly rollovers too
+    if (!isDaily) {
+      const rolloverTimes = getRolloverTimes(data[0].time, data[data.length - 1].time);
+      for (const { time, weekly } of rolloverTimes) {
+        if (weeklyOnly && !weekly) continue;
+        if (monthStarts.has(time)) continue; // drawn brighter below
+        drawLine(time, weekly ? 'rgba(255,255,255,0.55)' : 'rgba(255,255,255,0.30)');
+      }
+    }
+
+    // month-start lines, brightest
+    for (const time of monthStarts) {
+      drawLine(time, 'rgba(255,255,255,0.85)');
     }
   }, []);
 
@@ -198,6 +354,13 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
         fontFamily: "'DM Mono', monospace",
         fontSize: 11,
       },
+      localization: {
+        timeFormatter: (time: number) => {
+          const d = new Date((time - DISPLAY_TIME_SHIFT_SEC) * 1000);
+          const pad = (n: number) => String(n).padStart(2, '0');
+          return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+        },
+      },
       grid: {
         vertLines: { visible: false },
         horzLines: { visible: false },
@@ -216,7 +379,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
         secondsVisible: false,
         tickMarkFormatter: (time: number, type: TickMarkType) => {
           if (liveCandleTimeRef.current !== null && time === liveCandleTimeRef.current) return '';
-          const d = new Date(time * 1000);
+          const d = new Date((time - DISPLAY_TIME_SHIFT_SEC) * 1000);
           if (type === TickMarkType.Year) return String(d.getUTCFullYear());
           if (type === TickMarkType.Month) {
             return d.toLocaleString('en', { month: 'short', timeZone: 'UTC' });
@@ -289,6 +452,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       ro.disconnect();
       trendlineManagerRef.current?.destroy();
       trendlineManagerRef.current = null;
+      markersRef.current?.detach();
+      markersRef.current = null;
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -311,6 +476,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     timeframeRef.current = timeframe;
 
     const precision = getPricePrecision(candles);
+    precisionRef.current = precision;
     seriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
     });
@@ -319,13 +485,16 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
 
     const filteredNew = filterWeekend(candles);
-    const data: CandlestickData[] = filteredNew.map(c => ({
-      time: c.time as Time,
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
+    const data: CandlestickData[] = filteredNew
+      .filter(c => Number.isFinite(c.time))
+      .map(c => ({
+        time: c.time as Time,
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      }));
+    if (data.length === 0) return;
     seriesRef.current.setData(data);
 
     if (isPrepend && savedRange && chartRef.current) {
@@ -353,26 +522,239 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   }, [emas, syncEmaSeries]);
 
   useEffect(() => {
-    if (!seriesRef.current || !liveCandle || liveCandle.time < 1_000_000_000) return;
-    liveCandleTimeRef.current = liveCandle.time;
+    if (!seriesRef.current || !liveCandle) return;
+
+    // Ignore the tick's own time (it can be unreliable). The live candle always
+    // sits one interval after the last historical candle.
+    const data = candlesRef.current;
+    if (data.length < 2) return;
+    const lastTime = data[data.length - 1].time;
+    const interval = lastTime - data[data.length - 2].time;
+    if (interval <= 0) return;
+    const liveTime = lastTime + interval;
+
+    liveCandleTimeRef.current = liveTime;
     try {
       seriesRef.current.update({
-        time: liveCandle.time as Time,
+        time: liveTime as Time,
         open: liveCandle.open,
         high: liveCandle.high,
         low: liveCandle.low,
         close: liveCandle.close,
       });
     } catch {
-      // live candle time older than last bar — skip silently
+      // skip silently
     }
   }, [liveCandle]);
+
+  useEffect(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+
+    for (const line of priceLinesRef.current.values()) series.removePriceLine(line);
+    priceLinesRef.current = new Map();
+
+    const levels: Omit<PositionLabel, 'top' | 'visible'>[] = [];
+    const markers: SeriesMarker<Time>[] = [];
+    const draggable: DraggableLevel[] = [];
+    const precision = precisionRef.current;
+    const candleData = candlesRef.current;
+
+    for (const p of positions ?? []) {
+      const isBuy = p.type === 0;
+      const entryColor = isBuy ? '#4caf84' : '#e05c5c';
+
+      const addLine = (id: string, price: number, color: string, text: string) => {
+        priceLinesRef.current.set(id, series.createPriceLine({
+          price,
+          color,
+          lineWidth: 1,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: false,
+        }));
+        levels.push({ id, ticket: p.ticket, price, color, text });
+      };
+
+      // resolve optimistic overrides: while dragging this level use its live
+      // price; after release keep the dragged price until server feedback matches.
+      const resolve = (id: string, serverPrice: number) => {
+        const drag = dragStateRef.current;
+        if (drag && drag.level.id === id) return drag.currentPrice;
+        const pending = pendingPriceRef.current.get(id);
+        if (pending === undefined) return serverPrice;
+        if (Math.abs(pending - serverPrice) < Math.pow(10, -precision)) {
+          pendingPriceRef.current.delete(id);
+          return serverPrice;
+        }
+        return pending;
+      };
+
+      const slId = `${p.ticket}-sl`;
+      const tpId = `${p.ticket}-tp`;
+      const slPrice = resolve(slId, p.sl);
+      const tpPrice = resolve(tpId, p.tp);
+
+      addLine(`${p.ticket}-entry`, p.openPrice, entryColor, `${isBuy ? 'BUY' : 'SELL'} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`);
+      if (slPrice) addLine(slId, slPrice, '#f2a0a0', `SL ${fmtPrice(slPrice, precision)}`);
+      if (tpPrice) addLine(tpId, tpPrice, '#8fd9bd', `TP ${fmtPrice(tpPrice, precision)}`);
+
+      const base = { ticket: p.ticket, broker: p.broker ?? '', symbol: p.symbol, lots: p.lots, sl: slPrice, tp: tpPrice };
+      if (slPrice) draggable.push({ ...base, id: slId, kind: 'sl', price: slPrice });
+      if (tpPrice) draggable.push({ ...base, id: tpId, kind: 'tp', price: tpPrice });
+
+      // openTime (broker time) read as UTC already matches the candle times.
+      const openSec = openTimeToUtcSec(p.openTime, 0);
+      if (openSec > 0 && candleData.length > 0) {
+        let candleTime: number | null = null;
+        for (let i = candleData.length - 1; i >= 0; i--) {
+          if (candleData[i].time <= openSec) { candleTime = candleData[i].time; break; }
+        }
+        if (candleTime !== null) {
+          markers.push({
+            time: candleTime as Time,
+            position: isBuy ? 'belowBar' : 'aboveBar',
+            color: entryColor,
+            shape: isBuy ? 'arrowUp' : 'arrowDown',
+            size: 1,
+          });
+        }
+      }
+    }
+
+    markers.sort((a, b) => (a.time as number) - (b.time as number));
+    markersRef.current?.detach();
+    markersRef.current = createSeriesMarkers(series, markers);
+
+    draggableRef.current = draggable;
+    positionLevelsRef.current = levels;
+    repositionLabels();
+  }, [positions, candles, repositionLabels]);
+
+  // drag SL/TP lines directly on the chart
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const HIT_PX = 6;
+
+    const yToClientOffset = (clientY: number) => {
+      const rect = container.getBoundingClientRect();
+      return clientY - rect.top;
+    };
+
+    const findHit = (clientY: number): DraggableLevel | null => {
+      const series = seriesRef.current;
+      if (!series) return null;
+      const y = yToClientOffset(clientY);
+      let best: DraggableLevel | null = null;
+      let bestDist = HIT_PX;
+      for (const lvl of draggableRef.current) {
+        const ly = series.priceToCoordinate(lvl.price);
+        if (ly === null) continue;
+        const dist = Math.abs(ly - y);
+        if (dist < bestDist) { bestDist = dist; best = lvl; }
+      }
+      return best;
+    };
+
+    const applyDragPrice = (price: number) => {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      drag.currentPrice = price;
+      const line = priceLinesRef.current.get(drag.level.id);
+      line?.applyOptions({ price });
+      // live label update
+      const prefix = drag.level.kind === 'sl' ? 'SL' : 'TP';
+      setPositionLabels(prev => prev.map(l =>
+        l.id === drag.level.id ? { ...l, price, text: `${prefix} ${fmtPrice(price, precisionRef.current)}` } : l,
+      ));
+      repositionLabelsRef.current();
+    };
+
+    const startDrag = (clientY: number): boolean => {
+      const hit = findHit(clientY);
+      if (!hit) return false;
+      dragStateRef.current = { level: hit, currentPrice: hit.price };
+      chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
+      container.style.cursor = 'ns-resize';
+      return true;
+    };
+
+    const moveDrag = (clientY: number) => {
+      const series = seriesRef.current;
+      const drag = dragStateRef.current;
+      if (!series || !drag) return;
+      const price = series.coordinateToPrice(yToClientOffset(clientY));
+      if (price === null) return;
+      applyDragPrice(price);
+    };
+
+    const endDrag = () => {
+      const drag = dragStateRef.current;
+      dragStateRef.current = null;
+      chartRef.current?.applyOptions({ handleScroll: true, handleScale: true });
+      container.style.cursor = '';
+      if (!drag) return;
+      const { level, currentPrice } = drag;
+      const sl = level.kind === 'sl' ? currentPrice : level.sl;
+      const tp = level.kind === 'tp' ? currentPrice : level.tp;
+      // keep the dragged value optimistically until server feedback matches
+      pendingPriceRef.current.set(level.id, currentPrice);
+      onModifyRef.current?.(level.ticket, sl, tp);
+    };
+
+    const onMouseDown = (e: MouseEvent) => { if (startDrag(e.clientY)) { e.preventDefault(); e.stopPropagation(); } };
+    const onMouseMove = (e: MouseEvent) => {
+      if (dragStateRef.current) { moveDrag(e.clientY); return; }
+      // hover affordance
+      container.style.cursor = findHit(e.clientY) ? 'ns-resize' : '';
+    };
+    const onMouseUp = () => { if (dragStateRef.current) endDrag(); };
+
+    const onTouchStart = (e: TouchEvent) => {
+      const t = e.touches[0];
+      if (t && startDrag(t.clientY)) { e.preventDefault(); e.stopPropagation(); }
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      if (!dragStateRef.current) return;
+      const t = e.touches[0];
+      if (t) { e.preventDefault(); moveDrag(t.clientY); }
+    };
+    const onTouchEnd = () => { if (dragStateRef.current) endDrag(); };
+
+    container.addEventListener('mousedown', onMouseDown, true);
+    document.addEventListener('mousemove', onMouseMove, true);
+    document.addEventListener('mouseup', onMouseUp, true);
+    container.addEventListener('touchstart', onTouchStart, { capture: true, passive: false });
+    document.addEventListener('touchmove', onTouchMove, { capture: true, passive: false });
+    document.addEventListener('touchend', onTouchEnd, true);
+
+    return () => {
+      container.removeEventListener('mousedown', onMouseDown, true);
+      document.removeEventListener('mousemove', onMouseMove, true);
+      document.removeEventListener('mouseup', onMouseUp, true);
+      container.removeEventListener('touchstart', onTouchStart, true);
+      document.removeEventListener('touchmove', onTouchMove, true);
+      document.removeEventListener('touchend', onTouchEnd, true);
+    };
+  }, []);
 
   return (
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
       <canvas ref={trendlineCanvasRef} className={styles.trendlineCanvas} />
       {symbol && <div className={styles.legend}>{broker.toUpperCase()} · {symbol} · {timeframe}</div>}
+      {positionLabels.filter(l => l.visible).map(l => (
+        <div
+          key={l.id}
+          className={styles.positionLabel}
+          style={{ top: l.top, color: l.color, borderColor: l.color }}
+          onDoubleClick={() => onEditPosition?.(l.ticket)}
+          title="Double-click to edit"
+        >
+          {l.text}
+        </div>
+      ))}
       {hasSelection && (
         <button
           type="button"

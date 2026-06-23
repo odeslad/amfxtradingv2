@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
@@ -6,7 +6,9 @@ import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { LightweightChart } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
+import { BulkEditPanel } from '../journal/BulkEditPanel';
 import type { Ema } from './chart.types';
+import type { Position } from '../journal/utils/position';
 import styles from './ChartPage.module.css';
 
 interface RawCandle {
@@ -54,6 +56,9 @@ export function ChartPage() {
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [trendlineActive, setTrendlineActive] = useState(false);
+  const [positionsVisible, setPositionsVisible] = useState(false);
+  const [positions, setPositions] = useState<Position[]>([]);
+  const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -104,8 +109,25 @@ export function ChartPage() {
   }, [broker]);
 
   useWs(useCallback((msg: unknown) => {
-    const m = msg as { type: string; broker: string; ticks: ({ symbol: string } & Record<string, number>)[] };
-    if (m.type !== 'ticks' || m.broker !== broker) return;
+    const m = msg as {
+      type: string;
+      broker: string;
+      brokerOffset?: number;
+      ticks?: ({ symbol: string } & Record<string, number>)[];
+      positions?: Position[];
+    };
+    if (m.broker !== broker) return;
+
+    if (m.type === 'positions') {
+      setPositions((m.positions ?? []).map(p => ({
+        ...p,
+        broker: p.broker ?? m.broker,
+        brokerOffset: p.brokerOffset ?? m.brokerOffset,
+      })));
+      return;
+    }
+
+    if (m.type !== 'ticks' || !m.ticks) return;
     const keys = TF_KEYS[timeframe];
     if (!keys) return;
     const last = m.ticks.findLast((t) => t.symbol === symbol);
@@ -122,6 +144,21 @@ export function ChartPage() {
   useEffect(() => {
     setLiveCandle(null);
   }, [broker, symbol, timeframe]);
+
+  useEffect(() => {
+    if (!positionsVisible || !broker) { setPositions([]); return; }
+    fetch(apiUrl('/positions/live'), { credentials: 'include' })
+      .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; positions: Position[] }[]> : Promise.resolve([]))
+      .then(brokers => {
+        const entry = brokers.find(b => b.broker === broker);
+        setPositions((entry?.positions ?? []).map(p => ({
+          ...p,
+          broker: p.broker ?? broker,
+          brokerOffset: p.brokerOffset ?? entry?.brokerOffset,
+        })));
+      })
+      .catch(() => {});
+  }, [positionsVisible, broker]);
 
   useEffect(() => {
     if (!broker || !symbol) { setCandles([]); return; }
@@ -165,6 +202,36 @@ export function ChartPage() {
       .finally(() => setIsLoadingMore(false));
   }, [isLoadingMore, hasMore, broker, symbol, timeframe]);
 
+  const chartPositions = useMemo(
+    () => (positionsVisible ? positions.filter(p => p.symbol === symbol) : []),
+    [positionsVisible, positions, symbol],
+  );
+
+  const handleEditPosition = useCallback((ticket: number) => {
+    const pos = positions.find(p => p.ticket === ticket);
+    if (pos) setEditPosition(pos);
+  }, [positions]);
+
+  const handleModifyPosition = useCallback((ticket: number, sl: number, tp: number) => {
+    const pos = positions.find(p => p.ticket === ticket);
+    if (!pos) return;
+    fetch(apiUrl('/commands'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        action: 'modify',
+        broker: pos.broker,
+        symbol: pos.symbol,
+        ticket: pos.ticket,
+        lots: pos.lots,
+        sl,
+        tp,
+      }),
+    }).catch(() => {});
+  }, [positions]);
+
   return (
     <div className={styles.page}>
       <ChartToolbar
@@ -180,6 +247,8 @@ export function ChartPage() {
         onFilters={() => setFiltersOpen(true)}
         onTrendline={() => setTrendlineActive(prev => !prev)}
         trendlineActive={trendlineActive}
+        onPositions={() => setPositionsVisible(prev => !prev)}
+        positionsActive={positionsVisible}
       />
       <ChartFiltersPanel
         open={filtersOpen}
@@ -200,10 +269,16 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} />
+          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} trendlineActive={trendlineActive} onTrendlineDone={() => setTrendlineActive(false)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} />
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>
+
+      <BulkEditPanel
+        open={!!editPosition}
+        positions={editPosition ? [editPosition] : []}
+        onClose={() => setEditPosition(null)}
+      />
     </div>
   );
 }

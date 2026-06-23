@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions } from '../../shared/ui/icons';
 import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -16,11 +16,14 @@ interface ChartToolbarProps {
   onFilters: () => void;
   onTrendline?: () => void;
   trendlineActive?: boolean;
+  onPositions?: () => void;
+  positionsActive?: boolean;
 }
 
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, onTrendline, trendlineActive,
+  onPositions, positionsActive,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -60,6 +63,15 @@ export function ChartToolbar({
         >
           {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
         </select>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${positionsActive ? styles.iconBtnActive : ''}`}
+          onClick={onPositions}
+          title="Show positions"
+          aria-label="Show positions"
+        >
+          <IconPositions size={16} />
+        </button>
         <button
           type="button"
           className={`${styles.iconBtn} ${trendlineActive ? styles.iconBtnActive : ''}`}

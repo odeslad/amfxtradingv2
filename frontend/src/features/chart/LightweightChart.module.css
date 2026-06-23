@@ -18,19 +18,36 @@
   pointer-events: none;
 }
 
+.positionLabel {
+  position: absolute;
+  left: 0;
+  transform: translateY(-50%);
+  z-index: 5;
+  pointer-events: auto;
+  cursor: pointer;
+  padding: 1px 6px;
+  background: var(--bg);
+  border: 1px solid;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+  line-height: 1.4;
+  user-select: none;
+}
+
 .deleteTrendlineBtn {
   position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 8px;
+  right: 80px;
   z-index: 10;
-  height: 34px;
-  padding: 0 14px;
+  height: 22px;
+  padding: 0 8px;
   background: var(--surface2);
   border: 1px solid var(--red);
   color: var(--red);
   font-family: var(--font-mono);
-  font-size: var(--text-sm);
+  font-size: var(--text-2xs);
   letter-spacing: var(--tracking-tight);
   cursor: pointer;
   transition: background 0.12s ease;

@@ -90,6 +90,17 @@ export function IconTrendline({ size = 14, color = 'currentColor' }: IconProps) 
   );
 }
 
+export function IconPositions({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="1" y1="4" x2="15" y2="4" stroke={color} strokeWidth="1.2" strokeDasharray="2 2" />
+      <line x1="1" y1="8" x2="15" y2="8" stroke={color} strokeWidth="1.2" />
+      <line x1="1" y1="12" x2="15" y2="12" stroke={color} strokeWidth="1.2" strokeDasharray="2 2" />
+      <rect x="9" y="6" width="6" height="4" fill={color} />
+    </svg>
+  );
+}
+
 export function IconJournal({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

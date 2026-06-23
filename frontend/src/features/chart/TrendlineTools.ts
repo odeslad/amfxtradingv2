@@ -48,7 +48,6 @@ export class TrendlineManager {
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
   private onChange: (() => void) | null = null;
   private rafId = 0;
-  private lastSignature = '';
 
   private boundMouseDown: (e: MouseEvent) => void;
   private boundMouseMove: (e: MouseEvent) => void;
@@ -57,6 +56,7 @@ export class TrendlineManager {
   private boundTouchStart: (e: TouchEvent) => void;
   private boundTouchMove: (e: TouchEvent) => void;
   private boundTouchEnd: (e: TouchEvent) => void;
+  private boundRangeChange: () => void;
 
   constructor(canvas: HTMLCanvasElement, chart: IChartApi, series: ISeriesApi<'Candlestick'>) {
     this.canvas = canvas;
@@ -74,6 +74,7 @@ export class TrendlineManager {
     this.boundTouchStart = e => this.onTouchStart(e);
     this.boundTouchMove = e => this.onTouchMove(e);
     this.boundTouchEnd = () => this.endDrag();
+    this.boundRangeChange = () => this.redraw();
 
     // capture phase: we decide before the chart whether to intercept
     document.addEventListener('mousedown', this.boundMouseDown, true);
@@ -84,29 +85,24 @@ export class TrendlineManager {
     document.addEventListener('touchmove', this.boundTouchMove, { capture: true, passive: false });
     document.addEventListener('touchend', this.boundTouchEnd, true);
 
-    // redraw whenever the chart viewport changes (horizontal scroll/zoom OR
-    // vertical price-scale rescale). There is no price-scale event in v4, so we
-    // poll the projected pixel position each frame and repaint only on change.
+    // Horizontal scroll/zoom: use the chart event (zero cost when idle).
+    chart.timeScale().subscribeVisibleLogicalRangeChange(this.boundRangeChange);
+    // Vertical price-scale rescale has no event — poll via RAF but only
+    // while trendlines exist so the loop is paused on an empty canvas.
+    this.scheduleRaf();
+  }
+
+  // RAF loop — only active when there are trendlines to repaint on price rescale.
+  private scheduleRaf() {
+    cancelAnimationFrame(this.rafId);
+    if (this.trendlines.length === 0) return;
+    let lastY = this.series.priceToCoordinate(this.trendlines[0].price1) ?? 0;
     const tick = () => {
-      const sig = this.viewportSignature();
-      if (sig !== this.lastSignature) {
-        this.lastSignature = sig;
-        this.redraw();
-      }
+      const y = this.series.priceToCoordinate(this.trendlines[0]?.price1 ?? 0) ?? 0;
+      if (Math.abs(y - lastY) > 0.5) { lastY = y; this.redraw(); }
       this.rafId = requestAnimationFrame(tick);
     };
     this.rafId = requestAnimationFrame(tick);
-  }
-
-  private viewportSignature(): string {
-    // sample projected pixels of all endpoints; cheap and reflects any rescale
-    let sig = `${this.canvas.width}x${this.canvas.height}`;
-    for (const line of this.trendlines) {
-      const p1 = this.logicalToPixel({ logical: line.logical1, price: line.price1 });
-      const p2 = this.logicalToPixel({ logical: line.logical2, price: line.price2 });
-      sig += `|${p1 ? `${p1.x | 0},${p1.y | 0}` : 'n'};${p2 ? `${p2.x | 0},${p2.y | 0}` : 'n'}`;
-    }
-    return sig;
   }
 
   destroy() {
@@ -117,6 +113,7 @@ export class TrendlineManager {
     document.removeEventListener('touchstart', this.boundTouchStart, true);
     document.removeEventListener('touchmove', this.boundTouchMove, true);
     document.removeEventListener('touchend', this.boundTouchEnd, true);
+    this.chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.boundRangeChange);
     cancelAnimationFrame(this.rafId);
   }
 
@@ -244,6 +241,7 @@ export class TrendlineManager {
         this.setSelected(line.id);
         this.drawStart = null;
         this.isDrawing = false;
+        this.scheduleRaf();
         this.redraw();
         this.onDone?.();
         this.onChange?.();
@@ -462,6 +460,7 @@ export class TrendlineManager {
     if (!this.selectedId) return;
     this.trendlines = this.trendlines.filter(l => l.id !== this.selectedId);
     this.setSelected(null);
+    this.scheduleRaf();
     this.redraw();
     this.onChange?.();
   }
@@ -573,6 +572,7 @@ export class TrendlineManager {
         logical1, price1: l.price1, logical2, price2: l.price2,
       });
     }
+    this.scheduleRaf();
     this.redraw();
   }
 

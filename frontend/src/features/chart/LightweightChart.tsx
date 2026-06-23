@@ -211,7 +211,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
+  const trendlineAppearanceRef = useRef(trendlineAppearance);
   useEffect(() => {
+    trendlineAppearanceRef.current = trendlineAppearance;
     if (trendlineAppearance) trendlineManagerRef.current?.setAppearance(trendlineAppearance);
   }, [trendlineAppearance]);
 
@@ -452,6 +454,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       const manager = new TrendlineManager(trendlineCanvas, chart, series);
       manager.setOnSelectionChange(setHasSelection);
       manager.setOnChange(() => onTrendlinesChangeRef.current?.(manager.getPersisted()));
+      if (trendlineAppearanceRef.current) manager.setAppearance(trendlineAppearanceRef.current);
       trendlineManagerRef.current = manager;
       if (candlesRef.current.length > 0) {
         const filtered = candlesRef.current.filter(c => {

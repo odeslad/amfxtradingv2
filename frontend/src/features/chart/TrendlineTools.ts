@@ -28,6 +28,7 @@ export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 export interface TrendlineAppearance {
   color: string;
   style: TrendlineStyle;
+  width: number;
 }
 
 type Handle = 'start' | 'end' | 'line';
@@ -50,7 +51,7 @@ export class TrendlineManager {
   private dragHandle: Handle | null = null;
   private dragLastLogical: Logical | null = null;
 
-  private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed' };
+  private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed', width: 1 };
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
   private onChange: (() => void) | null = null;
@@ -418,9 +419,9 @@ export class TrendlineManager {
 
   private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false) {
     const ctx = this.ctx;
-    const { color, style } = preview ? { color: HANDLE_COLOR, style: 'dashed' as TrendlineStyle } : this.appearance;
+    const { color, style, width } = preview ? { color: HANDLE_COLOR, style: 'dashed' as TrendlineStyle, width: 1 } : this.appearance;
     ctx.strokeStyle = color;
-    ctx.lineWidth = 1;
+    ctx.lineWidth = width;
     if (style === 'dashed') ctx.setLineDash([4, 4]);
     else if (style === 'dotted') ctx.setLineDash([1, 4]);
     else ctx.setLineDash([]);

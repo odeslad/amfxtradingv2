@@ -15,7 +15,29 @@
   position: absolute;
   inset: 0;
   z-index: 3;
-  cursor: crosshair;
+  pointer-events: none;
+}
+
+.deleteTrendlineBtn {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10;
+  height: 34px;
+  padding: 0 14px;
+  background: var(--surface2);
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.deleteTrendlineBtn:hover {
+  background: rgba(224, 92, 92, 0.15);
 }
 
 .legend {

@@ -72,6 +72,24 @@ export function IconIndicators({ size = 14, color = 'currentColor' }: IconProps)
   );
 }
 
+export function IconFilters({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M1 3h14l-5 6v4l-4 2V9L1 3Z" stroke={color} strokeWidth="1.2" strokeLinejoin="round" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function IconTrendline({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="4" y1="12" x2="12" y2="4" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <circle cx="3.5" cy="12.5" r="2" stroke={color} strokeWidth="1.2" fill="none" />
+      <circle cx="12.5" cy="3.5" r="2" stroke={color} strokeWidth="1.2" fill="none" />
+    </svg>
+  );
+}
+
 export function IconJournal({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

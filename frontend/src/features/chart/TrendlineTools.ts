@@ -1,267 +1,463 @@
+import type { IChartApi, ISeriesApi, Logical as ChartLogical } from 'lightweight-charts';
+
 export interface Trendline {
   id: string;
-  x1: number;
-  y1: number;
-  x2: number;
-  y2: number;
+  logical1: number;
+  price1: number;
+  logical2: number;
+  price2: number;
 }
 
-const HANDLE_RADIUS = 6;
-const LINE_WIDTH = 1;
-const LINE_COLOR = 'rgba(128,128,128,0.8)';
+const HANDLE_RADIUS = 5;
+const HIT_RADIUS_MOUSE = 10;
+const HIT_RADIUS_TOUCH = 22;
+const LINE_COLOR = 'rgba(140,140,140,0.85)';
 const HANDLE_COLOR = 'rgba(200,200,200,0.9)';
-const HANDLE_SELECTED_COLOR = 'rgba(245,166,35,0.9)';
+const HANDLE_ACTIVE_COLOR = '#f5a623';
+
+type Handle = 'start' | 'end' | 'line';
+type Point = { x: number; y: number };
+type Logical = { logical: number; price: number };
 
 export class TrendlineManager {
   private canvas: HTMLCanvasElement;
   private ctx: CanvasRenderingContext2D;
+  private chart: IChartApi;
+  private series: ISeriesApi<'Candlestick'>;
+
   private trendlines: Trendline[] = [];
   private selectedId: string | null = null;
-  private draggingHandle: 'start' | 'end' | 'line' | null = null;
-  private isDrawing = false;
-  private drawStart: { x: number; y: number } | null = null;
-  private drawCurrent: { x: number; y: number } | null = null;
-  private shiftPressed = false;
 
-  constructor(canvas: HTMLCanvasElement) {
+  private isDrawing = false;
+  private drawStart: Logical | null = null;
+  private cursorPixel: Point = { x: 0, y: 0 };
+
+  private dragHandle: Handle | null = null;
+  private dragLastLogical: Logical | null = null;
+
+  private onDone: (() => void) | null = null;
+  private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
+  private rafId = 0;
+  private lastSignature = '';
+
+  private boundMouseDown: (e: MouseEvent) => void;
+  private boundMouseMove: (e: MouseEvent) => void;
+  private boundMouseUp: () => void;
+  private boundKeyDown: (e: KeyboardEvent) => void;
+  private boundTouchStart: (e: TouchEvent) => void;
+  private boundTouchMove: (e: TouchEvent) => void;
+  private boundTouchEnd: (e: TouchEvent) => void;
+
+  constructor(canvas: HTMLCanvasElement, chart: IChartApi, series: ISeriesApi<'Candlestick'>) {
     this.canvas = canvas;
+    this.chart = chart;
+    this.series = series;
+
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Could not get 2D context');
     this.ctx = ctx;
-    this.setupEventListeners();
+
+    this.boundMouseDown = e => this.onMouseDown(e);
+    this.boundMouseMove = e => this.onMouseMove(e);
+    this.boundMouseUp = () => this.endDrag();
+    this.boundKeyDown = e => this.onKeyDown(e);
+    this.boundTouchStart = e => this.onTouchStart(e);
+    this.boundTouchMove = e => this.onTouchMove(e);
+    this.boundTouchEnd = () => this.endDrag();
+
+    // capture phase: we decide before the chart whether to intercept
+    document.addEventListener('mousedown', this.boundMouseDown, true);
+    document.addEventListener('mousemove', this.boundMouseMove, true);
+    document.addEventListener('mouseup', this.boundMouseUp, true);
+    document.addEventListener('keydown', this.boundKeyDown);
+    document.addEventListener('touchstart', this.boundTouchStart, { capture: true, passive: false });
+    document.addEventListener('touchmove', this.boundTouchMove, { capture: true, passive: false });
+    document.addEventListener('touchend', this.boundTouchEnd, true);
+
+    // redraw whenever the chart viewport changes (horizontal scroll/zoom OR
+    // vertical price-scale rescale). There is no price-scale event in v4, so we
+    // poll the projected pixel position each frame and repaint only on change.
+    const tick = () => {
+      const sig = this.viewportSignature();
+      if (sig !== this.lastSignature) {
+        this.lastSignature = sig;
+        this.redraw();
+      }
+      this.rafId = requestAnimationFrame(tick);
+    };
+    this.rafId = requestAnimationFrame(tick);
   }
 
-  private setupEventListeners() {
-    this.canvas.addEventListener('mousedown', e => this.handleMouseDown(e));
-    this.canvas.addEventListener('mousemove', e => this.handleMouseMove(e));
-    this.canvas.addEventListener('mouseup', e => this.handleMouseUp(e));
-    this.canvas.addEventListener('keydown', e => this.handleKeyDown(e));
-    this.canvas.addEventListener('keyup', e => this.handleKeyUp(e));
+  private viewportSignature(): string {
+    // sample projected pixels of all endpoints; cheap and reflects any rescale
+    let sig = `${this.canvas.width}x${this.canvas.height}`;
+    for (const line of this.trendlines) {
+      const p1 = this.logicalToPixel({ logical: line.logical1, price: line.price1 });
+      const p2 = this.logicalToPixel({ logical: line.logical2, price: line.price2 });
+      sig += `|${p1 ? `${p1.x | 0},${p1.y | 0}` : 'n'};${p2 ? `${p2.x | 0},${p2.y | 0}` : 'n'}`;
+    }
+    return sig;
   }
 
-  private getMousePos(e: MouseEvent): { x: number; y: number } {
-    const rect = this.canvas.getBoundingClientRect();
+  destroy() {
+    document.removeEventListener('mousedown', this.boundMouseDown, true);
+    document.removeEventListener('mousemove', this.boundMouseMove, true);
+    document.removeEventListener('mouseup', this.boundMouseUp, true);
+    document.removeEventListener('keydown', this.boundKeyDown);
+    document.removeEventListener('touchstart', this.boundTouchStart, true);
+    document.removeEventListener('touchmove', this.boundTouchMove, true);
+    document.removeEventListener('touchend', this.boundTouchEnd, true);
+    cancelAnimationFrame(this.rafId);
+  }
+
+  // ─── chart panel bounds (exclude price/time axes) ────────────────────────
+
+  private paneRect(): { left: number; top: number; right: number; bottom: number } {
+    const priceAxisW = this.chart.priceScale('right').width();
+    const timeAxisH = this.chart.timeScale().height();
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      left: 0,
+      top: 0,
+      right: this.canvas.width - priceAxisW,
+      bottom: this.canvas.height - timeAxisH,
     };
   }
 
-  private snapToHorizontal(y: number): number {
-    return y;
+  private inPane(p: Point): boolean {
+    const r = this.paneRect();
+    return p.x >= r.left && p.x <= r.right && p.y >= r.top && p.y <= r.bottom;
   }
 
-  private handleMouseDown(e: MouseEvent) {
-    const pos = this.getMousePos(e);
-
-    if (this.isDrawing) {
-      this.drawStart = pos;
-      this.drawCurrent = pos;
-      return;
-    }
-
-    const handle = this.getHandleAtPos(pos);
-    if (handle) {
-      this.selectedId = handle.id;
-      this.draggingHandle = handle.handle;
-      this.drawCurrent = pos;
-      this.redraw();
-    }
+  private clampToPane(p: Point): Point {
+    const r = this.paneRect();
+    return {
+      x: Math.max(r.left, Math.min(r.right, p.x)),
+      y: Math.max(r.top, Math.min(r.bottom, p.y)),
+    };
   }
 
-  private handleMouseMove(e: MouseEvent) {
-    const pos = this.getMousePos(e);
-    this.shiftPressed = e.shiftKey;
+  // ─── coordinate conversion ───────────────────────────────────────────────
 
-    if (this.isDrawing && this.drawStart) {
-      let end = pos;
-      if (this.shiftPressed) {
-        end = { ...pos, y: this.drawStart.y };
-      }
-      this.drawCurrent = end;
-      this.redraw();
-      return;
-    }
-
-    if (this.draggingHandle && this.selectedId) {
-      const line = this.trendlines.find(l => l.id === this.selectedId);
-      if (!line) return;
-
-      if (this.draggingHandle === 'start') {
-        line.x1 = pos.x;
-        line.y1 = this.shiftPressed ? line.y2 : pos.y;
-      } else if (this.draggingHandle === 'end') {
-        line.x2 = pos.x;
-        line.y2 = this.shiftPressed ? line.y1 : pos.y;
-      } else if (this.draggingHandle === 'line') {
-        const dx = pos.x - (this.drawCurrent?.x || 0);
-        const dy = pos.y - (this.drawCurrent?.y || 0);
-        line.x1 += dx;
-        line.y1 += dy;
-        line.x2 += dx;
-        line.y2 += dy;
-        this.drawCurrent = pos;
-      }
-      this.redraw();
-    }
+  private pixelToLogical(p: Point): Logical | null {
+    const logical = this.chart.timeScale().coordinateToLogical(p.x) as number | null;
+    const price = this.series.coordinateToPrice(p.y);
+    if (logical === null || price === null) return null;
+    return { logical, price };
   }
 
-  private handleMouseUp(e: MouseEvent) {
-    if (this.isDrawing && this.drawStart && this.drawCurrent) {
-      const line: Trendline = {
-        id: `trendline-${Date.now()}`,
-        x1: this.drawStart.x,
-        y1: this.drawStart.y,
-        x2: this.drawCurrent.x,
-        y2: this.drawCurrent.y,
-      };
-      if (this.shiftPressed) {
-        line.y2 = line.y1;
-      }
-      this.trendlines.push(line);
-      this.drawStart = null;
-      this.drawCurrent = null;
-      this.redraw();
-      return;
-    }
-
-    this.draggingHandle = null;
-    this.drawCurrent = null;
+  private logicalToPixel(l: { logical: number; price: number }): Point | null {
+    const x = this.chart.timeScale().logicalToCoordinate(l.logical as ChartLogical);
+    const y = this.series.priceToCoordinate(l.price);
+    if (x === null || y === null) return null;
+    return { x, y };
   }
 
-  private handleKeyDown(e: KeyboardEvent) {
-    if (e.key === 'Shift') {
-      this.shiftPressed = true;
-      if (this.isDrawing || this.draggingHandle) {
-        this.redraw();
-      }
-    }
-    if (e.key === 'Delete' && this.selectedId) {
-      this.trendlines = this.trendlines.filter(l => l.id !== this.selectedId);
-      this.selectedId = null;
-      this.redraw();
-    }
+  private toCanvas(clientX: number, clientY: number): Point {
+    const rect = this.canvas.getBoundingClientRect();
+    return { x: clientX - rect.left, y: clientY - rect.top };
   }
 
-  private handleKeyUp(e: KeyboardEvent) {
-    if (e.key === 'Shift') {
-      this.shiftPressed = false;
-      if (this.isDrawing || this.draggingHandle) {
-        this.redraw();
-      }
-    }
+  private inside(clientX: number, clientY: number): boolean {
+    const rect = this.canvas.getBoundingClientRect();
+    return clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
   }
 
-  private getHandleAtPos(pos: { x: number; y: number }): { id: string; handle: 'start' | 'end' | 'line' } | null {
-    for (const line of this.trendlines) {
-      const distStart = Math.hypot(pos.x - line.x1, pos.y - line.y1);
-      const distEnd = Math.hypot(pos.x - line.x2, pos.y - line.y2);
+  // ─── hit testing ─────────────────────────────────────────────────────────
 
-      if (distStart < HANDLE_RADIUS * 2) {
-        return { id: line.id, handle: 'start' };
-      }
-      if (distEnd < HANDLE_RADIUS * 2) {
-        return { id: line.id, handle: 'end' };
-      }
+  private pixelLine(line: Trendline) {
+    const p1 = this.logicalToPixel({ logical: line.logical1, price: line.price1 });
+    const p2 = this.logicalToPixel({ logical: line.logical2, price: line.price2 });
+    if (!p1 || !p2) return null;
+    return { x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y };
+  }
 
-      const distLine = this.distanceToLine(pos, line);
-      if (distLine < 5) {
-        return { id: line.id, handle: 'line' };
-      }
+  private hitTest(pos: Point, touch: boolean): { id: string; handle: Handle } | null {
+    const r = touch ? HIT_RADIUS_TOUCH : HIT_RADIUS_MOUSE;
+    for (const line of [...this.trendlines].reverse()) {
+      const px = this.pixelLine(line);
+      if (!px) continue;
+      if (Math.hypot(pos.x - px.x1, pos.y - px.y1) < r) return { id: line.id, handle: 'start' };
+      if (Math.hypot(pos.x - px.x2, pos.y - px.y2) < r) return { id: line.id, handle: 'end' };
+      if (this.distToSegment(pos, px) < r / 2) return { id: line.id, handle: 'line' };
     }
     return null;
   }
 
-  private distanceToLine(p: { x: number; y: number }, line: Trendline): number {
-    const dx = line.x2 - line.x1;
-    const dy = line.y2 - line.y1;
+  private distToSegment(p: Point, seg: { x1: number; y1: number; x2: number; y2: number }): number {
+    const dx = seg.x2 - seg.x1;
+    const dy = seg.y2 - seg.y1;
     const len2 = dx * dx + dy * dy;
-    if (len2 === 0) return Math.hypot(p.x - line.x1, p.y - line.y1);
-
-    let t = ((p.x - line.x1) * dx + (p.y - line.y1) * dy) / len2;
-    t = Math.max(0, Math.min(1, t));
-
-    const closestX = line.x1 + t * dx;
-    const closestY = line.y1 + t * dy;
-    return Math.hypot(p.x - closestX, p.y - closestY);
+    if (len2 === 0) return Math.hypot(p.x - seg.x1, p.y - seg.y1);
+    const t = Math.max(0, Math.min(1, ((p.x - seg.x1) * dx + (p.y - seg.y1) * dy) / len2));
+    return Math.hypot(p.x - (seg.x1 + t * dx), p.y - (seg.y1 + t * dy));
   }
 
-  startDrawing() {
+  // ─── pointer-down logic shared by mouse + touch ───────────────────────────
+  // returns true if we consumed the event (chart must NOT receive it)
+
+  private handleDown(clientX: number, clientY: number, shiftKey: boolean, touch: boolean, target: EventTarget | null): boolean {
+    // ignore interactions with UI controls overlaid on the chart (e.g. delete button)
+    if (target instanceof HTMLElement && target.closest('button')) return false;
+    if (!this.inside(clientX, clientY)) return false;
+    const pos = this.toCanvas(clientX, clientY);
+
+    // never start/place points over the price or time axes
+    if (!this.inPane(pos)) {
+      if (!this.isDrawing && this.selectedId !== null) {
+        this.setSelected(null);
+        this.redraw();
+      }
+      return false;
+    }
+
+    // 1) drawing mode: place points
+    if (this.isDrawing) {
+      const logical = this.pixelToLogical(pos);
+      if (!logical) return true;
+
+      if (!this.drawStart) {
+        this.drawStart = logical;
+        this.cursorPixel = pos;
+        this.redraw();
+      } else {
+        const end: Logical = shiftKey
+          ? { logical: logical.logical, price: this.drawStart.price }
+          : logical;
+        const line: Trendline = {
+          id: `tl-${Date.now()}`,
+          logical1: this.drawStart.logical,
+          price1: this.drawStart.price,
+          logical2: end.logical,
+          price2: end.price,
+        };
+        this.trendlines.push(line);
+        this.setSelected(line.id);
+        this.drawStart = null;
+        this.isDrawing = false;
+        this.redraw();
+        this.onDone?.();
+      }
+      return true;
+    }
+
+    // 2) not drawing: hit-test for select / drag
+    const hit = this.hitTest(pos, touch);
+    if (hit) {
+      this.setSelected(hit.id);
+      this.dragHandle = hit.handle;
+      this.dragLastLogical = this.pixelToLogical(pos);
+      this.redraw();
+      return true;
+    }
+
+    // 3) tapped empty space: deselect, let the chart handle it (zoom/scroll)
+    if (this.selectedId !== null) {
+      this.setSelected(null);
+      this.redraw();
+    }
+    return false;
+  }
+
+  private handleMove(clientX: number, clientY: number, shiftKey: boolean): boolean {
+    const pos = this.clampToPane(this.toCanvas(clientX, clientY));
+    this.cursorPixel = pos;
+
+    // drawing preview
+    if (this.isDrawing) {
+      if (this.drawStart) this.redraw();
+      return false;
+    }
+
+    // active drag
+    if (this.dragHandle && this.selectedId) {
+      const line = this.trendlines.find(l => l.id === this.selectedId);
+      const logical = this.pixelToLogical(pos);
+      if (!line || !logical) return true;
+
+      if (this.dragHandle === 'start') {
+        line.logical1 = logical.logical;
+        line.price1 = shiftKey ? line.price2 : logical.price;
+      } else if (this.dragHandle === 'end') {
+        line.logical2 = logical.logical;
+        line.price2 = shiftKey ? line.price1 : logical.price;
+      } else if (this.dragLastLogical) {
+        const dl = logical.logical - this.dragLastLogical.logical;
+        const dp = logical.price - this.dragLastLogical.price;
+        line.logical1 += dl;
+        line.logical2 += dl;
+        line.price1 += dp;
+        line.price2 += dp;
+      }
+      this.dragLastLogical = logical;
+      this.redraw();
+      return true;
+    }
+
+    return false;
+  }
+
+  private endDrag() {
+    this.dragHandle = null;
+    this.dragLastLogical = null;
+  }
+
+  private setSelected(id: string | null) {
+    if (this.selectedId === id) return;
+    this.selectedId = id;
+    this.onSelectionChange?.(id !== null);
+  }
+
+  // ─── mouse ─────────────────────────────────────────────────────────────────
+
+  private onMouseDown(e: MouseEvent) {
+    const consumed = this.handleDown(e.clientX, e.clientY, e.shiftKey, false, e.target);
+    if (consumed) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  private onMouseMove(e: MouseEvent) {
+    // update cursor when hovering a line (desktop affordance)
+    if (!this.isDrawing && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
+      const hit = this.hitTest(this.toCanvas(e.clientX, e.clientY), false);
+      this.canvas.style.cursor = hit ? 'pointer' : '';
+    }
+    const consumed = this.handleMove(e.clientX, e.clientY, e.shiftKey);
+    if (consumed) {
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (this.isDrawing && this.drawStart) {
+      this.redraw();
+    }
+  }
+
+  // ─── touch ───────────────────────────────────────────────────────────────
+
+  private onTouchStart(e: TouchEvent) {
+    if (e.touches.length !== 1) return; // let pinch-zoom through
+    const t = e.touches[0];
+    const consumed = this.handleDown(t.clientX, t.clientY, false, true, e.target);
+    if (consumed) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  private onTouchMove(e: TouchEvent) {
+    if (e.touches.length !== 1) return;
+    if (!this.isDrawing && !this.dragHandle) return; // not interacting → chart scrolls
+    const t = e.touches[0];
+    const consumed = this.handleMove(t.clientX, t.clientY, false);
+    if (consumed || this.isDrawing) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
+  // ─── keyboard ──────────────────────────────────────────────────────────────
+
+  private onKeyDown(e: KeyboardEvent) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
+      this.deleteSelected();
+    }
+    if (e.key === 'Escape' && this.isDrawing) {
+      this.drawStart = null;
+      this.isDrawing = false;
+      this.redraw();
+      this.onDone?.();
+    }
+  }
+
+  // ─── render ──────────────────────────────────────────────────────────────
+
+  redraw() {
+    const { width, height } = this.canvas;
+    this.ctx.clearRect(0, 0, width, height);
+
+    // clip everything to the chart pane so lines never paint over the axes
+    const r = this.paneRect();
+    this.ctx.save();
+    this.ctx.beginPath();
+    this.ctx.rect(r.left, r.top, r.right - r.left, r.bottom - r.top);
+    this.ctx.clip();
+
+    for (const line of this.trendlines) {
+      const px = this.pixelLine(line);
+      if (!px) continue;
+      this.paintLine(px, line.id === this.selectedId);
+    }
+
+    if (this.isDrawing && this.drawStart) {
+      const p1 = this.logicalToPixel(this.drawStart);
+      if (p1) {
+        this.paintLine({ x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: this.cursorPixel.y }, false, true);
+      }
+    }
+
+    this.ctx.restore();
+  }
+
+  private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false) {
+    const ctx = this.ctx;
+    ctx.strokeStyle = LINE_COLOR;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([3, 3]);
+    ctx.beginPath();
+    ctx.moveTo(px.x1, px.y1);
+    ctx.lineTo(px.x2, px.y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    if (selected || preview) {
+      const color = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
+      this.paintHandle(px.x1, px.y1, color);
+      this.paintHandle(px.x2, px.y2, color);
+    }
+  }
+
+  private paintHandle(x: number, y: number, color: string) {
+    const ctx = this.ctx;
+    ctx.beginPath();
+    ctx.arc(x, y, HANDLE_RADIUS, 0, Math.PI * 2);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(13,13,13,0.8)';
+    ctx.fill();
+  }
+
+  // ─── public API ───────────────────────────────────────────────────────────
+
+  startDrawing(onDone?: () => void) {
     this.isDrawing = true;
-    this.selectedId = null;
+    this.drawStart = null;
+    this.onDone = onDone ?? null;
+    this.setSelected(null);
+    this.canvas.style.cursor = 'crosshair';
     this.redraw();
   }
 
   stopDrawing() {
     this.isDrawing = false;
     this.drawStart = null;
-    this.drawCurrent = null;
+    this.canvas.style.cursor = '';
     this.redraw();
   }
 
-  selectLine(pos: { x: number; y: number }) {
-    const handle = this.getHandleAtPos(pos);
-    if (handle) {
-      this.selectedId = handle.id;
-      this.draggingHandle = handle.handle;
-    } else {
-      this.selectedId = null;
-    }
+  deleteSelected() {
+    if (!this.selectedId) return;
+    this.trendlines = this.trendlines.filter(l => l.id !== this.selectedId);
+    this.setSelected(null);
     this.redraw();
   }
 
-  redraw() {
-    const { width, height } = this.canvas;
-    this.ctx.clearRect(0, 0, width, height);
-
-    for (const line of this.trendlines) {
-      const isSelected = line.id === this.selectedId;
-      this.drawLine(line, isSelected);
-    }
-
-    if (this.isDrawing && this.drawStart && this.drawCurrent) {
-      this.drawLine(
-        { id: 'preview', x1: this.drawStart.x, y1: this.drawStart.y, x2: this.drawCurrent.x, y2: this.drawCurrent.y },
-        false,
-        true
-      );
-    }
+  setOnSelectionChange(cb: (hasSelection: boolean) => void) {
+    this.onSelectionChange = cb;
   }
 
-  private drawLine(line: Trendline, isSelected: boolean, isPreview = false) {
-    this.ctx.strokeStyle = LINE_COLOR;
-    this.ctx.lineWidth = LINE_WIDTH;
-    this.ctx.setLineDash([2, 2]);
-    this.ctx.beginPath();
-    this.ctx.moveTo(line.x1, line.y1);
-    this.ctx.lineTo(line.x2, line.y2);
-    this.ctx.stroke();
-    this.ctx.setLineDash([]);
-
-    if (isSelected && !isPreview) {
-      this.ctx.fillStyle = HANDLE_SELECTED_COLOR;
-      this.ctx.beginPath();
-      this.ctx.arc(line.x1, line.y1, HANDLE_RADIUS, 0, Math.PI * 2);
-      this.ctx.fill();
-      this.ctx.beginPath();
-      this.ctx.arc(line.x2, line.y2, HANDLE_RADIUS, 0, Math.PI * 2);
-      this.ctx.fill();
-    }
-  }
-
-  getTrendlines(): Trendline[] {
-    return [...this.trendlines];
-  }
-
-  setTrendlines(lines: Trendline[]) {
-    this.trendlines = lines;
-    this.redraw();
-  }
-
-  clear() {
-    this.trendlines = [];
-    this.selectedId = null;
-    this.redraw();
+  hasSelection(): boolean {
+    return this.selectedId !== null;
   }
 
   isActive(): boolean {

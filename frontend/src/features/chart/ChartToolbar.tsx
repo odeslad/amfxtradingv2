@@ -1,4 +1,4 @@
-import { IconIndicators } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline } from '../../shared/ui/icons';
 import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -25,15 +25,17 @@ export function ChartToolbar({
   return (
     <div className={styles.toolbar}>
       <div className={styles.selects}>
-        <select className={styles.select} value={broker} onChange={e => onBrokerChange(e.target.value)}>
-          <option value="">Broker</option>
-          {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}</option>)}
-        </select>
+        <div className={styles.symbolSelects}>
+          <select className={styles.select} value={broker} onChange={e => onBrokerChange(e.target.value)}>
+            <option value="">Broker</option>
+            {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}</option>)}
+          </select>
 
-        <select className={styles.select} value={symbol} onChange={e => onSymbolChange(e.target.value)} disabled={!broker}>
-          <option value="">Symbol</option>
-          {symbols.map(s => <option key={s} value={s}>{s}</option>)}
-        </select>
+          <select className={styles.select} value={symbol} onChange={e => onSymbolChange(e.target.value)} disabled={!broker}>
+            <option value="">Symbol</option>
+            {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+          </select>
+        </div>
 
         <div className={styles.tfGroup}>
           {TIMEFRAMES.map(tf => (
@@ -60,18 +62,30 @@ export function ChartToolbar({
         </select>
         <button
           type="button"
-          className={`${styles.filtersBtn} ${trendlineActive ? styles.btnActive : ''}`}
+          className={`${styles.iconBtn} ${trendlineActive ? styles.iconBtnActive : ''}`}
           onClick={onTrendline}
-          title="Trendline tool (Shift for horizontal, Del to delete)"
+          title="Trendline (Shift = horizontal, Del = delete)"
+          aria-label="Trendline"
         >
-          Trendline
+          <IconTrendline size={16} />
         </button>
-        <button type="button" className={styles.filtersBtn} onClick={onFilters}>
-          Filters
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={onFilters}
+          title="Filters"
+          aria-label="Filters"
+        >
+          <IconFilters size={16} />
         </button>
-        <button type="button" className={styles.indicatorsBtn} onClick={onIndicators}>
-          <span className={styles.indicatorsBtnText}>Indicators</span>
-          <span className={styles.indicatorsBtnIcon}><IconIndicators size={14} /></span>
+        <button
+          type="button"
+          className={styles.iconBtn}
+          onClick={onIndicators}
+          title="Indicators"
+          aria-label="Indicators"
+        >
+          <IconIndicators size={16} />
         </button>
       </div>
     </div>

@@ -47,6 +47,12 @@
   cursor: not-allowed;
 }
 
+.symbolSelects {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .tfGroup {
   display: flex;
   gap: 2px;
@@ -82,50 +88,27 @@
   flex-shrink: 0;
 }
 
-.indicatorsBtn {
-  height: 27px;
-  padding: 0 10px;
-  background: transparent;
-  border: 1px solid var(--border-bright);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-tight);
-  cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease;
-}
-
-.indicatorsBtn:hover {
-  color: var(--text);
-  border-color: var(--text);
-}
-
-.indicatorsBtnIcon {
-  display: none;
+.iconBtn {
+  display: flex;
   align-items: center;
-}
-
-.filtersBtn {
-  display: none;
-  height: 34px;
-  padding: 0 12px;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  padding: 0;
   background: transparent;
   border: 1px solid var(--border-bright);
   color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-tight);
   cursor: pointer;
   transition: color 0.12s ease, border-color 0.12s ease;
   flex-shrink: 0;
 }
 
-.filtersBtn:hover {
+.iconBtn:hover {
   color: var(--text);
   border-color: var(--text);
 }
 
-.btnActive {
+.iconBtnActive {
   color: var(--orange);
   border-color: var(--orange);
 }
@@ -134,6 +117,12 @@
   display: none;
   min-width: 70px;
   flex-shrink: 0;
+}
+
+@media (min-width: 769px) {
+  .symbolSelects {
+    display: none;
+  }
 }
 
 @media (max-width: 768px) {
@@ -156,29 +145,9 @@
     height: 34px;
   }
 
-  .filtersBtn {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex: 1;
-    height: 34px;
-  }
-
-  .indicatorsBtn {
+  .iconBtn {
     flex: 1;
     width: auto;
     height: 34px;
-    padding: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .indicatorsBtnText {
-    display: inline;
-  }
-
-  .indicatorsBtnIcon {
-    display: none;
   }
 }

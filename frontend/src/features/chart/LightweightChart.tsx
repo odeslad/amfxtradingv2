@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import {
   createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType, CrosshairMode,
   type IChartApi, type ISeriesApi, type CandlestickData, type Time,
@@ -18,13 +18,14 @@ interface Candle {
 const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1']);
 
 const LINE_STYLE: Record<string, LineStyle> = {
-  solid:  LineStyle.Solid,
+  solid: LineStyle.Solid,
   dashed: LineStyle.Dashed,
   dotted: LineStyle.Dotted,
 };
 
 interface LightweightChartProps {
   candles: Candle[];
+  broker: string;
   symbol: string;
   timeframe: string;
   liveCandle?: Candle | null;
@@ -78,9 +79,10 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
 
 interface LightweightChartExtendedProps extends LightweightChartProps {
   trendlineActive?: boolean;
+  onTrendlineDone?: () => void;
 }
 
-export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone }: LightweightChartExtendedProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -94,10 +96,13 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const isLoadingMoreRef = useRef(false);
   const trendlineManagerRef = useRef<TrendlineManager | null>(null);
+  const [hasSelection, setHasSelection] = useState(false);
+  const onTrendlineDoneRef = useRef(onTrendlineDone);
+  useEffect(() => { onTrendlineDoneRef.current = onTrendlineDone; }, [onTrendlineDone]);
 
   useEffect(() => {
     if (trendlineActive) {
-      trendlineManagerRef.current?.startDrawing();
+      trendlineManagerRef.current?.startDrawing(() => onTrendlineDoneRef.current?.());
     } else {
       trendlineManagerRef.current?.stopDrawing();
     }
@@ -123,9 +128,9 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
 
     const rolloverTimes = getRolloverTimes(data[0].time, data[data.length - 1].time);
 
-    ctx.strokeStyle = 'rgba(160,160,160,0.35)';
+    ctx.strokeStyle = 'rgba(255,255,255,0.30)';
     ctx.lineWidth = 1;
-    ctx.setLineDash([3, 4]);
+    ctx.setLineDash([1, 3]);
 
     for (const t of rolloverTimes) {
       const x = chart.timeScale().timeToCoordinate(t as Time);
@@ -194,8 +199,8 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
         fontSize: 11,
       },
       grid: {
-        vertLines: { color: 'rgba(255,255,255,0.04)' },
-        horzLines: { color: 'rgba(255,255,255,0.04)' },
+        vertLines: { visible: false },
+        horzLines: { visible: false },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
@@ -245,6 +250,16 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
       overlayRef.current.height = containerRef.current.clientHeight;
     }
 
+    // trendline canvas
+    const trendlineCanvas = trendlineCanvasRef.current;
+    if (trendlineCanvas && containerRef.current) {
+      trendlineCanvas.width = containerRef.current.clientWidth;
+      trendlineCanvas.height = containerRef.current.clientHeight;
+      const manager = new TrendlineManager(trendlineCanvas, chart, series);
+      manager.setOnSelectionChange(setHasSelection);
+      trendlineManagerRef.current = manager;
+    }
+
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       drawRollovers();
       if (!range || isLoadingMoreRef.current || !onLoadMoreRef.current) return;
@@ -261,12 +276,19 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
       chart.resize(w, h);
       overlayRef.current.width = w;
       overlayRef.current.height = h;
+      if (trendlineCanvasRef.current) {
+        trendlineCanvasRef.current.width = w;
+        trendlineCanvasRef.current.height = h;
+        trendlineManagerRef.current?.redraw();
+      }
       drawRollovers();
     });
     ro.observe(containerRef.current);
 
     return () => {
       ro.disconnect();
+      trendlineManagerRef.current?.destroy();
+      trendlineManagerRef.current = null;
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -346,41 +368,21 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
     }
   }, [liveCandle]);
 
-  useEffect(() => {
-    if (!trendlineCanvasRef.current) return;
-    trendlineManagerRef.current = new TrendlineManager(trendlineCanvasRef.current);
-    return () => {
-      trendlineManagerRef.current = null;
-    };
-  }, []);
-
-  useEffect(() => {
-    if (!trendlineCanvasRef.current || !containerRef.current) return;
-    const w = containerRef.current.clientWidth;
-    const h = containerRef.current.clientHeight;
-    trendlineCanvasRef.current.width = w;
-    trendlineCanvasRef.current.height = h;
-    trendlineManagerRef.current?.redraw();
-  }, []);
-
-  useEffect(() => {
-    const resizeObserver = new ResizeObserver(() => {
-      if (!trendlineCanvasRef.current || !containerRef.current) return;
-      const w = containerRef.current.clientWidth;
-      const h = containerRef.current.clientHeight;
-      trendlineCanvasRef.current.width = w;
-      trendlineCanvasRef.current.height = h;
-      trendlineManagerRef.current?.redraw();
-    });
-    if (containerRef.current) resizeObserver.observe(containerRef.current);
-    return () => resizeObserver.disconnect();
-  }, []);
-
   return (
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
       <canvas ref={trendlineCanvasRef} className={styles.trendlineCanvas} />
-      {symbol && <div className={styles.legend}>{symbol} · {timeframe}</div>}
+      {symbol && <div className={styles.legend}>{broker.toUpperCase()} · {symbol} · {timeframe}</div>}
+      {hasSelection && (
+        <button
+          type="button"
+          className={styles.deleteTrendlineBtn}
+          onClick={() => trendlineManagerRef.current?.deleteSelected()}
+          title="Delete trendline"
+        >
+          Delete line
+        </button>
+      )}
     </div>
   );
 }

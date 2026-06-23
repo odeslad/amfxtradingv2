@@ -72,7 +72,7 @@ const HANDLE_COLOR = 'rgba(200,200,200,0.9)';
 const HANDLE_ACTIVE_COLOR = '#f5a623';
 const MARKER_BUY_COLOR = '#4caf84';
 const MARKER_SELL_COLOR = '#e05c5c';
-const MARKER_SIZE = 16;
+const MARKER_SIZE = 11;
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -513,7 +513,7 @@ export class DrawingManager {
       const selected = d.id === this.selectedId;
       if (d.kind === 'marker') {
         const p = this.logicalToPixel({ logical: d.logical, price: d.price });
-        if (p) this.paintMarker(p, d.direction, selected);
+        if (p) this.paintMarker(p, d.direction);
       } else {
         const px = this.segPixels(d);
         if (!px) continue;
@@ -592,7 +592,7 @@ export class DrawingManager {
     }
   }
 
-  private paintMarker(p: Point, direction: MarkerDirection, selected: boolean) {
+  private paintMarker(p: Point, direction: MarkerDirection) {
     const ctx = this.ctx;
     const color = direction === 'buy' ? MARKER_BUY_COLOR : MARKER_SELL_COLOR;
     const s = MARKER_SIZE;
@@ -612,12 +612,6 @@ export class DrawingManager {
     ctx.lineTo(p.x + s * 0.55, baseY);
     ctx.closePath();
     ctx.fill();
-
-    if (selected) {
-      ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
-      ctx.lineWidth = 1.5;
-      ctx.stroke();
-    }
   }
 
   private withAlpha(color: string, alpha: number): string {

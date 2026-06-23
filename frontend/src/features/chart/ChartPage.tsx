@@ -169,7 +169,7 @@ export function ChartPage() {
     setCandles([]);
     setHasMore(true);
     hasMoreRef.current = true;
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500`), { credentials: 'include' })
+    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
         const parsed = data.map(c => ({

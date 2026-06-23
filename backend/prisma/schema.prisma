@@ -137,6 +137,7 @@ model SettingsDisplay {
   pnlMode        String   @default("net")
   trendlineColor String   @default("#8c8c8c")
   trendlineStyle String   @default("dashed")
+  trendlineWidth Int      @default(1)
   updatedAt      DateTime @updatedAt
 
   @@map("settings_display")

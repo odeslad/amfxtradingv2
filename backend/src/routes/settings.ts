@@ -14,6 +14,7 @@ router.get('/', async (_req, res) => {
       pnlMode: display?.pnlMode ?? 'net',
       trendlineColor: display?.trendlineColor ?? '#8c8c8c',
       trendlineStyle: display?.trendlineStyle ?? 'dashed',
+      trendlineWidth: display?.trendlineWidth ?? 1,
     },
   });
 });
@@ -21,7 +22,7 @@ router.get('/', async (_req, res) => {
 router.put('/', async (req, res) => {
   const { mirror, display } = req.body as {
     mirror?: { broker: string; enabled: boolean; lotsMode: string; lots: number }[];
-    display?: { pnlMode: string; trendlineColor?: string; trendlineStyle?: string };
+    display?: { pnlMode: string; trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number };
   };
 
   const ops: Promise<unknown>[] = [];
@@ -48,12 +49,14 @@ router.put('/', async (req, res) => {
           pnlMode: display.pnlMode,
           ...(display.trendlineColor !== undefined ? { trendlineColor: display.trendlineColor } : {}),
           ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
+          ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
         },
         create: {
           key: 'global',
           pnlMode: display.pnlMode,
           trendlineColor: display.trendlineColor ?? '#8c8c8c',
           trendlineStyle: display.trendlineStyle ?? 'dashed',
+          trendlineWidth: display.trendlineWidth ?? 1,
         },
       })
     );
@@ -72,6 +75,7 @@ router.put('/', async (req, res) => {
       pnlMode: updatedDisplay?.pnlMode ?? 'net',
       trendlineColor: updatedDisplay?.trendlineColor ?? '#8c8c8c',
       trendlineStyle: updatedDisplay?.trendlineStyle ?? 'dashed',
+      trendlineWidth: updatedDisplay?.trendlineWidth ?? 1,
     },
   });
 });

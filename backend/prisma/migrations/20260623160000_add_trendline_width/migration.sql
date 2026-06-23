@@ -1,0 +1,1 @@
+ALTER TABLE "settings_display" ADD COLUMN IF NOT EXISTS "trendlineWidth" INTEGER NOT NULL DEFAULT 1;

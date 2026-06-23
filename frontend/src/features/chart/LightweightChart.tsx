@@ -184,8 +184,8 @@ export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoa
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623' },
-        horzLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623' },
+        vertLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623', width: 1, style: LineStyle.Dashed },
+        horzLine: { color: 'rgba(255,255,255,0.2)', labelBackgroundColor: '#f5a623', width: 1, style: LineStyle.Dashed },
       },
       rightPriceScale: {
         borderColor: 'rgba(255,255,255,0.08)',

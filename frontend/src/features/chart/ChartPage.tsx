@@ -187,7 +187,7 @@ export function ChartPage() {
     fetch(apiUrl(`/trendlines?${params.toString()}`), { credentials: 'include' })
       .then(r => r.ok ? r.json() as Promise<{ lines: PersistedTrendline[] }> : Promise.resolve({ lines: [] }))
       .then(data => setTrendlines(data.lines ?? []))
-      .catch(() => setTrendlines([]));
+      .catch(() => {});
   }, [broker, symbol, timeframe]);
 
   const saveTrendlines = useCallback((lines: PersistedTrendline[]) => {

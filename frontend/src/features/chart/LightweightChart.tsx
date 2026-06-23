@@ -210,11 +210,19 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   const loadedTrendlinesRef = useRef<PersistedTrendline[] | null>(null);
   const initialTrendlinesRef = useRef(initialTrendlines);
-  // When trendlines arrive: only load if candle index is already populated.
-  // If not, the candles effect will pick them up once candles arrive.
+
+  // Reset loaded guard when the chart context changes so a new fetch triggers a reload.
+  useEffect(() => {
+    loadedTrendlinesRef.current = null;
+  }, [broker, symbol, timeframe]);
+
+  // When trendlines arrive: only load if candle index is already populated
+  // and the array is non-empty (empty = fetch in flight, not "no lines").
+  // If candleIndex is not ready yet, the candles effect will pick them up.
   useEffect(() => {
     initialTrendlinesRef.current = initialTrendlines;
-    if (!initialTrendlines || loadedTrendlinesRef.current === initialTrendlines) return;
+    if (!initialTrendlines || initialTrendlines.length === 0) return;
+    if (loadedTrendlinesRef.current === initialTrendlines) return;
     const manager = trendlineManagerRef.current;
     if (!manager || manager.candleIndexLength() === 0) return;
     loadedTrendlinesRef.current = initialTrendlines;
@@ -541,7 +549,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (manager) {
       manager.setCandleIndex(filteredNew);
       const pending = initialTrendlinesRef.current;
-      if (pending && loadedTrendlinesRef.current !== pending) {
+      if (pending && pending.length > 0 && loadedTrendlinesRef.current !== pending) {
         loadedTrendlinesRef.current = pending;
         manager.loadPersisted(pending);
       }

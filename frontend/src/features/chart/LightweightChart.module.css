@@ -62,10 +62,20 @@
   top: 8px;
   left: 12px;
   z-index: 5;
-  pointer-events: none;
+  pointer-events: auto;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: var(--muted);
+  color: var(--orange);
   letter-spacing: var(--tracking-normal);
   line-height: 1;
+  cursor: default;
+  user-select: none;
+}
+
+.legendClickable {
+  cursor: pointer;
+}
+
+.legendClickable:hover {
+  opacity: 0.7;
 }

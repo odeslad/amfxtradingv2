@@ -1,4 +1,5 @@
 import { useEffect, useRef, useCallback, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType, CrosshairMode,
   createSeriesMarkers,
@@ -168,6 +169,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
 }
 
 export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, trendlineActive, onTrendlineDone, positions, onEditPosition, onModifyPosition, initialTrendlines, onTrendlinesChange }: LightweightChartExtendedProps) {
+  const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -788,7 +790,26 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
       <canvas ref={trendlineCanvasRef} className={styles.trendlineCanvas} />
-      {symbol && <div className={styles.legend}>{broker.toUpperCase()} · {symbol} · {timeframe}</div>}
+      {symbol && (
+        <div className={styles.legend}>
+          <span
+            className={styles.legendClickable}
+            onDoubleClick={() => navigate(`/journal?broker=${encodeURIComponent(broker)}`)}
+            title="Double-click to filter by broker"
+          >
+            {broker.toUpperCase()}
+          </span>
+          {' · '}
+          <span
+            className={styles.legendClickable}
+            onDoubleClick={() => navigate(`/journal?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}`)}
+            title="Double-click to filter by broker + symbol"
+          >
+            {symbol}
+          </span>
+          {' · '}{timeframe}
+        </div>
+      )}
       {positionLabels.filter(l => l.visible).map(l => (
         <div
           key={l.id}

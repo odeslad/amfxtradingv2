@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { OpenPositions, type BulkGroup } from './OpenPositions';
 import { ClosedPositions } from './ClosedPositions';
 import { Accounts } from './Accounts';
@@ -19,8 +20,20 @@ const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [], colors: [] };
 function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
 export function JournalPage() {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>('accounts');
   const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+
+  useEffect(() => {
+    const broker = searchParams.get('broker');
+    const symbol = searchParams.get('symbol');
+    if (broker) {
+      setFilters(f => ({ ...f, broker, ...(symbol ? { symbol } : {}) }));
+      setTab('open');
+      setSearchParams({}, { replace: true });
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [closedOptions, setClosedOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [panelOpen, setPanelOpen] = useState(false);

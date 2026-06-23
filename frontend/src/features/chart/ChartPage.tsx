@@ -172,10 +172,8 @@ export function ChartPage() {
         symbols={symbols}
         broker={broker}
         symbol={symbol}
-        timeframe={timeframe}
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
-        onTimeframeChange={setTimeframe}
       />
       <IndicatorsPanel
         open={indicatorsOpen}

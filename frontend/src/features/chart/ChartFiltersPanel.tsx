@@ -1,7 +1,5 @@
 import styles from './ChartFiltersPanel.module.css';
 
-const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
-
 interface ChartFiltersPanelProps {
   open: boolean;
   onClose: () => void;
@@ -9,16 +7,14 @@ interface ChartFiltersPanelProps {
   symbols: string[];
   broker: string;
   symbol: string;
-  timeframe: string;
   onBrokerChange: (v: string) => void;
   onSymbolChange: (v: string) => void;
-  onTimeframeChange: (v: string) => void;
 }
 
 export function ChartFiltersPanel({
   open, onClose,
-  brokers, symbols, broker, symbol, timeframe,
-  onBrokerChange, onSymbolChange, onTimeframeChange,
+  brokers, symbols, broker, symbol,
+  onBrokerChange, onSymbolChange,
 }: ChartFiltersPanelProps) {
   return (
     <>
@@ -44,22 +40,6 @@ export function ChartFiltersPanel({
               <option value="">Select symbol</option>
               {symbols.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
-          </div>
-
-          <div className={styles.field}>
-            <label className={styles.label}>Timeframe</label>
-            <div className={styles.tfGroup}>
-              {TIMEFRAMES.map(tf => (
-                <button
-                  key={tf}
-                  type="button"
-                  className={`${styles.tfBtn} ${timeframe === tf ? styles.tfBtnActive : ''}`}
-                  onClick={() => { onTimeframeChange(tf); onClose(); }}
-                >
-                  {tf}
-                </button>
-              ))}
-            </div>
           </div>
         </div>
       </div>

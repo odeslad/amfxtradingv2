@@ -108,42 +108,10 @@
   background: var(--surface);
 }
 
-.tfGroup {
-  display: flex;
-  gap: 4px;
-}
-
-.tfBtn {
-  flex: 1;
-  height: 34px;
-  background: transparent;
-  border: 1px solid var(--border-bright);
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size: var(--text-sm);
-  letter-spacing: var(--tracking-tight);
-  cursor: pointer;
-  transition: color 0.12s ease, border-color 0.12s ease;
-}
-
-.tfBtn:hover {
-  color: var(--text);
-}
-
-.tfBtnActive {
-  color: var(--orange);
-  border-color: var(--orange);
-}
-
 @media (max-width: 768px) {
   .input {
     font-size: var(--text-xl);
     height: 44px;
-  }
-
-  .tfBtn {
-    height: 44px;
-    font-size: var(--text-md);
   }
 
   .panel {

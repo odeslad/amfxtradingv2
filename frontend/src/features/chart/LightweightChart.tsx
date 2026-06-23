@@ -208,17 +208,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   useEffect(() => { onLoadMoreRef.current = onLoadMore; }, [onLoadMore]);
 
-  // load persisted trendlines once data is available to map time -> logical.
-  // guard so it loads only once per initialTrendlines identity (avoids wiping
-  // in-progress edits when candles change on tick/loadMore).
   const loadedTrendlinesRef = useRef<PersistedTrendline[] | null>(null);
+  const initialTrendlinesRef = useRef(initialTrendlines);
+  // When trendlines arrive: only load if candle index is already populated.
+  // If not, the candles effect will pick them up once candles arrive.
   useEffect(() => {
+    initialTrendlinesRef.current = initialTrendlines;
+    if (!initialTrendlines || loadedTrendlinesRef.current === initialTrendlines) return;
     const manager = trendlineManagerRef.current;
-    if (!manager || !initialTrendlines || candles.length === 0) return;
-    if (loadedTrendlinesRef.current === initialTrendlines) return;
+    if (!manager || manager.candleIndexLength() === 0) return;
     loadedTrendlinesRef.current = initialTrendlines;
     manager.loadPersisted(initialTrendlines);
-  }, [initialTrendlines, candles.length]);
+  }, [initialTrendlines]);
 
   const repositionLabels = useCallback(() => {
     const series = seriesRef.current;
@@ -438,6 +439,13 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       manager.setOnSelectionChange(setHasSelection);
       manager.setOnChange(() => onTrendlinesChangeRef.current?.(manager.getPersisted()));
       trendlineManagerRef.current = manager;
+      if (candlesRef.current.length > 0) {
+        const filtered = candlesRef.current.filter(c => {
+          const d = new Date(c.time * 1000).getUTCDay();
+          return d !== 0 && d !== 6;
+        });
+        manager.setCandleIndex(filtered);
+      }
     }
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -529,6 +537,15 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
     }
 
+    const manager = trendlineManagerRef.current;
+    if (manager) {
+      manager.setCandleIndex(filteredNew);
+      const pending = initialTrendlinesRef.current;
+      if (pending && loadedTrendlinesRef.current !== pending) {
+        loadedTrendlinesRef.current = pending;
+        manager.loadPersisted(pending);
+      }
+    }
     syncEmaSeries();
     drawRollovers();
   }, [candles, drawRollovers, syncEmaSeries]);

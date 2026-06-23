@@ -476,15 +476,67 @@ export class TrendlineManager {
 
   // ─── persistence (time/price absolute, stable across sessions) ────────────
 
+  // Filtered candle array (no weekends), same order as passed to lightweight-charts.
+  // Index in this array == logical index used by the chart.
+  private candleIndex: { time: number }[] = [];
+
+  setCandleIndex(candles: { time: number }[]) {
+    this.candleIndex = candles;
+  }
+
+  candleIndexLength(): number {
+    return this.candleIndex.length;
+  }
+
+  // logical (float) → unix time, extrapolating beyond last bar if needed.
+  private logicalToTime(logical: number): number | null {
+    const arr = this.candleIndex;
+    if (arr.length < 2) return null;
+    const i = Math.floor(logical);
+    const frac = logical - i;
+    if (i >= 0 && i < arr.length - 1) {
+      const dt = arr[i + 1].time - arr[i].time;
+      return Math.round(arr[i].time + frac * dt);
+    }
+    const last = arr.length - 1;
+    const interval = arr[last].time - arr[last - 1].time;
+    if (i >= arr.length - 1) return Math.round(arr[last].time + (logical - last) * interval);
+    return Math.round(arr[0].time + logical * (arr[1].time - arr[0].time));
+  }
+
+  // unix time → logical (float), interpolating between nearest candles.
+  private timeToLogical(time: number): number | null {
+    const arr = this.candleIndex;
+    if (arr.length < 2) return null;
+    for (let i = 0; i < arr.length; i++) {
+      if (arr[i].time === time) return i;
+    }
+    const last = arr.length - 1;
+    if (time > arr[last].time) {
+      const interval = arr[last].time - arr[last - 1].time;
+      return last + (time - arr[last].time) / interval;
+    }
+    if (time < arr[0].time) {
+      return (time - arr[0].time) / (arr[1].time - arr[0].time);
+    }
+    let lo = 0;
+    let hi = arr.length - 1;
+    while (lo + 1 < hi) {
+      const mid = (lo + hi) >> 1;
+      if (arr[mid].time <= time) lo = mid; else hi = mid;
+    }
+    const dt = arr[hi].time - arr[lo].time;
+    if (dt === 0) return lo;
+    return lo + (time - arr[lo].time) / dt;
+  }
+
   getPersisted(): PersistedTrendline[] {
     const out: PersistedTrendline[] = [];
+    console.log('[getPersisted] trendlines:', this.trendlines.length, 'candleIndex:', this.candleIndex.length);
     for (const l of this.trendlines) {
-      const t1 = this.chart.timeScale().coordinateToTime(
-        this.chart.timeScale().logicalToCoordinate(l.logical1 as ChartLogical) ?? NaN,
-      ) as number | null;
-      const t2 = this.chart.timeScale().coordinateToTime(
-        this.chart.timeScale().logicalToCoordinate(l.logical2 as ChartLogical) ?? NaN,
-      ) as number | null;
+      const t1 = this.logicalToTime(l.logical1);
+      const t2 = this.logicalToTime(l.logical2);
+      console.log('[getPersisted] logical1:', l.logical1, '→ t1:', t1, '| logical2:', l.logical2, '→ t2:', t2);
       if (t1 === null || t2 === null) continue;
       out.push({ time1: t1, price1: l.price1, time2: t2, price2: l.price2 });
     }
@@ -493,19 +545,18 @@ export class TrendlineManager {
 
   loadPersisted(lines: PersistedTrendline[]) {
     this.trendlines = [];
+    console.log('[load] candleIndex.length:', this.candleIndex.length, 'lines:', lines.length);
     for (const l of lines) {
-      const logical1 = this.chart.timeScale().coordinateToLogical(
-        this.chart.timeScale().timeToCoordinate(l.time1 as never) ?? NaN,
-      ) as number | null;
-      const logical2 = this.chart.timeScale().coordinateToLogical(
-        this.chart.timeScale().timeToCoordinate(l.time2 as never) ?? NaN,
-      ) as number | null;
+      const logical1 = this.timeToLogical(l.time1);
+      const logical2 = this.timeToLogical(l.time2);
+      console.log('[load] time1:', l.time1, '→ logical1:', logical1, '| time2:', l.time2, '→ logical2:', logical2);
       if (logical1 === null || logical2 === null) continue;
       this.trendlines.push({
         id: `tl-${this.trendlines.length}-${l.time1}`,
         logical1, price1: l.price1, logical2, price2: l.price2,
       });
     }
+    console.log('[load] trendlines loaded:', this.trendlines.length);
     this.redraw();
   }
 

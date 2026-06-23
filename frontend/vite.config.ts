@@ -12,9 +12,9 @@ export default defineConfig(({ command }) => ({
   build: {
     rollupOptions: {
       output: {
-        manualChunks: {
-          'lightweight-charts': ['lightweight-charts'],
-          'react-vendor': ['react', 'react-dom', 'react-router-dom'],
+        manualChunks: (id: string) => {
+          if (id.includes('lightweight-charts')) return 'lightweight-charts';
+          if (id.includes('react-dom') || id.includes('react-router') || id.includes('node_modules/react/')) return 'react-vendor';
         },
       },
     },

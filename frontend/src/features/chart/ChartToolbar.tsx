@@ -46,6 +46,9 @@ export function ChartToolbar({
           ))}
         </div>
 
+      </div>
+
+      <div className={styles.tools}>
         <select
           className={`${styles.select} ${styles.tfSelect}`}
           value={timeframe}
@@ -53,9 +56,6 @@ export function ChartToolbar({
         >
           {TIMEFRAMES.map(tf => <option key={tf} value={tf}>{tf}</option>)}
         </select>
-      </div>
-
-      <div className={styles.tools}>
         <button type="button" className={styles.filtersBtn} onClick={onFilters}>
           Filters
         </button>

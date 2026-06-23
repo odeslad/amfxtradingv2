@@ -24,6 +24,7 @@ const LINE_STYLE: Record<string, LineStyle> = {
 
 interface LightweightChartProps {
   candles: Candle[];
+  symbol: string;
   timeframe: string;
   liveCandle?: Candle | null;
   onLoadMore?: () => void;
@@ -74,7 +75,7 @@ function getRolloverTimes(fromSec: number, toSec: number): number[] {
   return times;
 }
 
-export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore, emas }: LightweightChartProps) {
+export function LightweightChart({ candles, symbol, timeframe, liveCandle, onLoadMore, emas }: LightweightChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
@@ -333,6 +334,7 @@ export function LightweightChart({ candles, timeframe, liveCandle, onLoadMore, e
   return (
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
+      {symbol && <div className={styles.legend}>{symbol} · {timeframe}</div>}
     </div>
   );
 }

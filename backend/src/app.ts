@@ -11,7 +11,7 @@ import strategiesRouter from './routes/strategies';
 import symbolsRouter from './routes/symbols';
 import candlesRouter from './routes/candles';
 import chartIndicatorsRouter from './routes/chart-indicators';
-import trendlinesRouter from './routes/trendlines';
+import drawingsRouter from './routes/drawings';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -41,6 +41,6 @@ app.use('/settings', requireAuth, settingsRouter);
 app.use('/symbols', requireAuth, symbolsRouter);
 app.use('/candles', requireAuth, candlesRouter);
 app.use('/chart-indicators', requireAuth, chartIndicatorsRouter);
-app.use('/trendlines', requireAuth, trendlinesRouter);
+app.use('/drawings', requireAuth, drawingsRouter);
 
 export default app;

@@ -17,25 +17,25 @@ router.get('/', async (req: AuthRequest, res) => {
   const ctx = getContext(req);
   if (!ctx) { res.status(400).json({ message: 'broker, symbol and timeframe are required' }); return; }
 
-  const record = await db.trendline.findUnique({
+  const record = await db.drawing.findUnique({
     where: { userId_broker_symbol_timeframe: { userId: req.userId!, ...ctx } },
   });
-  res.json({ lines: record?.lines ?? [] });
+  res.json({ items: record?.items ?? [] });
 });
 
 router.put('/', async (req: AuthRequest, res) => {
   const ctx = getContext(req);
   if (!ctx) { res.status(400).json({ message: 'broker, symbol and timeframe are required' }); return; }
 
-  const { lines } = req.body as { lines: unknown };
-  if (!Array.isArray(lines)) { res.status(400).json({ message: 'lines must be an array' }); return; }
+  const { items } = req.body as { items: unknown };
+  if (!Array.isArray(items)) { res.status(400).json({ message: 'items must be an array' }); return; }
 
-  const record = await db.trendline.upsert({
+  const record = await db.drawing.upsert({
     where:  { userId_broker_symbol_timeframe: { userId: req.userId!, ...ctx } },
-    update: { lines },
-    create: { userId: req.userId!, ...ctx, lines },
+    update: { items },
+    create: { userId: req.userId!, ...ctx, items },
   });
-  res.json({ lines: record.lines });
+  res.json({ items: record.items });
 });
 
 export default router;

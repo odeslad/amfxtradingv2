@@ -55,7 +55,25 @@ export function nextColor(current?: string): string {
   return POSITION_COLORS[idx + 1];
 }
 
-export const TYPE_LABEL: Record<number, string> = { 0: 'Buy', 1: 'Sell' };
+// MT4 order types: 0 buy, 1 sell (market) — 2..5 are pending orders.
+export const TYPE_LABEL: Record<number, string> = {
+  0: 'Buy',
+  1: 'Sell',
+  2: 'Buy Limit',
+  3: 'Sell Limit',
+  4: 'Buy Stop',
+  5: 'Sell Stop',
+};
+
+// True for pending orders (limit/stop), which haven't entered the market yet.
+export function isPending(type: number): boolean {
+  return type >= 2 && type <= 5;
+}
+
+// Direction of an order regardless of pending/market: buy-side types are even.
+export function isBuySide(type: number): boolean {
+  return type === 0 || type === 2 || type === 4;
+}
 
 const CURRENCY_SYMBOL: Record<string, string> = {
   USD: '$',

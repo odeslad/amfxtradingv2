@@ -11,7 +11,7 @@ import type { Position } from '../journal/utils/position';
 import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection } from './DrawingTools';
 
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
-import type { PnlMode } from '../journal/utils/position';
+import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
 
 export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell';
 
@@ -747,7 +747,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     const candleData = candlesRef.current;
 
     for (const p of positions ?? []) {
-      const isBuy = p.type === 0;
+      const isBuy = isBuySide(p.type);
+      const pending = isPending(p.type);
       const entryColor = isBuy ? '#4caf84' : '#e05c5c';
 
       const addLine = (id: string, price: number, color: string, text: string) => {
@@ -784,21 +785,24 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       // entry = current P&L, SL/TP = P&L if closed at that price.
       const withPnl = (base: string, pnl: string) => (pnl ? `${base}  ${pnl}` : base);
 
-      addLine(
-        `${p.ticket}-entry`,
-        p.openPrice,
-        entryColor,
-        withPnl(`${isBuy ? 'BUY' : 'SELL'} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`, formatEntryPnl(p, pnlMode, accountBalance)),
-      );
-      if (slPrice) addLine(slId, slPrice, '#f2a0a0', withPnl(`SL ${fmtPrice(slPrice, precision)}`, formatLevelPnl(p, pnlMode, accountBalance, slPrice)));
-      if (tpPrice) addLine(tpId, tpPrice, '#8fd9bd', withPnl(`TP ${fmtPrice(tpPrice, precision)}`, formatLevelPnl(p, pnlMode, accountBalance, tpPrice)));
+      // Pending orders aren't in the market: show the order type, no P&L.
+      const entryText = pending
+        ? `${TYPE_LABEL[p.type].toUpperCase()} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`
+        : withPnl(`${isBuy ? 'BUY' : 'SELL'} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`, formatEntryPnl(p, pnlMode, accountBalance));
+
+      addLine(`${p.ticket}-entry`, p.openPrice, entryColor, entryText);
+      // Pending orders aren't in the market: SL/TP show the price only, no P&L.
+      const slText = `SL ${fmtPrice(slPrice, precision)}`;
+      const tpText = `TP ${fmtPrice(tpPrice, precision)}`;
+      if (slPrice) addLine(slId, slPrice, '#f2a0a0', pending ? slText : withPnl(slText, formatLevelPnl(p, pnlMode, accountBalance, slPrice)));
+      if (tpPrice) addLine(tpId, tpPrice, '#8fd9bd', pending ? tpText : withPnl(tpText, formatLevelPnl(p, pnlMode, accountBalance, tpPrice)));
 
       const base = { ticket: p.ticket, broker: p.broker ?? '', symbol: p.symbol, lots: p.lots, sl: slPrice, tp: tpPrice };
       if (slPrice) draggable.push({ ...base, id: slId, kind: 'sl', price: slPrice });
       if (tpPrice) draggable.push({ ...base, id: tpId, kind: 'tp', price: tpPrice });
 
-      // openTime (broker time) read as UTC already matches the candle times.
-      const openSec = openTimeToUtcSec(p.openTime, 0);
+      // Entry arrow marks where a market position opened; skip it for pendings.
+      const openSec = pending ? 0 : openTimeToUtcSec(p.openTime, 0);
       if (openSec > 0 && candleData.length > 0) {
         let candleTime: number | null = null;
         for (let i = candleData.length - 1; i >= 0; i--) {

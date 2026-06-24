@@ -33,6 +33,7 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
   const [broker, setBroker] = useState('');
   const [symbol, setSymbol] = useState('');
   const [lots, setLots] = useState('');
+  const [lotsMode, setLotsMode] = useState<'fixed' | 'risk_pct'>('fixed');
   const [price, setPrice] = useState('');
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
@@ -105,6 +106,7 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       setBroker('');
       setSymbol('');
       setLots('');
+      setLotsMode('fixed');
       setPrice('');
       setSl('');
       setTp('');
@@ -141,11 +143,17 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       ...(isPending && price ? { price: parseFloat(price) } : {}),
     };
 
+    if (mode === 'manual' && lotsMode === 'risk_pct' && !slNum) {
+      setSubmitting(false);
+      addToast('SL is required for % Risk sizing', 'error');
+      return;
+    }
+
     try {
       if (mode === 'manual') {
         const id = generateId();
         pendingIds.current.add(id);
-        await sendCommand({ ...base, id, broker, lots: parseFloat(lots) });
+        await sendCommand({ ...base, id, broker, lots: parseFloat(lots), lotsMode });
       } else {
         const commands = activeMirrorBrokers.map(m => ({
           ...base,
@@ -259,9 +267,27 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
           </div>
 
           {mode === 'manual' && (
-            <div className={styles.field}>
-              <label className={styles.label}>Lots</label>
-              <input className={styles.input} type="number" step="0.01" min="0.01" value={lots} onChange={e => setLots(e.target.value)} placeholder="0.01" required />
+            <div className={styles.row}>
+              <div className={styles.field}>
+                <label className={styles.label}>Sizing</label>
+                <select className={styles.input} value={lotsMode} onChange={e => setLotsMode(e.target.value as 'fixed' | 'risk_pct')}>
+                  <option value="fixed">Fixed lots</option>
+                  <option value="risk_pct">% Risk</option>
+                </select>
+              </div>
+              <div className={styles.field}>
+                <label className={styles.label}>{lotsMode === 'fixed' ? 'Lots' : 'Risk %'}</label>
+                <input
+                  className={styles.input}
+                  type="number"
+                  step={lotsMode === 'fixed' ? '0.01' : '0.1'}
+                  min={lotsMode === 'fixed' ? '0.01' : '0.1'}
+                  value={lots}
+                  onChange={e => setLots(e.target.value)}
+                  placeholder={lotsMode === 'fixed' ? '0.01' : '1.0'}
+                  required
+                />
+              </div>
             </div>
           )}
 

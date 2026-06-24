@@ -8,6 +8,7 @@ import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
 import { apiUrl } from '../../lib/api';
+import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
 import { TYPE_LABEL, fmt } from './utils/position';
 import styles from './JournalPage.module.css';
@@ -22,7 +23,7 @@ function generateId() { return `${Date.now()}-${Math.random().toString(36).slice
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>('accounts');
-  const [filters, setFilters] = useState<FilterValues>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
 
   useEffect(() => {
     const broker = searchParams.get('broker');
@@ -48,7 +49,6 @@ export function JournalPage() {
 
   const handleTabChange = (next: Tab) => {
     setTab(next);
-    setFilters(DEFAULT_FILTERS);
     setBulk(null);
   };
 

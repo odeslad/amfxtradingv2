@@ -376,9 +376,16 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       emaSeriesRef.current.delete(id);
     }
 
-    const filterWeekend = (arr: Candle[]) =>
-      arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
-    const filteredCandles = filterWeekend(currentCandles);
+    const seen = new Set<number>();
+    const filteredCandles = currentCandles
+      .filter(c => {
+        const d = new Date(c.time * 1000).getUTCDay();
+        if (d === 0 || d === 6) return false;
+        if (!Number.isFinite(c.time) || seen.has(c.time)) return false;
+        seen.add(c.time);
+        return true;
+      })
+      .sort((a, b) => a.time - b.time);
 
     for (const ema of currentEmas) {
       const series = emaSeriesRef.current.get(ema.id)!;

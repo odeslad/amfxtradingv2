@@ -158,9 +158,13 @@ export class DrawingManager {
       if (!d) return 0;
       return d.kind === 'marker' ? d.price : d.price1;
     };
-    let lastY = this.series.priceToCoordinate(anchorPrice()) ?? 0;
+    const safeCoord = () => {
+      try { return this.series.priceToCoordinate(anchorPrice()) ?? 0; }
+      catch { return 0; }
+    };
+    let lastY = safeCoord();
     const tick = () => {
-      const y = this.series.priceToCoordinate(anchorPrice()) ?? 0;
+      const y = safeCoord();
       if (Math.abs(y - lastY) > 0.5) { lastY = y; this.redraw(); }
       this.rafId = requestAnimationFrame(tick);
     };
@@ -503,36 +507,42 @@ export class DrawingManager {
     const { width, height } = this.canvas;
     this.ctx.clearRect(0, 0, width, height);
 
-    const r = this.paneRect();
-    this.ctx.save();
-    this.ctx.beginPath();
-    this.ctx.rect(r.left, r.top, r.right - r.left, r.bottom - r.top);
-    this.ctx.clip();
+    // The chart may be mid-reconstruction (e.g. timeframe switch); coordinate
+    // queries can throw transiently. Never let a transient state crash the app.
+    try {
+      const r = this.paneRect();
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.rect(r.left, r.top, r.right - r.left, r.bottom - r.top);
+      this.ctx.clip();
 
-    for (const d of this.drawings) {
-      const selected = d.id === this.selectedId;
-      if (d.kind === 'marker') {
-        const p = this.logicalToPixel({ logical: d.logical, price: d.price });
-        if (p) this.paintMarker(p, d.direction);
-      } else {
-        const px = this.segPixels(d);
-        if (!px) continue;
-        if (d.kind === 'rect') this.paintRect(px, selected);
-        else this.paintLine(px, selected);
+      for (const d of this.drawings) {
+        const selected = d.id === this.selectedId;
+        if (d.kind === 'marker') {
+          const p = this.logicalToPixel({ logical: d.logical, price: d.price });
+          if (p) this.paintMarker(p, d.direction);
+        } else {
+          const px = this.segPixels(d);
+          if (!px) continue;
+          if (d.kind === 'rect') this.paintRect(px, selected);
+          else this.paintLine(px, selected);
+        }
       }
-    }
 
-    // preview while drawing
-    if (this.isDrawing && this.drawKind && this.drawStart) {
-      const p1 = this.logicalToPixel(this.drawStart);
-      if (p1) {
-        const px = { x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: this.cursorPixel.y };
-        if (this.drawKind === 'rect') this.paintRect(px, false, true);
-        else this.paintLine(px, false, true);
+      // preview while drawing
+      if (this.isDrawing && this.drawKind && this.drawStart) {
+        const p1 = this.logicalToPixel(this.drawStart);
+        if (p1) {
+          const px = { x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: this.cursorPixel.y };
+          if (this.drawKind === 'rect') this.paintRect(px, false, true);
+          else this.paintLine(px, false, true);
+        }
       }
-    }
 
-    this.ctx.restore();
+      this.ctx.restore();
+    } catch {
+      this.ctx.restore();
+    }
   }
 
   private strokeStyleFor(preview: boolean) {

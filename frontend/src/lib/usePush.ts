@@ -14,11 +14,14 @@ export type PushStatus =
   | 'denied'        // user blocked notifications
   | 'subscribed';   // active subscription
 
-function urlBase64ToUint8Array(base64: string): Uint8Array {
+function urlBase64ToUint8Array(base64: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64.length % 4)) % 4);
   const normalized = (base64 + padding).replace(/-/g, '+').replace(/_/g, '/');
   const raw = atob(normalized);
-  return Uint8Array.from([...raw].map(c => c.charCodeAt(0)));
+  const buffer = new ArrayBuffer(raw.length);
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < raw.length; i++) view[i] = raw.charCodeAt(i);
+  return view;
 }
 
 function isSupported(): boolean {

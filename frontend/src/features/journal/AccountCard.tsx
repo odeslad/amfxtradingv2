@@ -18,9 +18,10 @@ interface Balance {
 
 interface AccountCardProps {
   balance: Balance;
+  dayPnl?: number;
 }
 
-export function AccountCard({ balance: b }: AccountCardProps) {
+export function AccountCard({ balance: b, dayPnl }: AccountCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -51,6 +52,12 @@ export function AccountCard({ balance: b }: AccountCardProps) {
           <div className={accountStyles.field}>
             <span className={accountStyles.label}>Equity</span>
             <span className={accountStyles.fieldValue}>{fmt(b.equity, 2)} {currencySymbol(b.currency)}</span>
+          </div>
+          <div className={accountStyles.field}>
+            <span className={accountStyles.label}>Day P&amp;L</span>
+            <span className={`${accountStyles.fieldValue} ${dayPnl != null ? ((dayPnl >= 0) ? styles.profit : styles.loss) : ''}`}>
+              {dayPnl != null ? `${dayPnl >= 0 ? '+' : ''}${fmt(dayPnl, 2)} ${currencySymbol(b.currency)}` : '—'}
+            </span>
           </div>
           <div className={accountStyles.field}>
             <span className={accountStyles.label}>Margin</span>

@@ -20,8 +20,11 @@ interface Balance {
   timestamp: string;
 }
 
+const DAY_PNL_POLL_MS = 5000;
+
 export function Accounts() {
   const [balances, setBalances] = useState<Balance[]>([]);
+  const [dayPnl, setDayPnl] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -34,6 +37,18 @@ export function Accounts() {
       .then(setBalances)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    const fetchDayPnl = () => {
+      fetch(apiUrl('/balances/daily-pnl'), { credentials: 'include' })
+        .then(res => res.ok ? res.json() as Promise<Record<string, number>> : {})
+        .then(setDayPnl)
+        .catch(() => {});
+    };
+    fetchDayPnl();
+    const id = setInterval(fetchDayPnl, DAY_PNL_POLL_MS);
+    return () => clearInterval(id);
   }, []);
 
   const handleWsMessage = useCallback((data: unknown) => {
@@ -65,6 +80,7 @@ export function Accounts() {
               <th>Balance</th>
               <th>Equity</th>
               <th>Profit</th>
+              <th>Day P&amp;L</th>
               <th>Margin</th>
               <th>Free Margin</th>
               <th>Leverage</th>
@@ -82,6 +98,11 @@ export function Accounts() {
                 <td className={b.profit >= 0 ? styles.profit : styles.loss}>
                   {b.profit >= 0 ? '+' : ''}{fmt(b.profit, 2)} {currencySymbol(b.currency)}
                 </td>
+                <td className={(dayPnl[b.broker] ?? 0) >= 0 ? styles.profit : styles.loss}>
+                  {dayPnl[b.broker] != null
+                    ? `${dayPnl[b.broker] >= 0 ? '+' : ''}${fmt(dayPnl[b.broker], 2)} ${currencySymbol(b.currency)}`
+                    : '—'}
+                </td>
                 <td>{fmt(b.margin, 2)} {currencySymbol(b.currency)}</td>
                 <td>{fmt(b.freeMargin, 2)} {currencySymbol(b.currency)}</td>
                 <td>1:{b.leverage}</td>
@@ -94,7 +115,7 @@ export function Accounts() {
 
       <div className={styles.cards}>
         {balances.map(b => (
-          <AccountCard key={b.broker} balance={b} />
+          <AccountCard key={b.broker} balance={b} dayPnl={dayPnl[b.broker]} />
         ))}
       </div>
     </>

@@ -287,7 +287,7 @@ export class DrawingManager {
   // ─── pointer-down logic shared by mouse + touch ───────────────────────────
 
   private handleDown(clientX: number, clientY: number, shiftKey: boolean, ctrlKey: boolean, touch: boolean, target: EventTarget | null): boolean {
-    if (target instanceof HTMLElement && target.closest('button')) return false;
+    if (target instanceof HTMLElement && target.closest('button, [data-chart-interactive]')) return false;
     if (!this.inside(clientX, clientY)) return false;
     const pos = this.toCanvas(clientX, clientY);
 

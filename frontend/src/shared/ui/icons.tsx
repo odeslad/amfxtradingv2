@@ -101,6 +101,15 @@ export function IconPositions({ size = 14, color = 'currentColor' }: IconProps) 
   );
 }
 
+export function IconBell({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M8 2a3.5 3.5 0 0 0-3.5 3.5c0 3-1.5 4-1.5 4h10s-1.5-1-1.5-4A3.5 3.5 0 0 0 8 2z" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M6.8 13.5a1.3 1.3 0 0 0 2.4 0" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconRect({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

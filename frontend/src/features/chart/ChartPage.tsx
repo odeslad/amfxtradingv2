@@ -4,6 +4,7 @@ import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
+import { AlertsPanel } from './AlertsPanel';
 import { LightweightChart } from './LightweightChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
@@ -68,6 +69,7 @@ export function ChartPage() {
   const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [alertsOpen, setAlertsOpen] = useState(false);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -354,6 +356,8 @@ export function ChartPage() {
         onFilters={() => setFiltersOpen(true)}
         drawMode={drawMode}
         onDrawMode={mode => setDrawMode(prev => (prev === mode ? null : mode))}
+        onAlerts={() => setAlertsOpen(prev => !prev)}
+        alertsActive={alertsOpen}
         onPositions={() => setPositionsVisible(prev => !prev)}
         positionsActive={positionsVisible}
         onFullscreen={toggleFullscreen}
@@ -368,6 +372,15 @@ export function ChartPage() {
         symbol={symbol}
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
+      />
+      <AlertsPanel
+        open={alertsOpen}
+        onClose={() => setAlertsOpen(false)}
+        broker={broker}
+        symbol={symbol}
+        brokers={brokers}
+        symbols={symbols}
+        currentPrice={liveCandle?.close ?? null}
       />
       <IndicatorsPanel
         open={indicatorsOpen}

@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconMarkerUp, IconMarkerDown } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconMarkerUp, IconMarkerDown, IconBell } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -19,6 +19,8 @@ interface ChartToolbarProps {
   onDrawMode?: (mode: DrawMode) => void;
   onPositions?: () => void;
   positionsActive?: boolean;
+  onAlerts?: () => void;
+  alertsActive?: boolean;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
 }
@@ -26,7 +28,7 @@ interface ChartToolbarProps {
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
-  onPositions, positionsActive, onFullscreen, isFullscreen,
+  onPositions, positionsActive, onAlerts, alertsActive, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -74,6 +76,15 @@ export function ChartToolbar({
           aria-label="Show positions"
         >
           <IconPositions size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${alertsActive ? styles.iconBtnActive : ''}`}
+          onClick={onAlerts}
+          title="Price alerts"
+          aria-label="Price alerts"
+        >
+          <IconBell size={16} />
         </button>
         <button
           type="button"

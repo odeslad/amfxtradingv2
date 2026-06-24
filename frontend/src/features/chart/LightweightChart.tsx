@@ -183,12 +183,16 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   trendlineAppearance?: TrendlineAppearance;
   accountBalance?: number;
   pnlMode?: PnlMode;
+  alerts?: { id: number; price: number; enabled: boolean }[];
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net' }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+  const alertsRef = useRef(alerts);
+  useEffect(() => { alertsRef.current = alerts; }, [alerts]);
+  const drawRolloversRef = useRef<() => void>(() => { });
 
   // Double activation that works on both desktop (dblclick) and touch (two quick
   // taps), since onDoubleClick doesn't fire reliably on touch devices.
@@ -297,6 +301,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   useEffect(() => {
     let raf = 0;
     let lastSig = '';
+    let lastAlertSig = '';
     const tick = () => {
       const series = seriesRef.current;
       if (series && positionLevelsRef.current.length > 0) {
@@ -310,10 +315,61 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       } else if (lastSig !== '') {
         lastSig = '';
       }
+
+      // redraw the overlay (alert triangles) when their Y position shifts
+      const list = alertsRef.current;
+      if (series && list && list.length > 0) {
+        const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(a.price) ?? -1) | 0}`).join('|');
+        if (sig !== lastAlertSig) {
+          lastAlertSig = sig;
+          drawRolloversRef.current();
+        }
+      }
+
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
+  }, []);
+
+  // Left-pointing triangle markers pinned to the right edge of the pane (before
+  // the price axis) with the alert price as a label. Orange when armed, grey off.
+  const drawAlertMarkers = useCallback((
+    ctx: CanvasRenderingContext2D,
+    chart: IChartApi,
+    series: ISeriesApi<'Candlestick'>,
+  ) => {
+    const list = alertsRef.current;
+    if (!list || list.length === 0) return;
+
+    const priceAxisW = chart.priceScale('right').width();
+    const right = ctx.canvas.width - priceAxisW;
+    const bottom = ctx.canvas.height - chart.timeScale().height();
+
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'right';
+
+    for (const alert of list) {
+      const y = series.priceToCoordinate(alert.price);
+      if (y === null || y < 0 || y > bottom) continue;
+
+      const color = alert.enabled ? '#f5a623' : '#666666';
+      const size = 4;
+      const tipX = right - 5; // overlap the price-axis edge slightly
+
+      // triangle pointing left
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.moveTo(tipX, y);
+      ctx.lineTo(tipX + size, y - size);
+      ctx.lineTo(tipX + size, y + size);
+      ctx.closePath();
+      ctx.fill();
+
+      // price label to the left of the triangle, nudged down 1px for visual alignment
+      ctx.fillText(String(alert.price), tipX - 4, y + 1);
+    }
   }, []);
 
   const drawRollovers = useCallback(() => {
@@ -389,7 +445,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     for (const time of monthStarts) {
       drawLine(time, 'rgba(255,255,255,0.85)');
     }
-  }, []);
+    ctx.setLineDash([]);
+
+    if (seriesRef.current) drawAlertMarkers(ctx, chart, seriesRef.current);
+  }, [drawAlertMarkers]);
+
+  useEffect(() => { drawRolloversRef.current = drawRollovers; }, [drawRollovers]);
 
   const syncEmaSeries = useCallback(() => {
     const chart = chartRef.current;

@@ -1,18 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiUrl } from '../../lib/api';
+import { useState, useEffect } from 'react';
 import { usePush } from '../../lib/usePush';
+import type { PriceAlert } from '../../lib/useAlerts';
 import styles from './AlertsPanel.module.css';
-
-interface PriceAlert {
-  id: number;
-  broker: string;
-  symbol: string;
-  price: number;
-  direction: 'above' | 'below';
-  note: string | null;
-  enabled: boolean;
-  triggeredAt: string | null;
-}
 
 interface AlertsPanelProps {
   open: boolean;
@@ -22,10 +11,13 @@ interface AlertsPanelProps {
   brokers: string[];
   symbols: string[];
   currentPrice?: number | null;
+  alerts: PriceAlert[];
+  onCreate: (alert: { broker: string; symbol: string; price: number; direction: 'above' | 'below' }) => Promise<void>;
+  onToggle: (a: PriceAlert) => Promise<void>;
+  onDelete: (id: number) => Promise<void>;
 }
 
-export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice }: AlertsPanelProps) {
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onDelete }: AlertsPanelProps) {
   const [formBroker, setFormBroker] = useState(broker);
   const [formSymbol, setFormSymbol] = useState(symbol);
   const [price, setPrice] = useState('');
@@ -33,14 +25,6 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
   const [saving, setSaving] = useState(false);
   const { status: pushStatus, busy: pushBusy, subscribe } = usePush();
 
-  const load = useCallback(() => {
-    fetch(apiUrl('/alerts'), { credentials: 'include' })
-      .then(r => r.ok ? r.json() as Promise<PriceAlert[]> : [])
-      .then(setAlerts)
-      .catch(() => {});
-  }, []);
-
-  useEffect(() => { if (open) load(); }, [open, load]);
   useEffect(() => { setFormBroker(broker); setFormSymbol(symbol); }, [broker, symbol]);
 
   const handleCreate = async () => {
@@ -48,33 +32,15 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
     if (!formBroker || !formSymbol || !Number.isFinite(value)) return;
     setSaving(true);
     try {
-      await fetch(apiUrl('/alerts'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broker: formBroker, symbol: formSymbol, price: value, direction }),
-      });
+      await onCreate({ broker: formBroker, symbol: formSymbol, price: value, direction });
       setPrice('');
-      load();
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggle = async (a: PriceAlert) => {
-    await fetch(apiUrl(`/alerts/${a.id}`), {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !a.enabled }),
-    });
-    load();
-  };
-
-  const handleDelete = async (id: number) => {
-    await fetch(apiUrl(`/alerts/${id}`), { method: 'DELETE', credentials: 'include' });
-    load();
-  };
+  const handleToggle = (a: PriceAlert) => onToggle(a);
+  const handleDelete = (id: number) => onDelete(id);
 
   return (
     <>

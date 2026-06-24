@@ -7,6 +7,7 @@ import { playAlertBeep } from '../../lib/beep';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { AlertsPanel } from './AlertsPanel';
+import { useAlerts } from '../../lib/useAlerts';
 import { LightweightChart } from './LightweightChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
@@ -74,6 +75,11 @@ export function ChartPage() {
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [alertFlash, setAlertFlash] = useState(false);
   const { user } = useAuth();
+  const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, remove: removeAlert } = useAlerts();
+  const chartAlerts = useMemo(
+    () => alerts.filter(a => a.broker === broker && a.symbol === symbol).map(a => ({ id: a.id, price: a.price, enabled: a.enabled })),
+    [alerts, broker, symbol],
+  );
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -206,6 +212,7 @@ export function ChartPage() {
       if (user && m.userId === user.id) {
         setAlertFlash(true);
         playAlertBeep();
+        refreshAlerts();
       }
       return;
     }
@@ -234,7 +241,7 @@ export function ChartPage() {
       low: last[keys.low],
       close: last.bid,
     });
-  }, [broker, symbol, timeframe, user]));
+  }, [broker, symbol, timeframe, user, refreshAlerts]));
 
   useEffect(() => {
     setLiveCandle(null);
@@ -397,6 +404,10 @@ export function ChartPage() {
         brokers={brokers}
         symbols={symbols}
         currentPrice={liveCandle?.close ?? null}
+        alerts={alerts}
+        onCreate={createAlert}
+        onToggle={toggleAlert}
+        onDelete={removeAlert}
       />
       <IndicatorsPanel
         open={indicatorsOpen}
@@ -408,7 +419,7 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} />
+              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} />
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }

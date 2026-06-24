@@ -224,3 +224,16 @@
     text-transform: uppercase;
   }
 }
+
+/* CSS fullscreen fallback (iPhone): hide app chrome and let the chart fill all. */
+:global(body.chartFullscreenActive) .topbar,
+:global(body.chartFullscreenActive) .bottomNav,
+:global(body.chartFullscreenActive) .footer {
+  display: none;
+}
+
+:global(body.chartFullscreenActive) .main {
+  margin: 0;
+  padding: 0;
+  padding-bottom: env(safe-area-inset-bottom);
+}

@@ -96,6 +96,10 @@ export function ChartPage() {
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
+  const nativeFullscreen = typeof document !== 'undefined'
+    && document.fullscreenEnabled
+    && typeof document.documentElement.requestFullscreen === 'function';
+
   const toggleFullscreen = useCallback(() => {
     const el = pageRef.current;
     if (!el) return;
@@ -108,6 +112,14 @@ export function ChartPage() {
       setIsFullscreen(prev => !prev);
     }
   }, []);
+
+  // CSS fallback (iPhone): hide the app chrome (topbar + bottom nav) while
+  // fullscreen, since `position: fixed` alone is unreliable inside Safari iOS.
+  useEffect(() => {
+    if (nativeFullscreen) return;
+    document.body.classList.toggle('chartFullscreenActive', isFullscreen);
+    return () => document.body.classList.remove('chartFullscreenActive');
+  }, [isFullscreen, nativeFullscreen]);
 
   useEffect(() => {
     fetch(apiUrl('/chart-indicators'), { credentials: 'include' })

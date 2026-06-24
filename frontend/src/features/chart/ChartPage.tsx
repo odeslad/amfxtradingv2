@@ -16,6 +16,7 @@ import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
+import { NewTradePanel } from '../journal/NewTradePanel';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
 import styles from './ChartPage.module.css';
@@ -73,6 +74,7 @@ export function ChartPage() {
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [newTradeOpen, setNewTradeOpen] = useState(false);
   const [alertFlash, setAlertFlash] = useState(false);
   const { user } = useAuth();
   const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, remove: removeAlert } = useAlerts();
@@ -87,6 +89,7 @@ export function ChartPage() {
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
+  const [chartLoading, setChartLoading] = useState(false);
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -196,6 +199,44 @@ export function ChartPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [broker]);
 
+  // Ctrl + Arrows cycle the chart context in default list order:
+  // Up/Down → symbol, Left/Right → broker.
+  const symbolsRef = useRef<string[]>([]);
+  const symbolRef = useRef('');
+  const brokersRef = useRef<string[]>([]);
+  const brokerRef = useRef('');
+  useEffect(() => { symbolsRef.current = symbols; }, [symbols]);
+  useEffect(() => { symbolRef.current = symbol; }, [symbol]);
+  useEffect(() => { brokersRef.current = brokers; }, [brokers]);
+  useEffect(() => { brokerRef.current = broker; }, [broker]);
+
+  useEffect(() => {
+    const cycle = (list: string[], current: string, step: number): string | null => {
+      if (list.length === 0) return null;
+      const idx = list.indexOf(current);
+      const next = idx === -1 ? 0 : (idx + step + list.length) % list.length;
+      return list[next];
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+        const next = cycle(symbolsRef.current, symbolRef.current, e.key === 'ArrowUp' ? -1 : 1);
+        if (next === null) return;
+        e.preventDefault();
+        setSymbol(next);
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        const next = cycle(brokersRef.current, brokerRef.current, e.key === 'ArrowLeft' ? -1 : 1);
+        if (next === null) return;
+        e.preventDefault();
+        setBroker(next);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   useWs(useCallback((msg: unknown) => {
     const m = msg as {
       type: string;
@@ -267,6 +308,7 @@ export function ChartPage() {
     if (!broker || !symbol) { setCandles([]); return; }
     setCandles([]);
     setHasMore(true);
+    setChartLoading(true);
     hasMoreRef.current = true;
     fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
@@ -280,8 +322,11 @@ export function ChartPage() {
         }));
         parsed.sort((a, b) => a.time - b.time);
         setCandles(parsed);
+        // keep the chart covered one more frame so the new data paints before
+        // we reveal it, avoiding the brief flash of stale/flat candles
+        requestAnimationFrame(() => requestAnimationFrame(() => setChartLoading(false)));
       })
-      .catch(() => {});
+      .catch(() => setChartLoading(false));
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
@@ -419,11 +464,13 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} />
+              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsVisible} onNewTrade={() => setNewTradeOpen(true)} />
+              {chartLoading && <div className={styles.chartLoadingOverlay} />}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>
+      <NewTradePanel open={newTradeOpen} onClose={() => setNewTradeOpen(false)} />
 
       <BulkEditPanel
         open={!!editPosition}

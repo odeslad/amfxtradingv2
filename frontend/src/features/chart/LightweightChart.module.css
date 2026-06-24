@@ -80,6 +80,24 @@
   border-color: var(--text);
 }
 
+.newTradeChartBtn {
+  height: 22px;
+  padding: 0 10px;
+  background: var(--surface2);
+  border: 1px solid var(--green);
+  color: var(--green);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.12s ease;
+}
+
+.newTradeChartBtn:hover {
+  background: rgba(76, 175, 132, 0.15);
+}
+
 .legend {
   position: absolute;
   top: 8px;
@@ -102,4 +120,27 @@
 
 .legendClickable:hover {
   opacity: 0.7;
+}
+
+.legendSep {
+  color: var(--muted);
+}
+
+.legendTf {
+  color: var(--muted);
+}
+
+/* On mobile stack broker / symbol / tf vertically so the legend doesn't
+   collide with the chart action buttons in the top-right. */
+@media (max-width: 768px) {
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    line-height: 1.2;
+  }
+
+  .legendSep {
+    display: none;
+  }
 }

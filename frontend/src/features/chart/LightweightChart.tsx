@@ -184,9 +184,11 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   accountBalance?: number;
   pnlMode?: PnlMode;
   alerts?: { id: number; price: number; enabled: boolean }[];
+  showNewTrade?: boolean;
+  onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -946,7 +948,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           >
             {broker.toUpperCase()}
           </span>
-          {' · '}
+          <span className={styles.legendSep}>{' · '}</span>
           <span
             className={styles.legendClickable}
             data-chart-interactive
@@ -955,7 +957,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           >
             {symbol}
           </span>
-          {' · '}{timeframe}
+          <span className={styles.legendSep}>{' · '}</span>
+          <span className={styles.legendTf}>{timeframe}</span>
         </div>
       )}
       {positionLabels.filter(l => l.visible).map(l => (
@@ -969,8 +972,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           {l.text}
         </div>
       ))}
-      {(hasSelection || hasDrawings) && (
+      {(showNewTrade || hasSelection || hasDrawings) && (
         <div className={styles.drawingActions}>
+          {showNewTrade && (
+            <button
+              type="button"
+              className={styles.newTradeChartBtn}
+              onClick={onNewTrade}
+              title="New trade"
+            >
+              + New Trade
+            </button>
+          )}
           {hasSelection && (
             <button
               type="button"

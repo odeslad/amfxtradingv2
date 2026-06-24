@@ -38,6 +38,15 @@
   background: var(--bg);
 }
 
+/* covers the chart while new-context candles load, hiding the brief flat flash */
+.chartLoadingOverlay {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  background: var(--bg);
+}
+
+
 .empty {
   position: absolute;
   inset: 0;

@@ -5,6 +5,9 @@ import { useWs } from '../../lib/useWs';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { LightweightChart } from './LightweightChart';
+import { ChartErrorBoundary } from './ChartErrorBoundary';
+import { useDisplaySettings } from '../../lib/useDisplaySettings';
+import { useLocalStorage } from '../../lib/useLocalStorage';
 import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
@@ -39,15 +42,23 @@ const TF_KEYS: Record<string, { time: string; open: string; high: string; low: s
 
 export function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const initBroker = searchParams.get('broker') ?? '';
-  const initSymbol = searchParams.get('symbol') ?? '';
-  const initTimeframe = searchParams.get('timeframe') ?? 'H1';
+  // URL query params take precedence (deep links from the journal/legend);
+  // otherwise fall back to the last selection persisted in localStorage.
+  const [stored, setStored] = useLocalStorage('chart.selection', { broker: '', symbol: '', timeframe: 'H1' });
+  const initBroker = searchParams.get('broker') ?? stored.broker;
+  const initSymbol = searchParams.get('symbol') ?? stored.symbol;
+  const initTimeframe = searchParams.get('timeframe') ?? stored.timeframe;
 
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
   const [broker, setBroker] = useState(initBroker);
   const [symbol, setSymbol] = useState(initSymbol);
   const [timeframe, setTimeframe] = useState(initTimeframe);
+
+  // Persist the current selection whenever it changes.
+  useEffect(() => {
+    setStored({ broker, symbol, timeframe });
+  }, [broker, symbol, timeframe, setStored]);
 
   useEffect(() => {
     if (searchParams.toString()) setSearchParams({}, { replace: true });
@@ -75,17 +86,26 @@ export function ChartPage() {
   useEffect(() => { candlesRef.current = candles; }, [candles]);
   useEffect(() => { emasRef.current = emas; }, [emas]);
 
+  // iOS Safari (iPhone) has no Fullscreen API for arbitrary elements, so keep our
+  // own state and fall back to a CSS fullscreen when the native API is missing.
   useEffect(() => {
-    const onChange = () => setIsFullscreen(document.fullscreenElement === pageRef.current);
+    const onChange = () => {
+      if (document.fullscreenEnabled) setIsFullscreen(document.fullscreenElement === pageRef.current);
+    };
     document.addEventListener('fullscreenchange', onChange);
     return () => document.removeEventListener('fullscreenchange', onChange);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
+    const el = pageRef.current;
+    if (!el) return;
+    const canNative = document.fullscreenEnabled && typeof el.requestFullscreen === 'function';
+    if (canNative) {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else el.requestFullscreen();
     } else {
-      pageRef.current?.requestFullscreen();
+      // CSS fullscreen fallback for iPhone
+      setIsFullscreen(prev => !prev);
     }
   }, []);
 
@@ -123,13 +143,18 @@ export function ChartPage() {
     });
   }, []);
 
+  const [balances, setBalances] = useState<Record<string, number>>({});
+  const { pnlMode } = useDisplaySettings();
+
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ broker: string }[]>)
+      .then(r => r.json() as Promise<{ broker: string; balance: number }[]>)
       .then(data => {
         const list = data.map(b => b.broker);
         setBrokers(list);
-        if (!initBroker && list.length > 0) setBroker(list[0]);
+        setBalances(Object.fromEntries(data.map(b => [b.broker, b.balance])));
+        // pick the first broker if none is selected or the stored one is gone
+        if (list.length > 0 && !list.includes(broker)) setBroker(list[0]);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -152,6 +177,7 @@ export function ChartPage() {
       type: string;
       broker: string;
       brokerOffset?: number;
+      currency?: string;
       ticks?: ({ symbol: string } & Record<string, number>)[];
       positions?: Position[];
     };
@@ -162,6 +188,7 @@ export function ChartPage() {
         ...p,
         broker: p.broker ?? m.broker,
         brokerOffset: p.brokerOffset ?? m.brokerOffset,
+        currency: p.currency ?? m.currency,
       })));
       return;
     }
@@ -187,13 +214,14 @@ export function ChartPage() {
   useEffect(() => {
     if (!positionsVisible || !broker) { setPositions([]); return; }
     fetch(apiUrl('/positions/live'), { credentials: 'include' })
-      .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; positions: Position[] }[]> : Promise.resolve([]))
+      .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]> : Promise.resolve([]))
       .then(brokers => {
         const entry = brokers.find(b => b.broker === broker);
         setPositions((entry?.positions ?? []).map(p => ({
           ...p,
           broker: p.broker ?? broker,
           brokerOffset: p.brokerOffset ?? entry?.brokerOffset,
+          currency: p.currency ?? entry?.currency,
         })));
       })
       .catch(() => {});
@@ -300,7 +328,7 @@ export function ChartPage() {
   }, [positions]);
 
   return (
-    <div className={styles.page} ref={pageRef}>
+    <div className={`${styles.page} ${isFullscreen ? styles.pageFullscreen : ''}`} ref={pageRef}>
       <ChartToolbar
         brokers={brokers}
         symbols={symbols}
@@ -338,7 +366,9 @@ export function ChartPage() {
       />
       <div className={styles.chartArea}>
         {broker && symbol
-          ? <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} />
+          ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
+              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} />
+            </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>

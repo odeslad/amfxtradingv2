@@ -10,6 +10,9 @@ import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
 import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection } from './DrawingTools';
 
+import { formatEntryPnl, formatLevelPnl } from './positionRisk';
+import type { PnlMode } from '../journal/utils/position';
+
 export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell';
 
 function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection } {
@@ -107,13 +110,16 @@ function getPricePrecision(candles: Candle[]): number {
 }
 
 function calcEma(candles: Candle[], period: number): { time: Time; value: number }[] {
-  if (candles.length < period) return [];
+  // Only feed candles with a finite close; a single NaN/null close otherwise
+  // poisons the whole EMA and lightweight-charts throws "Value is null" on hitTest.
+  const valid = candles.filter(c => Number.isFinite(c.close) && Number.isFinite(c.time));
+  if (valid.length < period) return [];
   const k = 2 / (period + 1);
-  let ema = candles.slice(0, period).reduce((s, c) => s + c.close, 0) / period;
-  const result: { time: Time; value: number }[] = [{ time: candles[period - 1].time as Time, value: ema }];
-  for (let i = period; i < candles.length; i++) {
-    ema = candles[i].close * k + ema * (1 - k);
-    result.push({ time: candles[i].time as Time, value: ema });
+  let ema = valid.slice(0, period).reduce((s, c) => s + c.close, 0) / period;
+  const result: { time: Time; value: number }[] = [{ time: valid[period - 1].time as Time, value: ema }];
+  for (let i = period; i < valid.length; i++) {
+    ema = valid[i].close * k + ema * (1 - k);
+    result.push({ time: valid[i].time as Time, value: ema });
   }
   return result;
 }
@@ -154,17 +160,16 @@ function getRolloverTimes(fromSec: number, toSec: number): RolloverLine[] {
 // month that opens on a sunday lands on its actual first bar. Times are compared
 // in broker time (candle.time shifted back by DISPLAY_TIME_SHIFT_SEC).
 function getMonthStartTimes(candles: Candle[]): Set<number> {
-  const result = new Set<number>();
-  let prevMonth = -1;
+  // Group by calendar month (broker time) and take the earliest candle of each.
+  // Order-independent so it survives unsorted arrays (loadMore prepends).
+  const firstOfMonth = new Map<string, number>();
   for (const c of candles) {
     const brokerDate = new Date((c.time - DISPLAY_TIME_SHIFT_SEC) * 1000);
-    const month = brokerDate.getUTCMonth();
-    if (month !== prevMonth) {
-      result.add(c.time);
-      prevMonth = month;
-    }
+    const key = `${brokerDate.getUTCFullYear()}-${brokerDate.getUTCMonth()}`;
+    const existing = firstOfMonth.get(key);
+    if (existing === undefined || c.time < existing) firstOfMonth.set(key, c.time);
   }
-  return result;
+  return new Set(firstOfMonth.values());
 }
 
 interface LightweightChartExtendedProps extends LightweightChartProps {
@@ -176,12 +181,32 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   initialDrawings?: PersistedDrawing[] | null;
   onDrawingsChange?: (items: PersistedDrawing[]) => void;
   trendlineAppearance?: TrendlineAppearance;
+  accountBalance?: number;
+  pnlMode?: PnlMode;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net' }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
+
+  // Double activation that works on both desktop (dblclick) and touch (two quick
+  // taps), since onDoubleClick doesn't fire reliably on touch devices.
+  const lastTapRef = useRef<Record<string, number>>({});
+  const doubleTapProps = (key: string, onActivate: () => void) => ({
+    onDoubleClick: onActivate,
+    onTouchEnd: (e: React.TouchEvent) => {
+      const now = e.timeStamp;
+      const prev = lastTapRef.current[key] ?? 0;
+      if (now - prev < 300) {
+        e.preventDefault();
+        lastTapRef.current[key] = 0;
+        onActivate();
+      } else {
+        lastTapRef.current[key] = now;
+      }
+    },
+  });
   const trendlineCanvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -231,8 +256,13 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const initialDrawingsRef = useRef(initialDrawings);
 
   // Reset loaded guard when the chart context changes so a new fetch triggers a reload.
+  // Also clear EMA series data immediately: the new symbol/TF candles arrive a tick
+  // later, and a hitTest in that window over a stale EMA throws "Value is null".
   useEffect(() => {
     loadedDrawingsRef.current = null;
+    for (const series of emaSeriesRef.current.values()) {
+      try { series.setData([]); } catch { /* series may be detached */ }
+    }
   }, [broker, symbol, timeframe]);
 
   // null = fetch in flight (ignore). array = confirmed (load, even if empty to clear canvas).
@@ -312,8 +342,27 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     // stop lines before the time axis so they don't overlap the date labels
     const bottom = canvas.height - chart.timeScale().height();
 
+    // Snap a target time to a candle that is actually on the chart axis.
+    // Weekend bars are filtered out of the series, so a month-start landing on a
+    // sunday has no coordinate — snap forward to the next weekday bar instead.
+    const isWeekend = (sec: number) => {
+      const d = new Date(sec * 1000).getUTCDay();
+      return d === 0 || d === 6;
+    };
+    const snapToCandle = (time: number): number | null => {
+      let best: number | null = null;
+      for (const c of data) {
+        if (isWeekend(c.time)) continue;
+        if (c.time === time) return time;
+        if (c.time > time && (best === null || c.time < best)) best = c.time;
+      }
+      return best;
+    };
+
     const drawLine = (time: number, color: string) => {
-      const x = chart.timeScale().timeToCoordinate(time as Time);
+      const snapped = snapToCandle(time);
+      if (snapped === null) return;
+      const x = chart.timeScale().timeToCoordinate(snapped as Time);
       if (x === null) return;
       const px = Math.round(x) + 0.5;
       ctx.strokeStyle = color;
@@ -666,9 +715,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       const slPrice = resolve(slId, p.sl);
       const tpPrice = resolve(tpId, p.tp);
 
-      addLine(`${p.ticket}-entry`, p.openPrice, entryColor, `${isBuy ? 'BUY' : 'SELL'} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`);
-      if (slPrice) addLine(slId, slPrice, '#f2a0a0', `SL ${fmtPrice(slPrice, precision)}`);
-      if (tpPrice) addLine(tpId, tpPrice, '#8fd9bd', `TP ${fmtPrice(tpPrice, precision)}`);
+      // P&L appended to each level label, in the user's pnlMode:
+      // entry = current P&L, SL/TP = P&L if closed at that price.
+      const withPnl = (base: string, pnl: string) => (pnl ? `${base}  ${pnl}` : base);
+
+      addLine(
+        `${p.ticket}-entry`,
+        p.openPrice,
+        entryColor,
+        withPnl(`${isBuy ? 'BUY' : 'SELL'} ${fmtLots(p.lots)} @ ${fmtPrice(p.openPrice, precision)}`, formatEntryPnl(p, pnlMode, accountBalance)),
+      );
+      if (slPrice) addLine(slId, slPrice, '#f2a0a0', withPnl(`SL ${fmtPrice(slPrice, precision)}`, formatLevelPnl(p, pnlMode, accountBalance, slPrice)));
+      if (tpPrice) addLine(tpId, tpPrice, '#8fd9bd', withPnl(`TP ${fmtPrice(tpPrice, precision)}`, formatLevelPnl(p, pnlMode, accountBalance, tpPrice)));
 
       const base = { ticket: p.ticket, broker: p.broker ?? '', symbol: p.symbol, lots: p.lots, sl: slPrice, tp: tpPrice };
       if (slPrice) draggable.push({ ...base, id: slId, kind: 'sl', price: slPrice });
@@ -700,7 +758,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     draggableRef.current = draggable;
     positionLevelsRef.current = levels;
     repositionLabels();
-  }, [positions, candles, repositionLabels]);
+  }, [positions, candles, repositionLabels, accountBalance, pnlMode]);
 
   // drag SL/TP lines directly on the chart
   useEffect(() => {
@@ -819,16 +877,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
         <div className={styles.legend}>
           <span
             className={styles.legendClickable}
-            onDoubleClick={() => navigate(`/journal?broker=${encodeURIComponent(broker)}`)}
-            title="Double-click to filter by broker"
+            data-chart-interactive
+            {...doubleTapProps('broker', () => navigate(`/journal?broker=${encodeURIComponent(broker)}`))}
+            title="Double-click/tap to filter by broker"
           >
             {broker.toUpperCase()}
           </span>
           {' · '}
           <span
             className={styles.legendClickable}
-            onDoubleClick={() => navigate(`/journal?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}`)}
-            title="Double-click to filter by broker + symbol"
+            data-chart-interactive
+            {...doubleTapProps('symbol', () => navigate(`/journal?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}`))}
+            title="Double-click/tap to filter by broker + symbol"
           >
             {symbol}
           </span>

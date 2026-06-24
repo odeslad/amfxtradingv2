@@ -160,8 +160,41 @@ model User {
   createdAt         DateTime          @default(now())
   chartIndicators   ChartIndicators?
   drawings          Drawing[]
+  alerts            PriceAlert[]
+  pushSubscriptions PushSubscription[]
 
   @@map("users")
+}
+
+model PriceAlert {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id])
+  broker      String
+  symbol      String
+  price       Float
+  direction   String    // "above" | "below"
+  note        String?
+  enabled     Boolean   @default(true)
+  triggeredAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId])
+  @@index([broker, symbol, enabled])
+  @@map("price_alerts")
+}
+
+model PushSubscription {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("push_subscriptions")
 }
 
 model Drawing {

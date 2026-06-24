@@ -12,6 +12,8 @@ import symbolsRouter from './routes/symbols';
 import candlesRouter from './routes/candles';
 import chartIndicatorsRouter from './routes/chart-indicators';
 import drawingsRouter from './routes/drawings';
+import alertsRouter from './routes/alerts';
+import pushRouter from './routes/push';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -42,5 +44,7 @@ app.use('/symbols', requireAuth, symbolsRouter);
 app.use('/candles', requireAuth, candlesRouter);
 app.use('/chart-indicators', requireAuth, chartIndicatorsRouter);
 app.use('/drawings', requireAuth, drawingsRouter);
+app.use('/alerts', requireAuth, alertsRouter);
+app.use('/push', requireAuth, pushRouter);
 
 export default app;

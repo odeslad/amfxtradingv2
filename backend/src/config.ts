@@ -30,4 +30,8 @@ export const config = {
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
   brokers: loadBrokers(),
+  // Web Push (VAPID). Optional: when unset, push notifications are disabled.
+  vapidPublicKey: process.env['VAPID_PUBLIC_KEY'] ?? '',
+  vapidPrivateKey: process.env['VAPID_PRIVATE_KEY'] ?? '',
+  vapidSubject: process.env['VAPID_SUBJECT'] ?? 'mailto:info@amfxtrading.com',
 };

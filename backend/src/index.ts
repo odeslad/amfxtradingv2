@@ -15,6 +15,8 @@ import { setAccount } from './store/accounts';
 import { syncColors } from './store/positionColors';
 import { setBroadcaster } from './routes/commands';
 import { Engine } from './engine/engine';
+import { evaluateAlerts } from './alerts/alert-evaluator';
+import { refreshAlerts } from './alerts/alert-store';
 
 type Wss = ReturnType<typeof createWss>;
 
@@ -31,6 +33,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid, tick.ask);
     wss.broadcastTicks(brokerName, batch);
     engine.processTicks(batch);
+    evaluateAlerts(brokerName, batch);
   });
 
   pipe.on('positions', (positions) => {
@@ -75,6 +78,9 @@ async function main() {
   console.log(`[BACKEND] Starting | ${new Date().toISOString()}`);
   await db.$connect();
   console.log('[DB] Connected');
+
+  await refreshAlerts();
+  console.log('[ALERT] Armed alerts loaded');
 
   const server = http.createServer(app);
   const wss = createWss(server);

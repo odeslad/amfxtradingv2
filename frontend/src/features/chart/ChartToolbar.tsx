@@ -21,6 +21,7 @@ interface ChartToolbarProps {
   positionsActive?: boolean;
   onAlerts?: () => void;
   alertsActive?: boolean;
+  alertsFlashing?: boolean;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
 }
@@ -28,7 +29,7 @@ interface ChartToolbarProps {
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
-  onPositions, positionsActive, onAlerts, alertsActive, onFullscreen, isFullscreen,
+  onPositions, positionsActive, onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -79,7 +80,7 @@ export function ChartToolbar({
         </button>
         <button
           type="button"
-          className={`${styles.iconBtn} ${alertsActive ? styles.iconBtnActive : ''}`}
+          className={`${styles.iconBtn} ${alertsActive ? styles.iconBtnActive : ''} ${alertsFlashing ? styles.iconBtnFlashing : ''}`}
           onClick={onAlerts}
           title="Price alerts"
           aria-label="Price alerts"

@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
+import { useAuth } from '../auth/AuthContext';
+import { playAlertBeep } from '../../lib/beep';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { AlertsPanel } from './AlertsPanel';
@@ -70,6 +72,8 @@ export function ChartPage() {
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
+  const [alertFlash, setAlertFlash] = useState(false);
+  const { user } = useAuth();
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
@@ -192,9 +196,20 @@ export function ChartPage() {
       broker: string;
       brokerOffset?: number;
       currency?: string;
+      userId?: number;
       ticks?: ({ symbol: string } & Record<string, number>)[];
       positions?: Position[];
     };
+
+    // A price alert fired (any broker/symbol, for this user): flash + beep.
+    if (m.type === 'alert') {
+      if (user && m.userId === user.id) {
+        setAlertFlash(true);
+        playAlertBeep();
+      }
+      return;
+    }
+
     if (m.broker !== broker) return;
 
     if (m.type === 'positions') {
@@ -219,7 +234,7 @@ export function ChartPage() {
       low: last[keys.low],
       close: last.bid,
     });
-  }, [broker, symbol, timeframe]));
+  }, [broker, symbol, timeframe, user]));
 
   useEffect(() => {
     setLiveCandle(null);
@@ -356,8 +371,9 @@ export function ChartPage() {
         onFilters={() => setFiltersOpen(true)}
         drawMode={drawMode}
         onDrawMode={mode => setDrawMode(prev => (prev === mode ? null : mode))}
-        onAlerts={() => setAlertsOpen(prev => !prev)}
+        onAlerts={() => { setAlertsOpen(prev => !prev); setAlertFlash(false); }}
         alertsActive={alertsOpen}
+        alertsFlashing={alertFlash}
         onPositions={() => setPositionsVisible(prev => !prev)}
         positionsActive={positionsVisible}
         onFullscreen={toggleFullscreen}

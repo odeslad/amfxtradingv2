@@ -113,6 +113,23 @@
   border-color: var(--orange);
 }
 
+.iconBtnFlashing {
+  animation: alertFlash 0.7s ease-in-out infinite;
+}
+
+@keyframes alertFlash {
+  0%, 100% {
+    color: var(--red);
+    border-color: var(--red);
+    background: transparent;
+  }
+  50% {
+    color: #fff;
+    border-color: var(--red);
+    background: var(--red);
+  }
+}
+
 .tfSelect {
   display: none;
   min-width: 70px;

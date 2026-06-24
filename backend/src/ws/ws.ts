@@ -55,5 +55,8 @@ export function createWss(server: Server) {
     broadcastCommandResult(id: string, status: string, ticket?: number, error?: string) {
       broadcast('command_result', { id, status, ticket, error });
     },
+    broadcastAlert(userId: number, broker: string, symbol: string, price: number, direction: string) {
+      broadcast('alert', { userId, broker, symbol, price, direction });
+    },
   };
 }

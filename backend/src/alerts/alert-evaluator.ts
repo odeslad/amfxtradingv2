@@ -1,7 +1,7 @@
 import type { TickData, TickBatch } from '../bridge/pipe-reader';
 import { db } from '../db/client';
 import { sendToUser } from '../services/push';
-import { getArmedAlerts, hasAnyAlerts, refreshAlerts } from './alert-store';
+import { getArmedAlerts, hasAnyAlerts, refreshAlerts, type ArmedAlert } from './alert-store';
 
 // Evaluates armed price alerts on every tick. A "cross" is detected by comparing
 // the previous bid to the current one, so the alert fires only the moment the
@@ -9,6 +9,14 @@ import { getArmedAlerts, hasAnyAlerts, refreshAlerts } from './alert-store';
 //
 // This module is independent of the trading Engine; it just taps the same tick
 // stream from index.ts.
+
+// Optional broadcaster wired from index.ts to push a real-time WS event on fire,
+// so the UI can flash the alert bell without polling.
+type AlertBroadcaster = (userId: number, broker: string, symbol: string, price: number, direction: string) => void;
+let broadcastAlert: AlertBroadcaster | null = null;
+export function setAlertBroadcaster(fn: AlertBroadcaster): void {
+  broadcastAlert = fn;
+}
 
 // broker -> symbol -> last bid seen
 const lastBid = new Map<string, Map<string, number>>();
@@ -28,7 +36,7 @@ function crossed(direction: 'above' | 'below', prev: number, curr: number, level
   return prev > level && curr <= level;
 }
 
-async function fire(alert: { id: number; userId: number; broker: string; symbol: string; price: number }): Promise<void> {
+async function fire(alert: ArmedAlert): Promise<void> {
   // One-shot: disable and timestamp before notifying so a burst of ticks can't
   // double-fire while the push is in flight.
   await db.priceAlert.update({
@@ -36,6 +44,7 @@ async function fire(alert: { id: number; userId: number; broker: string; symbol:
     data: { enabled: false, triggeredAt: new Date() },
   });
   await refreshAlerts();
+  broadcastAlert?.(alert.userId, alert.broker, alert.symbol, alert.price, alert.direction);
   await sendToUser(alert.userId, {
     title: `${alert.symbol} alert`,
     body: `${alert.symbol} (${alert.broker}) reached ${alert.price}`,

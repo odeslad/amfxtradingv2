@@ -15,7 +15,7 @@ import { setAccount } from './store/accounts';
 import { syncColors } from './store/positionColors';
 import { setBroadcaster } from './routes/commands';
 import { Engine } from './engine/engine';
-import { evaluateAlerts } from './alerts/alert-evaluator';
+import { evaluateAlerts, setAlertBroadcaster } from './alerts/alert-evaluator';
 import { refreshAlerts } from './alerts/alert-store';
 
 type Wss = ReturnType<typeof createWss>;
@@ -85,6 +85,7 @@ async function main() {
   const server = http.createServer(app);
   const wss = createWss(server);
   setBroadcaster((id, status, ticket, error) => wss.broadcastCommandResult(id, status, ticket, error));
+  setAlertBroadcaster((userId, broker, symbol, price, direction) => wss.broadcastAlert(userId, broker, symbol, price, direction));
 
   const watchers = config.brokers.map(({ name, bridgePath }) =>
     startBroker(name, bridgePath, wss),

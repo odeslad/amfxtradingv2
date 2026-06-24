@@ -108,6 +108,7 @@ export class DrawingManager {
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
   private onChange: (() => void) | null = null;
+  private onCountChange: ((count: number) => void) | null = null;
   private rafId = 0;
 
   private boundMouseDown: (e: MouseEvent) => void;
@@ -382,6 +383,7 @@ export class DrawingManager {
     this.canvas.style.cursor = '';
     this.scheduleRaf();
     this.redraw();
+    this.notifyCount();
     this.onDone?.();
     this.onChange?.();
   }
@@ -674,7 +676,22 @@ export class DrawingManager {
     this.setSelected(null);
     this.scheduleRaf();
     this.redraw();
+    this.notifyCount();
     this.onChange?.();
+  }
+
+  clearAll() {
+    if (this.drawings.length === 0) return;
+    this.drawings = [];
+    this.setSelected(null);
+    this.scheduleRaf();
+    this.redraw();
+    this.notifyCount();
+    this.onChange?.();
+  }
+
+  private notifyCount() {
+    this.onCountChange?.(this.drawings.length);
   }
 
   setOnSelectionChange(cb: (hasSelection: boolean) => void) {
@@ -683,6 +700,10 @@ export class DrawingManager {
 
   setOnChange(cb: () => void) {
     this.onChange = cb;
+  }
+
+  setOnCountChange(cb: (count: number) => void) {
+    this.onCountChange = cb;
   }
 
   setAppearance(appearance: TrendlineAppearance) {
@@ -812,6 +833,7 @@ export class DrawingManager {
     });
     this.scheduleRaf();
     this.redraw();
+    this.notifyCount();
   }
 
   hasSelection(): boolean {

@@ -36,11 +36,16 @@
   user-select: none;
 }
 
-.deleteTrendlineBtn {
+.drawingActions {
   position: absolute;
   top: 8px;
   right: 80px;
   z-index: 10;
+  display: flex;
+  gap: 6px;
+}
+
+.deleteTrendlineBtn {
   height: 22px;
   padding: 0 8px;
   background: var(--surface2);
@@ -55,6 +60,24 @@
 
 .deleteTrendlineBtn:hover {
   background: rgba(224, 92, 92, 0.15);
+}
+
+.clearDrawingsBtn {
+  height: 22px;
+  padding: 0 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-tight);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.clearDrawingsBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
 }
 
 .legend {

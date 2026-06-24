@@ -235,6 +235,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const onDrawingsChangeRef = useRef(onDrawingsChange);
   useEffect(() => { onDrawingsChangeRef.current = onDrawingsChange; }, [onDrawingsChange]);
   const [hasSelection, setHasSelection] = useState(false);
+  const [hasDrawings, setHasDrawings] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
   const onDrawDoneRef = useRef(onDrawDone);
   useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
@@ -580,6 +581,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       trendlineCanvas.height = containerRef.current.clientHeight;
       const manager = new DrawingManager(trendlineCanvas, chart, series);
       manager.setOnSelectionChange(setHasSelection);
+      manager.setOnCountChange(count => setHasDrawings(count > 0));
       manager.setOnChange(() => onDrawingsChangeRef.current?.(manager.getPersisted()));
       if (trendlineAppearanceRef.current) manager.setAppearance(trendlineAppearanceRef.current);
       trendlineManagerRef.current = manager;
@@ -967,15 +969,29 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           {l.text}
         </div>
       ))}
-      {hasSelection && (
-        <button
-          type="button"
-          className={styles.deleteTrendlineBtn}
-          onClick={() => trendlineManagerRef.current?.deleteSelected()}
-          title="Delete drawing"
-        >
-          Delete
-        </button>
+      {(hasSelection || hasDrawings) && (
+        <div className={styles.drawingActions}>
+          {hasSelection && (
+            <button
+              type="button"
+              className={styles.deleteTrendlineBtn}
+              onClick={() => trendlineManagerRef.current?.deleteSelected()}
+              title="Delete selected drawing"
+            >
+              Delete
+            </button>
+          )}
+          {hasDrawings && (
+            <button
+              type="button"
+              className={styles.clearDrawingsBtn}
+              onClick={() => trendlineManagerRef.current?.clearAll()}
+              title="Clear all drawings on this chart"
+            >
+              Clear all
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

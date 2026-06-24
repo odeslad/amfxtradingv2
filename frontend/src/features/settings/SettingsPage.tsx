@@ -150,6 +150,7 @@ export function SettingsPage() {
               <option value="net">Net (profit + swap + commission)</option>
               <option value="gross">Gross (profit only)</option>
               <option value="pips">Pips</option>
+              <option value="pct">% Net (over account balance)</option>
             </select>
           </div>
 

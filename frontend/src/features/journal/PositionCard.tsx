@@ -1,5 +1,5 @@
 import { useRef, useState, type TouchEvent } from 'react';
-import { type Position, type PnlMode, fmt, fmtPnlMode, calcPnl, fmtLocalTime, currencySymbol } from './utils/position';
+import { type Position, type PnlMode, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol } from './utils/position';
 import { ColorBadge } from './ColorBadge';
 import styles from './PositionCard.module.css';
 
@@ -10,6 +10,7 @@ const DOUBLE_TAP_MS = 300;
 interface PositionCardProps {
   position: Position;
   pnlMode: PnlMode;
+  balance?: number;
   color?: string;
   onColorChange: (broker: string, ticket: number, color: string) => void;
   onEdit: (p: Position) => void;
@@ -17,7 +18,7 @@ interface PositionCardProps {
   onOpenChart?: (p: Position) => void;
 }
 
-export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdit, onClose, onOpenChart }: PositionCardProps) {
+export function PositionCard({ position: p, pnlMode, balance, color, onColorChange, onEdit, onClose, onOpenChart }: PositionCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [open, setOpen] = useState(false);
 
@@ -56,7 +57,7 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
     setExpanded(prev => !prev);
   };
 
-  const pnlValue = calcPnl(p, pnlMode);
+  const pnlValue = calcPnl(p, pnlMode, balance);
 
   return (
     <div className={`${styles.card} ${expanded ? styles.cardExpanded : ''}`}>
@@ -92,13 +93,17 @@ export function PositionCard({ position: p, pnlMode, color, onColorChange, onEdi
           </span>
           <span className={styles.value}>{fmt(p.openPrice, 5)}</span>
           <span className={`${pnlValue >= 0 ? styles.profit : styles.loss} ${styles.right} ${styles.pnl}`}>
-            {fmtPnlMode(p, pnlMode)}
+            {fmtPnlMode(p, pnlMode, balance)}
           </span>
         </div>
       </div>
 
       {expanded && (
         <div className={styles.details}>
+          <div className={styles.field}>
+            <span className={styles.label}>Price</span>
+            <span>{currentQuote(p) != null ? fmt(currentQuote(p)!, 5) : '—'}</span>
+          </div>
           <div className={styles.field}>
             <span className={styles.label}>Lots</span>
             <span>{fmt(p.lots, 2)}</span>

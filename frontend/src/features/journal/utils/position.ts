@@ -81,19 +81,37 @@ export function fmtPnl(n: number, currency?: string): string {
   return (n >= 0 ? '+' : '') + fmt(n) + (sym ? ` ${sym}` : '');
 }
 
-export type PnlMode = 'net' | 'gross' | 'pips';
+export type PnlMode = 'net' | 'gross' | 'pips' | 'pct';
 
-export const PNL_MODES: PnlMode[] = ['net', 'gross', 'pips'];
+export const PNL_MODES: PnlMode[] = ['net', 'gross', 'pips', 'pct'];
 
 export const PNL_LABEL: Record<PnlMode, string> = {
   net: 'P&L Net',
   gross: 'P&L Gross',
   pips: 'Pips',
+  pct: '% Net',
 };
 
-export function calcPnl(p: Position, mode: PnlMode): number {
-  if (mode === 'net') return p.profit + p.swap + p.commission;
+// Net P&L in account currency: market profit plus swap and commission.
+export function netPnl(p: Position): number {
+  return p.profit + p.swap + p.commission;
+}
+
+// Live market quote relevant to closing the position: bid for buys, ask for sells.
+export function currentQuote(p: Position): number | null {
+  const q = p.type === 0 ? p.currentBid : p.currentAsk;
+  return q ?? null;
+}
+
+// Raw numeric P&L for a mode. The 'pct' mode needs the account balance; when it's
+// missing it falls back to the net currency value so callers never get NaN.
+export function calcPnl(p: Position, mode: PnlMode, balance?: number): number {
+  if (mode === 'net') return netPnl(p);
   if (mode === 'gross') return p.profit;
+  if (mode === 'pct') {
+    if (!balance || balance <= 0) return netPnl(p);
+    return (netPnl(p) / balance) * 100;
+  }
   const pipSize = p.symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
   const closePrice = p.type === 0 ? p.currentBid : p.currentAsk;
   if (closePrice != null) {
@@ -103,9 +121,10 @@ export function calcPnl(p: Position, mode: PnlMode): number {
   return p.profit / (p.lots * pipSize * 100_000);
 }
 
-export function fmtPnlMode(p: Position, mode: PnlMode): string {
-  const value = calcPnl(p, mode);
+export function fmtPnlMode(p: Position, mode: PnlMode, balance?: number): string {
+  const value = calcPnl(p, mode, balance);
   if (mode === 'pips') return (value >= 0 ? '+' : '') + value.toFixed(1) + ' pips';
+  if (mode === 'pct' && balance && balance > 0) return (value >= 0 ? '+' : '') + value.toFixed(2) + '%';
   return fmtPnl(value, p.currency);
 }
 

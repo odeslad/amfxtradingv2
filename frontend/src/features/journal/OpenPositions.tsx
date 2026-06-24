@@ -2,8 +2,9 @@ import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
 import { apiUrl } from '../../lib/api';
-import { type Position, fmt, fmtPnlMode, calcPnl, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
+import { useBalances } from '../../lib/useBalances';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
@@ -41,6 +42,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
   const [closing, setClosing] = useState(false);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const { pnlMode } = useDisplaySettings();
+  const balances = useBalances();
 
   const handleColorChange = (broker: string, ticket: number, color: string) => {
     setColors(prev => {
@@ -187,6 +189,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
               <th>Symbol</th>
               <th>Lots</th>
               <th>Open Price</th>
+              <th>Price</th>
               <th>SL</th>
               <th>TP</th>
               <th>Swap</th>
@@ -213,6 +216,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
                 </td>
                 <td>{fmt(p.lots, 2)}</td>
                 <td>{fmt(p.openPrice, 5)}</td>
+                <td>{currentQuote(p) != null ? fmt(currentQuote(p)!, 5) : '—'}</td>
                 <td>{p.sl ? fmt(p.sl, 5) : '—'}</td>
                 <td>{p.tp ? fmt(p.tp, 5) : '—'}</td>
                 <td className={p.swap < 0 ? styles.loss : p.swap > 0 ? styles.profit : undefined}>
@@ -221,8 +225,8 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
                 <td className={p.commission < 0 ? styles.loss : p.commission > 0 ? styles.profit : styles.muted}>
                   {fmt(p.commission, 2)}{currencySymbol(p.currency) && ` ${currencySymbol(p.currency)}`}
                 </td>
-                <td className={calcPnl(p, pnlMode) >= 0 ? styles.profit : styles.loss}>
-                  {fmtPnlMode(p, pnlMode)}
+                <td className={calcPnl(p, pnlMode, balances[p.broker ?? '']) >= 0 ? styles.profit : styles.loss}>
+                  {fmtPnlMode(p, pnlMode, balances[p.broker ?? ''])}
                 </td>
                 <td>{fmtLocalTime(p.openTime, p.brokerOffset)}</td>
                 <td className={styles.actionsCell}>
@@ -245,6 +249,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
             key={`${p.broker}-${p.ticket}`}
             position={p}
             pnlMode={pnlMode}
+            balance={balances[p.broker ?? '']}
             color={colors.get(posKey(p.broker!, p.ticket))}
             onColorChange={handleColorChange}
             onEdit={handleEdit}

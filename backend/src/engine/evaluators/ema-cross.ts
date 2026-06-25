@@ -7,6 +7,7 @@ export interface WeakConfig {
 }
 
 export interface StrongConfig {
+  enabled: boolean;
   minSpreadPips: number;
   useMinSpread: boolean;
 }
@@ -301,7 +302,7 @@ function classifyCandles(
       if (belowBoth && spreadOk) weak.push(candle.time);
     }
 
-    if (strongConfig) {
+    if (strongConfig?.enabled) {
       const aboveBoth = direction === 'buy'
         ? candle.close > fast && candle.close > slow
         : candle.close < fast && candle.close < slow;

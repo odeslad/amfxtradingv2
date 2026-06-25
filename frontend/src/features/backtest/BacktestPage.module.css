@@ -1,0 +1,72 @@
+.page {
+  display: grid;
+  grid-template-columns: var(--config-width, 360px) 20px 1fr;
+  padding: 16px;
+  height: 100%;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.dragging {
+  user-select: none;
+  cursor: col-resize;
+}
+
+.handle {
+  cursor: col-resize;
+  align-self: stretch;
+  position: relative;
+  background: transparent;
+}
+
+.handle::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: var(--border-bright);
+  transition: background 0.12s ease, width 0.12s ease;
+}
+
+.handle:hover::before,
+.handleActive::before {
+  width: 5px;
+  background: var(--orange);
+}
+
+.config {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.results {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+@media (max-width: 1024px) {
+  .page {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    overflow-y: auto;
+    height: auto;
+  }
+
+  .handle {
+    display: none;
+  }
+
+  .config,
+  .results {
+    overflow: visible;
+  }
+}

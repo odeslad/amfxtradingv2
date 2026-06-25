@@ -4,6 +4,7 @@ import type { Direction, Strategy, StrategyForm, Timeframe } from './backtest.ty
 import { defaultEntry, defaultForm, normalizeForm } from './defaults';
 import { EntryEditor } from './EntryEditor';
 import { CollapsibleSection } from './CollapsibleSection';
+import { NumberInput } from './NumberInput';
 import styles from './ConfigPanel.module.css';
 
 interface Props {
@@ -166,11 +167,11 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
           <div className={styles.row}>
             <div className={styles.field}>
               <label className={styles.label}>EMA fast</label>
-              <input className={styles.input} type="number" value={form.setup.emaFast} onChange={e => setSetup({ emaFast: Number(e.target.value) })} />
+              <NumberInput value={form.setup.emaFast} onChange={v => setSetup({ emaFast: v ?? 0 })} />
             </div>
             <div className={styles.field}>
               <label className={styles.label}>EMA slow</label>
-              <input className={styles.input} type="number" value={form.setup.emaSlow} onChange={e => setSetup({ emaSlow: Number(e.target.value) })} />
+              <NumberInput value={form.setup.emaSlow} onChange={v => setSetup({ emaSlow: v ?? 0 })} />
             </div>
           </div>
           <div className={styles.row}>
@@ -182,7 +183,7 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
             </div>
             <div className={styles.field}>
               <label className={styles.label}>Pivot len</label>
-              <input className={styles.input} type="number" value={form.setup.pivotLen} onChange={e => setSetup({ pivotLen: Number(e.target.value) })} />
+              <NumberInput value={form.setup.pivotLen} onChange={v => setSetup({ pivotLen: v ?? 0 })} />
             </div>
           </div>
 
@@ -202,7 +203,7 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
             {form.setup.weakConfig.enabled && form.setup.weakConfig.useMaxSpread && (
               <div className={styles.field}>
                 <label className={styles.label}>Max spread (pips)</label>
-                <input className={styles.input} type="number" value={form.setup.weakConfig.maxSpreadPips} onChange={e => setWeak({ maxSpreadPips: Number(e.target.value) })} />
+                <NumberInput value={form.setup.weakConfig.maxSpreadPips} onChange={v => setWeak({ maxSpreadPips: v ?? 0 })} />
               </div>
             )}
           </div>
@@ -223,7 +224,7 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
             {form.setup.strongConfig.enabled && form.setup.strongConfig.useMinSpread && (
               <div className={styles.field}>
                 <label className={styles.label}>Min spread (pips)</label>
-                <input className={styles.input} type="number" value={form.setup.strongConfig.minSpreadPips} onChange={e => setStrong({ minSpreadPips: Number(e.target.value) })} />
+                <NumberInput value={form.setup.strongConfig.minSpreadPips} onChange={v => setStrong({ minSpreadPips: v ?? 0 })} />
               </div>
             )}
           </div>

@@ -5,15 +5,15 @@ export function findActivation(
   candles: Candle[],
   entry: EntryConfig,
   direction: 'buy' | 'sell',
-  activationIndex: number,
+  windowStartIndex: number,
   windowEnd: number,
   entryPrice: number,
 ): number | null {
-  if (entry.type === 'ECC' && entry.offset === 0 && entry.window === 0) {
-    return activationIndex;
+  if (entry.type === 'ECC' && entry.offset === 0 && entry.windowStart === 0 && entry.windowEnd === 0) {
+    return windowStartIndex;
   }
 
-  for (let i = activationIndex; i <= windowEnd; i++) {
+  for (let i = windowStartIndex; i <= windowEnd; i++) {
     const touched = direction === 'buy'
       ? candles[i].low <= entryPrice
       : candles[i].high >= entryPrice;
@@ -28,7 +28,7 @@ export function resolveScanParams(
   entry: EntryConfig,
   activationCandleIndex: number,
 ): { scanFrom: number; entryTime: Date } {
-  const isEntryAtClose = entry.type === 'ECC' && entry.offset === 0 && entry.window === 0;
+  const isEntryAtClose = entry.type === 'ECC' && entry.offset === 0 && entry.windowStart === 0 && entry.windowEnd === 0;
   return {
     scanFrom: isEntryAtClose ? activationCandleIndex + 1 : activationCandleIndex,
     entryTime: isEntryAtClose

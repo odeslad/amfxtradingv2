@@ -16,7 +16,8 @@ export interface EntryConfig {
   enabled: boolean;
   invert: boolean;
   offset: number;
-  window: number;
+  windowStart: number;
+  windowEnd: number;
   sl: SLConfig;
   exit: ExitConfig;
   trail?: TrailConfig;
@@ -92,16 +93,17 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
     ? levelPrice + entryConfig.offset * pipSize
     : levelPrice - entryConfig.offset * pipSize;
 
+  const windowStartIndex = activationIndex + entryConfig.windowStart;
   const windowEnd = Math.min(
-    activationIndex + entryConfig.window,
+    activationIndex + entryConfig.windowEnd,
     closeIndex ?? candles.length - 1,
     candles.length - 1,
   );
 
-  const activationCandleIndex = findActivation(candles, entryConfig, direction, activationIndex, windowEnd, entryPrice);
+  const activationCandleIndex = findActivation(candles, entryConfig, direction, windowStartIndex, windowEnd, entryPrice);
 
   if (activationCandleIndex === null) {
-    const reason = (closeIndex !== null && closeIndex <= activationIndex + entryConfig.window) ? 'setup finished' : 'window elapsed';
+    const reason = (closeIndex !== null && closeIndex <= activationIndex + entryConfig.windowEnd) ? 'setup finished' : 'window elapsed';
     return missedTrade(entryConfig, direction, entryPrice, calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize), reason);
   }
 

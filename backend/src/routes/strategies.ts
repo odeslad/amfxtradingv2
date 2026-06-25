@@ -4,6 +4,16 @@ import { runBacktest } from '../services/backtest';
 
 const router = Router();
 
+router.get('/', async (_req, res) => {
+  try {
+    const strategies = await db.strategy.findMany({ orderBy: { id: 'desc' } });
+    res.json(strategies);
+  } catch (err) {
+    console.error('[STRATEGIES] LIST failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.post('/', async (req, res) => {
   try {
     const { broker, symbol, timeframe, config } = req.body as {

@@ -41,6 +41,7 @@ type Levels = { ECC: number; EMA: number; EVL: number | null; MHL: number | null
 
 const DEFAULT_TRAIL: TrailConfig = {
   type: 'none',
+  level: 'extreme',
   offset: 0,
   distance: 0,
   updateEvery: 1,

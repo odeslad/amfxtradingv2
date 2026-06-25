@@ -3,6 +3,7 @@ import type { PivotPoint } from '../ema-cross';
 
 export interface TrailConfig {
   type: 'none' | 'weak' | 'pivot' | 'fixed';
+  level: 'extreme' | 'close';
   offset: number;
   distance: number;
   updateEvery: number;
@@ -53,9 +54,13 @@ export function applyTrailing(
     for (let i = currentIndex; i >= entryIndex; i--) {
       if (!relevantSet.has(candles[i].time.getTime())) continue;
 
+      const basePrice = trail.level === 'close'
+        ? candles[i].close
+        : (direction === 'buy' ? candles[i].low : candles[i].high);
+
       const level = direction === 'buy'
-        ? candles[i].low - trail.offset * pipSize
-        : candles[i].high + trail.offset * pipSize;
+        ? basePrice - trail.offset * pipSize
+        : basePrice + trail.offset * pipSize;
 
       if (direction === 'buy' && level > currentSl) {
         if (bestSl === null || level < bestSl) bestSl = level;

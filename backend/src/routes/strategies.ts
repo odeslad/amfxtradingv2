@@ -78,6 +78,35 @@ router.put('/:id', async (req, res) => {
   }
 });
 
+router.delete('/:id', async (req, res) => {
+  try {
+    const id = parseInt(req.params['id'], 10);
+
+    await db.$transaction(async (tx) => {
+      const runs = await tx.backtestRun.findMany({ where: { strategyId: id }, select: { id: true } });
+      const runIds = runs.map((r) => r.id);
+
+      if (runIds.length > 0) {
+        const setups = await tx.backtestSetup.findMany({ where: { runId: { in: runIds } }, select: { id: true } });
+        const setupIds = setups.map((s) => s.id);
+
+        if (setupIds.length > 0) {
+          await tx.backtestTrade.deleteMany({ where: { setupId: { in: setupIds } } });
+        }
+        await tx.backtestSetup.deleteMany({ where: { runId: { in: runIds } } });
+        await tx.backtestRun.deleteMany({ where: { strategyId: id } });
+      }
+
+      await tx.strategy.delete({ where: { id } });
+    });
+
+    res.status(204).end();
+  } catch (err) {
+    console.error('[STRATEGIES] DELETE failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 router.get('/:id/backtest', async (req, res) => {
   try {
     const id = parseInt(req.params['id'], 10);

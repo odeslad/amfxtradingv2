@@ -60,6 +60,12 @@ export function BacktestPage() {
     pollForRun(saved.id);
   }, [loadStrategies, pollForRun]);
 
+  const handleDeleted = useCallback((id: number) => {
+    void loadStrategies();
+    setSelectedId(prev => (prev === id ? null : prev));
+    setRun(null);
+  }, [loadStrategies]);
+
   const { width, dragging, onHandleMouseDown } = useResizableWidth({
     min: 300, max: 720, initial: 360, storageKey: 'backtest.configWidth',
   });
@@ -75,6 +81,7 @@ export function BacktestPage() {
           selectedId={selectedId}
           onSelect={setSelectedId}
           onSaved={handleSaved}
+          onDeleted={handleDeleted}
         />
       </div>
       <div

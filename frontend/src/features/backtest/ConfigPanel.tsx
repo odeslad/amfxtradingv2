@@ -12,12 +12,13 @@ interface Props {
   selectedId: number | null;
   onSelect: (id: number | null) => void;
   onSaved: (strategy: Strategy) => void;
+  onDeleted: (id: number) => void;
 }
 
 const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DIRECTIONS: Direction[] = ['buy', 'sell', 'both'];
 
-export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props) {
+export function ConfigPanel({ strategies, selectedId, onSelect, onSaved, onDeleted }: Props) {
   const [broker, setBroker] = useState('');
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -25,6 +26,7 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
   const [status, setStatus] = useState('');
   const [saving, setSaving] = useState(false);
   const [showJson, setShowJson] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     fetch(apiUrl('/balances'), { credentials: 'include' })
@@ -46,6 +48,7 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
   }, [broker]);
 
   useEffect(() => {
+    setConfirmingDelete(false);
     const selected = strategies.find(s => s.id === selectedId);
     if (!selected) return;
     setBroker(selected.broker);
@@ -101,6 +104,19 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedId) return;
+    try {
+      const res = await fetch(apiUrl(`/strategies/${selectedId}`), { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) throw new Error(String(res.status));
+      onDeleted(selectedId);
+    } catch {
+      setStatus('Delete failed');
+    } finally {
+      setConfirmingDelete(false);
+    }
+  };
+
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
@@ -127,6 +143,20 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved }: Props
             })}
           </select>
         </div>
+
+        {selectedId && (
+          confirmingDelete ? (
+            <div className={styles.confirmRow}>
+              <span className={styles.confirmText}>Delete strategy #{selectedId}?</span>
+              <button type="button" className={styles.confirmDelete} onClick={handleDelete}>Delete</button>
+              <button type="button" className={styles.confirmCancel} onClick={() => setConfirmingDelete(false)}>Cancel</button>
+            </div>
+          ) : (
+            <button type="button" className={styles.deleteBtn} onClick={() => setConfirmingDelete(true)}>
+              Delete strategy
+            </button>
+          )
+        )}
 
         <div className={styles.divider} />
 

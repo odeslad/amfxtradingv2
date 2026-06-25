@@ -40,6 +40,68 @@
   color: var(--orange);
 }
 
+.deleteBtn {
+  height: 32px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.deleteBtn:hover {
+  background: rgba(224, 92, 92, 0.12);
+}
+
+.confirmRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.confirmText {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  color: var(--text);
+}
+
+.confirmDelete,
+.confirmCancel {
+  height: 32px;
+  padding: 0 12px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid var(--border-bright);
+  background: transparent;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+
+.confirmDelete {
+  border-color: var(--red);
+  color: #fff;
+  background: var(--red);
+}
+
+.confirmDelete:hover {
+  opacity: 0.85;
+}
+
+.confirmCancel {
+  color: var(--muted);
+}
+
+.confirmCancel:hover {
+  color: var(--text);
+}
+
 .subTitle {
   font-family: var(--font-sans);
   font-size: var(--text-2xs);

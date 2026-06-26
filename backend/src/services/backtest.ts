@@ -64,6 +64,11 @@ export async function runBacktest(strategyId: number): Promise<void> {
     });
     console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | created run=${run.id}`);
 
+    let dbgTradeCount = 0;
+    let dbgClosedCount = 0;
+    let dbgTotalPips = 0;
+    let dbgWins = 0;
+
     for (const setup of setups) {
       const savedSetup = await db.backtestSetup.create({
         data: {
@@ -100,6 +105,12 @@ export async function runBacktest(strategyId: number): Promise<void> {
         );
 
         for (const trade of trades) {
+          dbgTradeCount += 1;
+          if (trade.status === 'closed') {
+            dbgClosedCount += 1;
+            dbgTotalPips += trade.resultPips ?? 0;
+            if ((trade.resultPips ?? 0) > 0) dbgWins += 1;
+          }
           await db.backtestTrade.create({
             data: {
               setupId: savedSetup.id,
@@ -119,7 +130,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
       }
     }
 
-    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | done run=${run.id} | setups=${setups.length}`);
+    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | done run=${run.id} | setups=${setups.length} | trades=${dbgTradeCount} closed=${dbgClosedCount} wins=${dbgWins} totalPips=${dbgTotalPips.toFixed(1)}`);
   }
 
   console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | END (${Date.now() - t0}ms)`);

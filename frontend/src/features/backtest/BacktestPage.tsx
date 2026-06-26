@@ -11,6 +11,7 @@ export function BacktestPage() {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [run, setRun] = useState<BacktestRun | null>(null);
   const [loading, setLoading] = useState(false);
+  const [running, setRunning] = useState(false);
   const pollRef = useRef<number | null>(null);
 
   const loadStrategies = useCallback(async () => {
@@ -37,15 +38,19 @@ export function BacktestPage() {
     void fetchRun(selectedId).then(r => { setRun(r); setLoading(false); });
   }, [selectedId, fetchRun]);
 
-  const pollForRun = useCallback((id: number) => {
+  // Poll until a run NEWER than prevCreatedAt appears (the freshly computed
+  // one), so we never settle on the previous run while the new one is still
+  // being written.
+  const pollForRun = useCallback((id: number, prevCreatedAt: string | null) => {
     if (pollRef.current) window.clearInterval(pollRef.current);
     let tries = 0;
     pollRef.current = window.setInterval(async () => {
       tries += 1;
       const r = await fetchRun(id);
-      if (r || tries >= 10) {
+      const isNew = r && r.createdAt !== prevCreatedAt;
+      if (isNew || tries >= 20) {
         setRun(r);
-        setLoading(false);
+        setRunning(false);
         if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
       }
     }, 1500);
@@ -54,11 +59,12 @@ export function BacktestPage() {
   useEffect(() => () => { if (pollRef.current) window.clearInterval(pollRef.current); }, []);
 
   const handleSaved = useCallback((saved: Strategy) => {
+    const prevCreatedAt = run?.createdAt ?? null;
     void loadStrategies();
     setSelectedId(saved.id);
-    setLoading(true);
-    pollForRun(saved.id);
-  }, [loadStrategies, pollForRun]);
+    setRunning(true);
+    pollForRun(saved.id, prevCreatedAt);
+  }, [loadStrategies, pollForRun, run]);
 
   const handleDeleted = useCallback((id: number) => {
     void loadStrategies();
@@ -79,6 +85,7 @@ export function BacktestPage() {
         <ConfigPanel
           strategies={strategies}
           selectedId={selectedId}
+          running={running}
           onSelect={setSelectedId}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
@@ -91,7 +98,7 @@ export function BacktestPage() {
         aria-orientation="vertical"
       />
       <div className={styles.results}>
-        <ResultsPanel run={run} loading={loading} />
+        <ResultsPanel run={run} loading={loading || running} />
       </div>
     </div>
   );

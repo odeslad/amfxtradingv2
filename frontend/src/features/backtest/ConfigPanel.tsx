@@ -10,6 +10,7 @@ import styles from './ConfigPanel.module.css';
 interface Props {
   strategies: Strategy[];
   selectedId: number | null;
+  running: boolean;
   onSelect: (id: number | null) => void;
   onSaved: (strategy: Strategy) => void;
   onDeleted: (id: number) => void;
@@ -18,7 +19,7 @@ interface Props {
 const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DIRECTIONS: Direction[] = ['buy', 'sell', 'both'];
 
-export function ConfigPanel({ strategies, selectedId, onSelect, onSaved, onDeleted }: Props) {
+export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved, onDeleted }: Props) {
   const [broker, setBroker] = useState('');
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -278,8 +279,10 @@ export function ConfigPanel({ strategies, selectedId, onSelect, onSaved, onDelet
 
         <div className={styles.footer}>
           <div className={styles.actions}>
-            <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving}>
-              {selectedId ? 'Update & re-run' : 'Create & run backtest'}
+            <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving || running}>
+              {running
+                ? 'Running backtest…'
+                : selectedId ? 'Update & re-run' : 'Create & run backtest'}
             </button>
             <button type="button" className={styles.jsonBtn} onClick={() => setShowJson(v => !v)} title="Toggle config JSON">
               {'{ }'}

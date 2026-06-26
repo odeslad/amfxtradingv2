@@ -21,12 +21,17 @@ interface StrategyConfig {
 }
 
 export async function runBacktest(strategyId: number): Promise<void> {
+  const exec = crypto.randomBytes(4).toString('hex');
+  const t0 = Date.now();
+  console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | START`);
+
   const strategy = await db.strategy.findUnique({ where: { id: strategyId } });
   if (!strategy) throw new Error(`Strategy ${strategyId} not found`);
 
   const config = strategy.config as unknown as StrategyConfig;
   const configForHash = { forms: config.forms.map(({ id: _id, name: _name, ...rest }) => rest) };
   const configHash = crypto.createHash('md5').update(JSON.stringify(configForHash)).digest('hex');
+  console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | configHash=${configHash}`);
 
   for (const form of config.forms) {
     if (form.setup.type !== 'ema_cross') continue;
@@ -40,7 +45,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
     });
 
     if (lastRun) {
-      console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | cache hit — skipping`);
+      console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | cache HIT run=${lastRun.id} — skipping`);
       continue;
     }
 
@@ -50,21 +55,22 @@ export async function runBacktest(strategyId: number): Promise<void> {
     });
 
     if (candles.length === 0) {
-      console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | no candles in DB`);
+      console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | no candles in DB`);
       continue;
     }
 
     const dateFrom = candles[0].time;
     const dateTo = candles[candles.length - 1].time;
 
-    console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | evaluating ${candles.length} candles`);
-
     const pipSize = getPipSize(symbol);
     const setups = evaluateSetups(candles as Candle[], form, pipSize);
+
+    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | cache MISS | candles=${candles.length} [${dateFrom.toISOString()} → ${dateTo.toISOString()}] | setups=${setups.length}`);
 
     const run = await db.backtestRun.create({
       data: { strategyId, broker: strategy.broker, symbol, timeframe, dateFrom, dateTo, configHash },
     });
+    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | created run=${run.id}`);
 
     for (const setup of setups) {
       const savedSetup = await db.backtestSetup.create({
@@ -121,8 +127,10 @@ export async function runBacktest(strategyId: number): Promise<void> {
       }
     }
 
-    console.log(`[BACKTEST] strategy=${strategyId} ${symbol} ${timeframe} | done | setups=${setups.length}`);
+    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | done run=${run.id} | setups=${setups.length}`);
   }
+
+  console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | END (${Date.now() - t0}ms)`);
 }
 
 function normalizeTimeframe(tf: string): string {

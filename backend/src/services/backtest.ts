@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { Prisma } from '@prisma/client';
 import { db } from '../db/client';
 import { evaluateSetups } from '../engine/evaluators/setup-evaluator';
 import { evaluateEntries } from '../engine/evaluators/entry-evaluator';
@@ -57,62 +58,73 @@ export async function runBacktest(strategyId: number): Promise<void> {
 
     console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | candles=${candles.length} [${dateFrom.toISOString()} → ${dateTo.toISOString()}] | setups=${setups.length}`);
 
-    await deleteRuns(strategyId, strategy.broker, symbol, timeframe);
-
-    const run = await db.backtestRun.create({
-      data: { strategyId, broker: strategy.broker, symbol, timeframe, dateFrom, dateTo, configHash },
-    });
-    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | created run=${run.id}`);
+    // Evaluate everything in memory first, then persist atomically.
+    const tradesBySetupIndex = setups.map((setup) =>
+      form.entries.length > 0
+        ? evaluateEntries(
+            candles as Candle[],
+            setup.direction,
+            setup.activationIndex,
+            setup.closeIndex,
+            setup.levels,
+            form.entries,
+            pipSize,
+            setup.weakCandles,
+            setup.strongCandles,
+            setup.pivots,
+          )
+        : [],
+    );
 
     let dbgTradeCount = 0;
     let dbgClosedCount = 0;
     let dbgTotalPips = 0;
     let dbgWins = 0;
+    for (const trades of tradesBySetupIndex) {
+      for (const trade of trades) {
+        dbgTradeCount += 1;
+        if (trade.status === 'closed') {
+          dbgClosedCount += 1;
+          dbgTotalPips += trade.resultPips ?? 0;
+          if ((trade.resultPips ?? 0) > 0) dbgWins += 1;
+        }
+      }
+    }
 
-    for (const setup of setups) {
-      const savedSetup = await db.backtestSetup.create({
-        data: {
-          runId: run.id,
-          direction: setup.direction,
-          activationTime: setup.activationTime,
-          activationPrice: setup.activationPrice,
-          closeTime: setup.closeTime,
-          closePrice: setup.closePrice,
-          levels: setup.levels as object,
-          candleCount: setup.candleCount,
-          weakCandles: setup.weakCandles,
-          strongCandles: setup.strongCandles,
-          pivots: setup.pivots as object[],
-          mfePrice: setup.mfePrice,
-          mfeTime: setup.mfeTime,
-          maePrice: setup.maePrice,
-          maeTime: setup.maeTime,
-        },
+    const runId = await db.$transaction(async (tx) => {
+      await deleteRuns(tx, strategyId, strategy.broker, symbol, timeframe);
+
+      const run = await tx.backtestRun.create({
+        data: { strategyId, broker: strategy.broker, symbol, timeframe, dateFrom, dateTo, configHash },
       });
 
-      if (form.entries.length > 0) {
-        const trades = evaluateEntries(
-          candles as Candle[],
-          setup.direction,
-          setup.activationIndex,
-          setup.closeIndex,
-          setup.levels,
-          form.entries,
-          pipSize,
-          setup.weakCandles,
-          setup.strongCandles,
-          setup.pivots,
-        );
+      for (let i = 0; i < setups.length; i++) {
+        const setup = setups[i];
+        const savedSetup = await tx.backtestSetup.create({
+          data: {
+            runId: run.id,
+            direction: setup.direction,
+            activationTime: setup.activationTime,
+            activationPrice: setup.activationPrice,
+            closeTime: setup.closeTime,
+            closePrice: setup.closePrice,
+            levels: setup.levels as object,
+            candleCount: setup.candleCount,
+            weakCandles: setup.weakCandles,
+            strongCandles: setup.strongCandles,
+            pivots: setup.pivots as object[],
+            mfePrice: setup.mfePrice,
+            mfeTime: setup.mfeTime,
+            maePrice: setup.maePrice,
+            maeTime: setup.maeTime,
+          },
+          select: { id: true },
+        });
 
-        for (const trade of trades) {
-          dbgTradeCount += 1;
-          if (trade.status === 'closed') {
-            dbgClosedCount += 1;
-            dbgTotalPips += trade.resultPips ?? 0;
-            if ((trade.resultPips ?? 0) > 0) dbgWins += 1;
-          }
-          await db.backtestTrade.create({
-            data: {
+        const trades = tradesBySetupIndex[i];
+        if (trades.length > 0) {
+          await tx.backtestTrade.createMany({
+            data: trades.map((trade) => ({
               setupId: savedSetup.id,
               entryType: trade.entryType,
               entryPrice: trade.entryPrice,
@@ -124,36 +136,42 @@ export async function runBacktest(strategyId: number): Promise<void> {
               resultPips: trade.resultPips,
               status: trade.status,
               reason: trade.reason,
-            },
+            })),
           });
         }
       }
-    }
 
-    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | done run=${run.id} | setups=${setups.length} | trades=${dbgTradeCount} closed=${dbgClosedCount} wins=${dbgWins} totalPips=${dbgTotalPips.toFixed(1)}`);
+      return run.id;
+    }, { timeout: 120_000 });
+
+    console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} ${symbol} ${timeframe} | done run=${runId} | setups=${setups.length} | trades=${dbgTradeCount} closed=${dbgClosedCount} wins=${dbgWins} totalPips=${dbgTotalPips.toFixed(1)}`);
   }
 
   console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | END (${Date.now() - t0}ms)`);
 }
 
-async function deleteRuns(strategyId: number, broker: string, symbol: string, timeframe: string): Promise<void> {
-  await db.$transaction(async (tx) => {
-    const runs = await tx.backtestRun.findMany({
-      where: { strategyId, broker, symbol, timeframe },
-      select: { id: true },
-    });
-    const runIds = runs.map((r) => r.id);
-    if (runIds.length === 0) return;
-
-    const setups = await tx.backtestSetup.findMany({ where: { runId: { in: runIds } }, select: { id: true } });
-    const setupIds = setups.map((s) => s.id);
-
-    if (setupIds.length > 0) {
-      await tx.backtestTrade.deleteMany({ where: { setupId: { in: setupIds } } });
-    }
-    await tx.backtestSetup.deleteMany({ where: { runId: { in: runIds } } });
-    await tx.backtestRun.deleteMany({ where: { id: { in: runIds } } });
+async function deleteRuns(
+  tx: Prisma.TransactionClient,
+  strategyId: number,
+  broker: string,
+  symbol: string,
+  timeframe: string,
+): Promise<void> {
+  const runs = await tx.backtestRun.findMany({
+    where: { strategyId, broker, symbol, timeframe },
+    select: { id: true },
   });
+  const runIds = runs.map((r) => r.id);
+  if (runIds.length === 0) return;
+
+  const setups = await tx.backtestSetup.findMany({ where: { runId: { in: runIds } }, select: { id: true } });
+  const setupIds = setups.map((s) => s.id);
+
+  if (setupIds.length > 0) {
+    await tx.backtestTrade.deleteMany({ where: { setupId: { in: setupIds } } });
+  }
+  await tx.backtestSetup.deleteMany({ where: { runId: { in: runIds } } });
+  await tx.backtestRun.deleteMany({ where: { id: { in: runIds } } });
 }
 
 function stableStringify(value: unknown): string {

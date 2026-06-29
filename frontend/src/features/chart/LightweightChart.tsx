@@ -238,6 +238,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const [hasSelection, setHasSelection] = useState(false);
   const [hasDrawings, setHasDrawings] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
+  const [hoverOhlc, setHoverOhlc] = useState<{ open: number; high: number; low: number; close: number } | null>(null);
   const onDrawDoneRef = useRef(onDrawDone);
   useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
 
@@ -594,6 +595,11 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
         manager.setCandleIndex(filtered);
       }
     }
+
+    chart.subscribeCrosshairMove((param) => {
+      const bar = param.seriesData.get(series) as { open: number; high: number; low: number; close: number } | undefined;
+      setHoverOhlc(bar && bar.open !== undefined ? bar : null);
+    });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       drawRollovers();
@@ -962,6 +968,15 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           </span>
           <span className={styles.legendSep}>{' · '}</span>
           <span className={styles.legendTf}>{timeframe}</span>
+          {hoverOhlc && (
+            <span className={styles.legendOhlc}>
+              <span className={styles.legendSep}>{' · '}</span>
+              O <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.open, precisionRef.current)}</span>{' '}
+              H <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.high, precisionRef.current)}</span>{' '}
+              L <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.low, precisionRef.current)}</span>{' '}
+              C <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.close, precisionRef.current)}</span>
+            </span>
+          )}
         </div>
       )}
       {positionLabels.filter(l => l.visible).map(l => (

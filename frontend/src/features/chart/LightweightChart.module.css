@@ -130,6 +130,14 @@
   color: var(--muted);
 }
 
+.legendOhlc {
+  color: var(--muted);
+}
+
+.legendOhlcValue {
+  color: var(--text);
+}
+
 /* On mobile stack broker / symbol / tf vertically so the legend doesn't
    collide with the chart action buttons in the top-right. */
 @media (max-width: 768px) {
@@ -142,5 +150,9 @@
 
   .legendSep {
     display: none;
+  }
+
+  .legendOhlc .legendSep {
+    display: inline;
   }
 }

@@ -102,11 +102,10 @@ interface DragState {
   currentPrice: number;
 }
 
-function getPricePrecision(candles: Candle[]): number {
-  if (candles.length === 0) return 5;
-  const sample = candles[Math.floor(candles.length / 2)].close.toString();
-  const dot = sample.indexOf('.');
-  return dot === -1 ? 0 : sample.length - dot - 1;
+// Fixed price precision per symbol, independent of what each broker sends:
+// JPY pairs use 3 decimals, everything else 5.
+function getPricePrecision(symbol: string): number {
+  return symbol.toUpperCase().includes('JPY') ? 3 : 5;
 }
 
 function calcEma(candles: Candle[], period: number): { time: Time; value: number }[] {
@@ -648,7 +647,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     candlesRef.current = candles;
     timeframeRef.current = timeframe;
 
-    const precision = getPricePrecision(candles);
+    const precision = getPricePrecision(symbol);
     precisionRef.current = precision;
     seriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },

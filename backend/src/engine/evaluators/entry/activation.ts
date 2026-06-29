@@ -29,12 +29,15 @@ export function resolveScanParams(
   candles: Candle[],
   _entry: EntryConfig,
   activationCandleIndex: number,
+  tfMs: number,
 ): { scanFrom: number; entryTime: Date } {
-  // The entry triggers on activationCandleIndex (the candle that touched the
-  // level, or the market-entry candle for the zero-window ECC case). Both the
-  // entry time and the SL/TP scan start from that same candle.
+  // The entry triggers intrabar on activationCandleIndex (the candle that
+  // touched the level). Candle `time` in the DB is the candle CLOSE, but the
+  // touch happens inside the candle, so the entry time is the candle's OPEN =
+  // close − one timeframe.
+  const closeTime = candles[activationCandleIndex].time;
   return {
     scanFrom: activationCandleIndex,
-    entryTime: candles[activationCandleIndex].time,
+    entryTime: new Date(closeTime.getTime() - tfMs),
   };
 }

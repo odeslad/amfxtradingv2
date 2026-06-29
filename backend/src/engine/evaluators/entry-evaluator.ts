@@ -57,6 +57,7 @@ interface Setup {
   closeIndex: number | null;
   levels: Levels;
   pipSize: number;
+  tfMs: number;
   weakCandles: Date[];
   strongCandles: Date[];
   pivots: PivotPoint[];
@@ -70,16 +71,17 @@ export function evaluateEntries(
   levels: Levels,
   entries: EntryConfig[],
   pipSize: number,
+  tfMs: number,
   setupWeakCandles: Date[] = [],
   setupStrongCandles: Date[] = [],
   setupPivots: PivotPoint[] = [],
 ): TradeResult[] {
-  const ctx: Setup = { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, weakCandles: setupWeakCandles, strongCandles: setupStrongCandles, pivots: setupPivots };
+  const ctx: Setup = { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, tfMs, weakCandles: setupWeakCandles, strongCandles: setupStrongCandles, pivots: setupPivots };
   return entries.filter(ec => ec.enabled).map(entryConfig => evaluateSingleEntry(ctx, entryConfig));
 }
 
 function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult {
-  const { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, weakCandles, strongCandles, pivots } = ctx;
+  const { candles, setupDirection, activationIndex, closeIndex, levels, pipSize, tfMs, weakCandles, strongCandles, pivots } = ctx;
 
   const levelPrice = levels[entryConfig.type];
   if (levelPrice === null || levelPrice === undefined) {
@@ -114,9 +116,9 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
   const slPrice = calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize);
   const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
   const tpPrice = calculateTp(entryConfig.exit, direction, entryPrice, slDistancePips, pipSize);
-  const { scanFrom, entryTime } = resolveScanParams(candles, entryConfig, activationCandleIndex);
+  const { scanFrom, entryTime } = resolveScanParams(candles, entryConfig, activationCandleIndex, tfMs);
   const trail = entryConfig.trail ?? DEFAULT_TRAIL;
-  const result = scanResult(candles, scanFrom, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize, trail, weakCandles, strongCandles, pivots);
+  const result = scanResult(candles, scanFrom, candles.length - 1, direction, entryPrice, slPrice, tpPrice, pipSize, tfMs, trail, weakCandles, strongCandles, pivots);
 
   return { entryType: entryConfig.type, direction, entryPrice, entryTime, sl: slPrice, tp: tpPrice, ...result };
 }

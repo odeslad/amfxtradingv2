@@ -6,6 +6,7 @@ import { evaluateEntries } from '../engine/evaluators/entry-evaluator';
 import type { EntryConfig } from '../engine/evaluators/entry-evaluator';
 import type { EmaCrossContext } from '../engine/evaluators/ema-cross';
 import { getPipSize } from '../engine/pip-size';
+import { getTimeframeMs } from '../engine/timeframe';
 import type { Candle } from '../engine/indicators/ema';
 
 interface StrategyForm {
@@ -69,6 +70,7 @@ export async function runBacktest(strategyId: number): Promise<void> {
             setup.levels,
             form.entries,
             pipSize,
+            getTimeframeMs(timeframe),
             setup.weakCandles,
             setup.strongCandles,
             setup.pivots,

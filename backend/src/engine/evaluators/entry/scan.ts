@@ -19,6 +19,7 @@ export function scanResult(
   slPrice: number,
   tpPrice: number | null,
   pipSize: number,
+  tfMs: number,
   trail: TrailConfig,
   weakCandles: Date[],
   strongCandles: Date[],
@@ -26,6 +27,10 @@ export function scanResult(
 ): ScanResult {
   let currentSl = slPrice;
   const updateEvery = Math.max(1, trail.updateEvery);
+
+  // SL/TP are hit intrabar, so the exit time is the candle's OPEN (close − one
+  // timeframe), not the stored close — same convention as the entry time.
+  const openTime = (candle: Candle) => new Date(candle.time.getTime() - tfMs);
 
   for (let i = fromIndex; i <= toIndex; i++) {
     if (trail.type !== 'none' && i > fromIndex && (i - fromIndex) % updateEvery === 0) {
@@ -36,17 +41,17 @@ export function scanResult(
 
     if (direction === 'buy') {
       if (candle.low <= currentSl) {
-        return { status: 'closed', reason: 'SL', exitTime: candle.time, exitPrice: currentSl, resultPips: (currentSl - entryPrice) / pipSize };
+        return { status: 'closed', reason: 'SL', exitTime: openTime(candle), exitPrice: currentSl, resultPips: (currentSl - entryPrice) / pipSize };
       }
       if (tpPrice !== null && candle.high >= tpPrice) {
-        return { status: 'closed', reason: 'TP', exitTime: candle.time, exitPrice: tpPrice, resultPips: (tpPrice - entryPrice) / pipSize };
+        return { status: 'closed', reason: 'TP', exitTime: openTime(candle), exitPrice: tpPrice, resultPips: (tpPrice - entryPrice) / pipSize };
       }
     } else {
       if (candle.high >= currentSl) {
-        return { status: 'closed', reason: 'SL', exitTime: candle.time, exitPrice: currentSl, resultPips: (entryPrice - currentSl) / pipSize };
+        return { status: 'closed', reason: 'SL', exitTime: openTime(candle), exitPrice: currentSl, resultPips: (entryPrice - currentSl) / pipSize };
       }
       if (tpPrice !== null && candle.low <= tpPrice) {
-        return { status: 'closed', reason: 'TP', exitTime: candle.time, exitPrice: tpPrice, resultPips: (entryPrice - tpPrice) / pipSize };
+        return { status: 'closed', reason: 'TP', exitTime: openTime(candle), exitPrice: tpPrice, resultPips: (entryPrice - tpPrice) / pipSize };
       }
     }
   }

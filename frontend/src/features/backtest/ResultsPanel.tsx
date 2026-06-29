@@ -31,14 +31,51 @@ export function ResultsPanel({ run, loading }: Props) {
   const summary = useMemo(() => {
     const trades = run?.setups.flatMap(s => s.trades) ?? [];
     const closed = trades.filter(t => t.status === 'closed');
-    const wins = closed.filter(t => (t.resultPips ?? 0) > 0).length;
+    const open = trades.filter(t => t.status === 'open').length;
+    const missed = trades.filter(t => t.status === 'missed').length;
+
+    const pips = closed.map(t => t.resultPips ?? 0);
+    const winsArr = pips.filter(p => p > 0);
+    const lossesArr = pips.filter(p => p < 0);
+    const grossWin = winsArr.reduce((a, p) => a + p, 0);
+    const grossLoss = Math.abs(lossesArr.reduce((a, p) => a + p, 0));
+    const totalPips = grossWin - grossLoss;
+
+    const avgWin = winsArr.length ? grossWin / winsArr.length : 0;
+    const avgLoss = lossesArr.length ? grossLoss / lossesArr.length : 0;
+
+    // Max drawdown + longest losing streak over the equity curve (chronological).
+    const chrono = [...closed].sort((a, b) => (a.exitTime ?? '').localeCompare(b.exitTime ?? ''));
+    let equity = 0, peak = 0, maxDd = 0, streak = 0, maxStreak = 0;
+    for (const t of chrono) {
+      const p = t.resultPips ?? 0;
+      equity += p;
+      if (equity > peak) peak = equity;
+      if (peak - equity > maxDd) maxDd = peak - equity;
+      if (p < 0) { streak += 1; if (streak > maxStreak) maxStreak = streak; }
+      else streak = 0;
+    }
+
     return {
       setups: run?.setups.length ?? 0,
       trades: closed.length,
-      winRate: closed.length ? (wins / closed.length) * 100 : 0,
-      totalPips: closed.reduce((acc, t) => acc + (t.resultPips ?? 0), 0),
+      open,
+      missed,
+      winRate: closed.length ? (winsArr.length / closed.length) * 100 : 0,
+      totalPips,
+      profitFactor: grossLoss > 0 ? grossWin / grossLoss : (grossWin > 0 ? Infinity : 0),
+      expectancy: closed.length ? totalPips / closed.length : 0,
+      avgWin,
+      avgLoss,
+      payoff: avgLoss > 0 ? avgWin / avgLoss : (avgWin > 0 ? Infinity : 0),
+      maxDrawdown: maxDd,
+      maxLossStreak: maxStreak,
+      best: pips.length ? Math.max(...pips) : 0,
+      worst: pips.length ? Math.min(...pips) : 0,
     };
   }, [run]);
+
+  const fmtRatio = (n: number) => (n === Infinity ? '∞' : n.toFixed(2));
 
   const selectedSetup = run?.setups.find(s => s.id === selectedSetupId) ?? null;
 
@@ -62,6 +99,23 @@ export function ResultsPanel({ run, loading }: Props) {
               <span className={styles.statLabel}>Total pips</span>
               <span className={`${styles.statValue} ${summary.totalPips >= 0 ? styles.pos : styles.neg}`}>{fmtPips(summary.totalPips)}</span>
             </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Profit factor</span>
+              <span className={`${styles.statValue} ${summary.profitFactor >= 1 ? styles.pos : styles.neg}`}>{fmtRatio(summary.profitFactor)}</span>
+            </div>
+            <div className={styles.stat}>
+              <span className={styles.statLabel}>Expectancy</span>
+              <span className={`${styles.statValue} ${summary.expectancy >= 0 ? styles.pos : styles.neg}`}>{fmtPips(summary.expectancy)}</span>
+            </div>
+            <div className={styles.stat}><span className={styles.statLabel}>Avg win</span><span className={`${styles.statValue} ${styles.pos}`}>{fmtPips(summary.avgWin)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Avg loss</span><span className={`${styles.statValue} ${styles.neg}`}>{fmtPips(-summary.avgLoss)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Payoff</span><span className={styles.statValue}>{fmtRatio(summary.payoff)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Max DD</span><span className={`${styles.statValue} ${styles.neg}`}>{fmtPips(-summary.maxDrawdown)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Loss streak</span><span className={styles.statValue}>{summary.maxLossStreak}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Best</span><span className={`${styles.statValue} ${styles.pos}`}>{fmtPips(summary.best)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Worst</span><span className={`${styles.statValue} ${styles.neg}`}>{fmtPips(summary.worst)}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Open</span><span className={styles.statValue}>{summary.open}</span></div>
+            <div className={styles.stat}><span className={styles.statLabel}>Missed</span><span className={styles.statValue}>{summary.missed}</span></div>
           </div>
 
           <div className={styles.master}>

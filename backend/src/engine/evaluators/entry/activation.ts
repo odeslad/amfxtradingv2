@@ -9,6 +9,8 @@ export function findActivation(
   windowEnd: number,
   entryPrice: number,
 ): number | null {
+  // ECC with no offset and a zero window means "enter at market on the candle
+  // right after the setup", without waiting for a level touch.
   if (entry.type === 'ECC' && entry.offset === 0 && entry.windowStart === 0 && entry.windowEnd === 0) {
     return windowStartIndex;
   }
@@ -25,14 +27,14 @@ export function findActivation(
 
 export function resolveScanParams(
   candles: Candle[],
-  entry: EntryConfig,
+  _entry: EntryConfig,
   activationCandleIndex: number,
 ): { scanFrom: number; entryTime: Date } {
-  const isEntryAtClose = entry.type === 'ECC' && entry.offset === 0 && entry.windowStart === 0 && entry.windowEnd === 0;
+  // The entry triggers on activationCandleIndex (the candle that touched the
+  // level, or the market-entry candle for the zero-window ECC case). Both the
+  // entry time and the SL/TP scan start from that same candle.
   return {
-    scanFrom: isEntryAtClose ? activationCandleIndex + 1 : activationCandleIndex,
-    entryTime: isEntryAtClose
-      ? (candles[activationCandleIndex + 1]?.time ?? candles[activationCandleIndex].time)
-      : candles[activationCandleIndex].time,
+    scanFrom: activationCandleIndex,
+    entryTime: candles[activationCandleIndex].time,
   };
 }

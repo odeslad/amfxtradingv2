@@ -94,9 +94,12 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
     ? levelPrice + entryConfig.offset * pipSize
     : levelPrice - entryConfig.offset * pipSize;
 
-  const windowStartIndex = activationIndex + entryConfig.windowStart;
+  // The setup is confirmed at the CLOSE of its activation candle, so an entry
+  // can only trigger on the following candle onward — never on the setup candle
+  // itself. windowStart/windowEnd are offsets counted from that next candle.
+  const windowStartIndex = activationIndex + 1 + entryConfig.windowStart;
   const windowEnd = Math.min(
-    activationIndex + entryConfig.windowEnd,
+    activationIndex + 1 + entryConfig.windowEnd,
     closeIndex ?? candles.length - 1,
     candles.length - 1,
   );
@@ -104,7 +107,7 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
   const activationCandleIndex = findActivation(candles, entryConfig, direction, windowStartIndex, windowEnd, entryPrice);
 
   if (activationCandleIndex === null) {
-    const reason = (closeIndex !== null && closeIndex <= activationIndex + entryConfig.windowEnd) ? 'setup finished' : 'window elapsed';
+    const reason = (closeIndex !== null && closeIndex <= activationIndex + 1 + entryConfig.windowEnd) ? 'setup finished' : 'window elapsed';
     return missedTrade(entryConfig, direction, entryPrice, calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize), reason);
   }
 

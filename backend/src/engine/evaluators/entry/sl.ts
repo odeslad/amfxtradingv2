@@ -1,24 +1,29 @@
 export interface SLConfig {
-  type: 'fixed' | 'evl';
+  type: 'fixed' | 'evl' | 'mhl';
   pips: number;
   minPips: number | null;
   maxPips: number | null;
   evlOffset: number;
+  mhlOffset: number;
 }
 
 export function calculateSl(
   sl: SLConfig,
   direction: 'buy' | 'sell',
   entryPrice: number,
-  evl: number | null,
+  levels: { evl: number | null; mhl: number | null },
   pipSize: number,
 ): number {
   let slPrice: number;
 
-  if (sl.type === 'evl' && evl !== null) {
+  if (sl.type === 'evl' && levels.evl !== null) {
     slPrice = direction === 'buy'
-      ? evl - sl.evlOffset * pipSize
-      : evl + sl.evlOffset * pipSize;
+      ? levels.evl - sl.evlOffset * pipSize
+      : levels.evl + sl.evlOffset * pipSize;
+  } else if (sl.type === 'mhl' && levels.mhl !== null) {
+    slPrice = direction === 'buy'
+      ? levels.mhl - sl.mhlOffset * pipSize
+      : levels.mhl + sl.mhlOffset * pipSize;
   } else {
     slPrice = direction === 'buy'
       ? entryPrice - sl.pips * pipSize

@@ -85,7 +85,7 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
 
   const levelPrice = levels[entryConfig.type];
   if (levelPrice === null || levelPrice === undefined) {
-    return missedTrade(entryConfig, setupDirection, 0, calculateSl(entryConfig.sl, setupDirection, 0, levels.EVL, pipSize), 'window elapsed');
+    return missedTrade(entryConfig, setupDirection, 0, calculateSl(entryConfig.sl, setupDirection, 0, { evl: levels.EVL, mhl: levels.MHL }, pipSize), 'window elapsed');
   }
 
   const direction = entryConfig.invert
@@ -110,10 +110,10 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
 
   if (activationCandleIndex === null) {
     const reason = (closeIndex !== null && closeIndex <= activationIndex + 1 + entryConfig.windowEnd) ? 'setup finished' : 'window elapsed';
-    return missedTrade(entryConfig, direction, entryPrice, calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize), reason);
+    return missedTrade(entryConfig, direction, entryPrice, calculateSl(entryConfig.sl, direction, entryPrice, { evl: levels.EVL, mhl: levels.MHL }, pipSize), reason);
   }
 
-  const slPrice = calculateSl(entryConfig.sl, direction, entryPrice, levels.EVL, pipSize);
+  const slPrice = calculateSl(entryConfig.sl, direction, entryPrice, { evl: levels.EVL, mhl: levels.MHL }, pipSize);
   const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
   const tpPrice = calculateTp(entryConfig.exit, direction, entryPrice, slDistancePips, pipSize);
   const { scanFrom, entryTime } = resolveScanParams(candles, entryConfig, activationCandleIndex, tfMs);

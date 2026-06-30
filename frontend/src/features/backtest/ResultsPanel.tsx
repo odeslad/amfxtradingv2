@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { BacktestRun, BacktestSetup, BacktestTrade } from './backtest.types';
+import type { BacktestRun, BacktestSetup } from './backtest.types';
 import styles from './ResultsPanel.module.css';
 
 interface Props {
@@ -16,21 +16,36 @@ function setupPips(setup: BacktestSetup): number {
   return setup.trades.reduce((acc, t) => acc + (t.status === 'closed' ? t.resultPips ?? 0 : 0), 0);
 }
 
-function statusClass(status: BacktestTrade['status'], pips: number | null) {
-  if (status === 'open') return styles.statusOpen;
-  if (status === 'missed') return styles.statusMissed;
-  return (pips ?? 0) >= 0 ? styles.statusWin : styles.statusLoss;
-}
 
 export function ResultsPanel({ run, loading, isPreview = false }: Props) {
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
+  const [from, setFrom] = useState('');
+  const [to, setTo] = useState('');
 
+  // Reset the date range when a new run loads.
   useEffect(() => {
-    setSelectedSetupId(run?.setups[0]?.id ?? null);
+    setFrom('');
+    setTo('');
   }, [run]);
 
+  const filteredSetups = useMemo(() => {
+    const setups = run?.setups ?? [];
+    if (!from && !to) return setups;
+    const fromMs = from ? new Date(from).getTime() : -Infinity;
+    // `to` is inclusive of the whole day.
+    const toMs = to ? new Date(to).getTime() + 24 * 60 * 60 * 1000 : Infinity;
+    return setups.filter(s => {
+      const t = new Date(s.activationTime).getTime();
+      return t >= fromMs && t < toMs;
+    });
+  }, [run, from, to]);
+
+  useEffect(() => {
+    setSelectedSetupId(filteredSetups[0]?.id ?? null);
+  }, [filteredSetups]);
+
   const summary = useMemo(() => {
-    const trades = run?.setups.flatMap(s => s.trades) ?? [];
+    const trades = filteredSetups.flatMap(s => s.trades) ?? [];
     const closed = trades.filter(t => t.status === 'closed');
     const open = trades.filter(t => t.status === 'open').length;
     const missed = trades.filter(t => t.status === 'missed').length;
@@ -58,7 +73,7 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
     }
 
     return {
-      setups: run?.setups.length ?? 0,
+      setups: filteredSetups.length,
       trades: closed.length,
       open,
       missed,
@@ -74,11 +89,11 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
       best: pips.length ? Math.max(...pips) : 0,
       worst: pips.length ? Math.min(...pips) : 0,
     };
-  }, [run]);
+  }, [filteredSetups]);
 
   const fmtRatio = (n: number) => (n === Infinity ? '∞' : n.toFixed(2));
 
-  const selectedSetup = run?.setups.find(s => s.id === selectedSetupId) ?? null;
+  const selectedSetup = filteredSetups.find(s => s.id === selectedSetupId) ?? null;
 
   return (
     <div className={styles.panel}>
@@ -93,6 +108,32 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
           </span>
         )}
       </div>
+
+      {!loading && run && (
+        <div className={styles.rangeBar}>
+          <label className={styles.rangeLabel}>From</label>
+          <input
+            type="date"
+            className={styles.rangeInput}
+            value={from}
+            min={run.dateFrom.slice(0, 10)}
+            max={run.dateTo.slice(0, 10)}
+            onChange={e => setFrom(e.target.value)}
+          />
+          <label className={styles.rangeLabel}>To</label>
+          <input
+            type="date"
+            className={styles.rangeInput}
+            value={to}
+            min={run.dateFrom.slice(0, 10)}
+            max={run.dateTo.slice(0, 10)}
+            onChange={e => setTo(e.target.value)}
+          />
+          {(from || to) && (
+            <button type="button" className={styles.rangeClear} onClick={() => { setFrom(''); setTo(''); }}>Clear</button>
+          )}
+        </div>
+      )}
 
       {loading && <div className={styles.empty}>Loading…</div>}
       {!loading && !run && <div className={styles.empty}>No backtest run yet. Save a strategy to run one.</div>}
@@ -142,7 +183,7 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
                 </tr>
               </thead>
               <tbody>
-                {run.setups.map(setup => {
+                {filteredSetups.map(setup => {
                   const pips = setupPips(setup);
                   const selected = setup.id === selectedSetupId;
                   return (
@@ -187,6 +228,7 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
                     <th>Exit</th>
                     <th>Pips</th>
                     <th>Status</th>
+                    <th>Reason</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -200,7 +242,8 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
                       <td>{fmtTime(trade.exitTime)}</td>
                       <td>{fmtPrice(trade.exitPrice)}</td>
                       <td className={(trade.resultPips ?? 0) >= 0 ? styles.pos : styles.neg}>{fmtPips(trade.resultPips)}</td>
-                      <td className={statusClass(trade.status, trade.resultPips)}>{trade.status}</td>
+                      <td>{trade.status}</td>
+                      <td className={styles.reasonCell}>{trade.reason ?? '—'}</td>
                     </tr>
                   ))}
                 </tbody>

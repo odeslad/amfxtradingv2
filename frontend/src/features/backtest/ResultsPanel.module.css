@@ -45,6 +45,59 @@
   color: var(--muted);
 }
 
+.rangeBar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.rangeLabel {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.rangeInput {
+  height: 28px;
+  padding: 0 8px;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+  outline: none;
+  color-scheme: dark;
+  transition: border-color 0.12s ease;
+}
+
+.rangeInput:focus {
+  border-color: var(--orange);
+}
+
+.rangeClear {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.rangeClear:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
 .summary {
   display: flex;
   flex-wrap: wrap;
@@ -181,35 +234,47 @@
   border-left-color: var(--red);
 }
 
-.buy {
+.buy,
+.table td.buy {
   color: var(--green);
 }
 
-.sell {
+.sell,
+.table td.sell {
   color: var(--red);
 }
 
-.pos {
+.pos,
+.table td.pos {
   color: var(--green);
 }
 
-.neg {
+.neg,
+.table td.neg {
   color: var(--red);
 }
 
-.statusWin {
+.statusWin,
+.table td.statusWin {
   color: var(--green);
 }
 
-.statusLoss {
+.statusLoss,
+.table td.statusLoss {
   color: var(--red);
 }
 
-.statusOpen {
+.statusOpen,
+.table td.statusOpen {
   color: var(--gold);
 }
 
-.statusMissed {
+.statusMissed,
+.table td.statusMissed {
+  color: var(--muted);
+}
+
+.reasonCell {
   color: var(--muted);
 }
 

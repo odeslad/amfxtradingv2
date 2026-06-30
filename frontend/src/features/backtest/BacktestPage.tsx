@@ -13,6 +13,7 @@ export function BacktestPage() {
   const [previewRun, setPreviewRun] = useState<BacktestRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
+  const [emaPeriods, setEmaPeriods] = useState<{ fast: number; slow: number }>({ fast: 12, slow: 26 });
   const pollRef = useRef<number | null>(null);
 
   const loadStrategies = useCallback(async () => {
@@ -103,6 +104,7 @@ export function BacktestPage() {
           onDeleted={handleDeleted}
           onPreview={handlePreview}
           onPreviewStart={handlePreviewStart}
+          onEmaChange={(fast, slow) => setEmaPeriods({ fast, slow })}
         />
       </div>
       <div
@@ -112,7 +114,7 @@ export function BacktestPage() {
         aria-orientation="vertical"
       />
       <div className={styles.results}>
-        <ResultsPanel run={previewRun ?? run} loading={loading || running} isPreview={previewRun !== null} />
+        <ResultsPanel run={previewRun ?? run} loading={loading || running} isPreview={previewRun !== null} emaFast={emaPeriods.fast} emaSlow={emaPeriods.slow} />
       </div>
     </div>
   );

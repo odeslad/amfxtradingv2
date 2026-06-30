@@ -135,6 +135,44 @@
   border-bottom: 1px solid var(--border-bright);
 }
 
+.chartArea {
+  flex: 1 1 auto;
+  min-height: 0;
+  position: relative;
+}
+
+.viewToggle {
+  display: inline-flex;
+  border: 1px solid var(--border-bright);
+}
+
+.viewBtn {
+  height: 24px;
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, background 0.12s ease;
+}
+
+.viewBtn:hover {
+  color: var(--text);
+}
+
+.viewBtnActive {
+  background: var(--orange);
+  color: #000;
+}
+
+.viewBtnActive:hover {
+  color: #000;
+}
+
 .detailHeader {
   flex-shrink: 0;
   padding: 8px 16px;

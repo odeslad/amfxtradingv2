@@ -16,12 +16,13 @@ interface Props {
   onDeleted: (id: number) => void;
   onPreview: (run: BacktestRun | null) => void;
   onPreviewStart: () => void;
+  onEmaChange: (fast: number, slow: number) => void;
 }
 
 const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DIRECTIONS: Direction[] = ['buy', 'sell', 'both'];
 
-export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved, onDeleted, onPreview, onPreviewStart }: Props) {
+export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved, onDeleted, onPreview, onPreviewStart, onEmaChange }: Props) {
   const [broker, setBroker] = useState('');
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -63,6 +64,12 @@ export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved
     setBroker(selected.broker);
     setForm(normalizeForm(selected.config?.forms?.[0]));
   }, [selectedId]);
+
+  // Keep the parent informed of the current EMA periods so the backtest chart
+  // can draw the strategy's EMAs (works for both saved and previewed configs).
+  useEffect(() => {
+    onEmaChange(form.setup.emaFast, form.setup.emaSlow);
+  }, [form.setup.emaFast, form.setup.emaSlow, onEmaChange]);
 
   const setSetup = (partial: Partial<StrategyForm['setup']>) =>
     setForm(f => ({ ...f, setup: { ...f.setup, ...partial } }));

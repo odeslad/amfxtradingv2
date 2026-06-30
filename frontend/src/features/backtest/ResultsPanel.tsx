@@ -1,11 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { BacktestRun, BacktestSetup } from './backtest.types';
+import { BacktestChart } from './BacktestChart';
 import styles from './ResultsPanel.module.css';
 
 interface Props {
   run: BacktestRun | null;
   loading: boolean;
   isPreview?: boolean;
+  emaFast?: number;
+  emaSlow?: number;
 }
 
 const fmtPrice = (n: number | null) => (n === null ? '—' : n.toFixed(5));
@@ -17,8 +20,9 @@ function setupPips(setup: BacktestSetup): number {
 }
 
 
-export function ResultsPanel({ run, loading, isPreview = false }: Props) {
+export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, emaSlow = 26 }: Props) {
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
+  const [view, setView] = useState<'table' | 'chart'>('table');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
@@ -101,6 +105,24 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
         <span className={styles.titleGroup}>
           <span className={styles.title}>Backtest results</span>
           {isPreview && <span className={styles.previewBadge}>Preview (unsaved)</span>}
+          {run && (
+            <span className={styles.viewToggle}>
+              <button
+                type="button"
+                className={`${styles.viewBtn} ${view === 'table' ? styles.viewBtnActive : ''}`}
+                onClick={() => setView('table')}
+              >
+                Table
+              </button>
+              <button
+                type="button"
+                className={`${styles.viewBtn} ${view === 'chart' ? styles.viewBtnActive : ''}`}
+                onClick={() => setView('chart')}
+              >
+                Chart
+              </button>
+            </span>
+          )}
         </span>
         {run && (
           <span className={styles.meta}>
@@ -167,6 +189,18 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
             <div className={styles.stat}><span className={styles.statLabel}>Missed</span><span className={styles.statValue}>{summary.missed}</span></div>
           </div>
 
+          {view === 'chart' ? (
+            <div className={styles.chartArea}>
+              <BacktestChart
+                broker={run.broker}
+                symbol={run.symbol}
+                timeframe={run.timeframe}
+                emaFast={emaFast}
+                emaSlow={emaSlow}
+              />
+            </div>
+          ) : (
+          <>
           <div className={styles.master}>
             <table className={styles.table}>
               <thead>
@@ -252,6 +286,8 @@ export function ResultsPanel({ run, loading, isPreview = false }: Props) {
               <div className={styles.detailEmpty}>{selectedSetup ? 'No entries for this setup' : ''}</div>
             )}
           </div>
+          </>
+          )}
         </>
       )}
     </div>

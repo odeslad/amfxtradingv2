@@ -34,7 +34,7 @@ export interface TradeResult {
   exitPrice: number | null;
   resultPips: number | null;
   status: 'open' | 'closed' | 'missed';
-  reason: 'SL' | 'TP' | 'window elapsed' | 'setup finished' | null;
+  reason: 'SL' | 'TP' | 'window elapsed' | 'setup finished' | 'invalid SL' | null;
 }
 
 type Levels = { ECC: number; EMA: number; EVL: number | null; MHL: number | null };
@@ -114,6 +114,15 @@ function evaluateSingleEntry(ctx: Setup, entryConfig: EntryConfig): TradeResult 
   }
 
   const slPrice = calculateSl(entryConfig.sl, direction, entryPrice, { evl: levels.EVL, mhl: levels.MHL }, pipSize);
+
+  // A buy stop must sit below the entry and a sell stop above it. If the level
+  // + offset lands on the wrong side, the SL is invalid for this setup (it
+  // would close instantly and produce a positive-pips "loss"), so skip it.
+  const slOnWrongSide = direction === 'buy' ? slPrice >= entryPrice : slPrice <= entryPrice;
+  if (slOnWrongSide) {
+    return missedTrade(entryConfig, direction, entryPrice, slPrice, 'invalid SL');
+  }
+
   const slDistancePips = Math.abs(entryPrice - slPrice) / pipSize;
   const tpPrice = calculateTp(entryConfig.exit, direction, entryPrice, slDistancePips, pipSize);
   const { scanFrom, entryTime } = resolveScanParams(candles, entryConfig, activationCandleIndex, tfMs);
@@ -128,7 +137,7 @@ function missedTrade(
   direction: 'buy' | 'sell',
   entryPrice: number,
   sl: number,
-  reason: 'window elapsed' | 'setup finished',
+  reason: 'window elapsed' | 'setup finished' | 'invalid SL',
 ): TradeResult {
   return { entryType: entryConfig.type, direction, entryPrice, entryTime: null, sl, tp: null, exitTime: null, exitPrice: null, resultPips: null, status: 'missed', reason };
 }

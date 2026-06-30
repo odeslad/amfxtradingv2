@@ -10,7 +10,7 @@ export function defaultEntry(type: EntryType = 'ECC'): EntryConfig {
     offset: 0,
     windowStart: 0,
     windowEnd: 10,
-    sl: { type: 'fixed', pips: 20, minPips: null, maxPips: null, evlOffset: 0 },
+    sl: { type: 'fixed', pips: 20, minPips: null, maxPips: null, evlOffset: 0, mhlOffset: 0 },
     exit: { type: 'rr', pips: null, rr: 2 },
     trail: {
       type: 'none',

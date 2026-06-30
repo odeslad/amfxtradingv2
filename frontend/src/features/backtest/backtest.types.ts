@@ -25,11 +25,12 @@ export interface EmaCrossSetup {
 }
 
 export interface SLConfig {
-  type: 'fixed' | 'evl';
+  type: 'fixed' | 'evl' | 'mhl';
   pips: number;
   minPips: number | null;
   maxPips: number | null;
   evlOffset: number;
+  mhlOffset: number;
 }
 
 export interface ExitConfig {

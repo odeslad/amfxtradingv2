@@ -69,17 +69,25 @@ export function EntryEditor({ entry, index, onChange, onRemove }: Props) {
             <select className={styles.select} value={entry.sl.type} onChange={e => patchSl({ type: e.target.value as EntryConfig['sl']['type'] })}>
               <option value="fixed">Fixed</option>
               <option value="evl">EVL</option>
+              <option value="mhl">MHL</option>
             </select>
           </div>
-          {entry.sl.type === 'fixed' ? (
+          {entry.sl.type === 'fixed' && (
             <div className={styles.field}>
               <label className={styles.label}>SL pips</label>
               <NumberInput value={entry.sl.pips} onChange={v => patchSl({ pips: v ?? 0 })} />
             </div>
-          ) : (
+          )}
+          {entry.sl.type === 'evl' && (
             <div className={styles.field}>
               <label className={styles.label}>EVL offset</label>
               <NumberInput value={entry.sl.evlOffset} onChange={v => patchSl({ evlOffset: v ?? 0 })} />
+            </div>
+          )}
+          {entry.sl.type === 'mhl' && (
+            <div className={styles.field}>
+              <label className={styles.label}>MHL offset</label>
+              <NumberInput value={entry.sl.mhlOffset} onChange={v => patchSl({ mhlOffset: v ?? 0 })} />
             </div>
           )}
         </div>

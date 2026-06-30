@@ -5,6 +5,7 @@ import styles from './ResultsPanel.module.css';
 interface Props {
   run: BacktestRun | null;
   loading: boolean;
+  isPreview?: boolean;
 }
 
 const fmtPrice = (n: number | null) => (n === null ? '—' : n.toFixed(5));
@@ -21,7 +22,7 @@ function statusClass(status: BacktestTrade['status'], pips: number | null) {
   return (pips ?? 0) >= 0 ? styles.statusWin : styles.statusLoss;
 }
 
-export function ResultsPanel({ run, loading }: Props) {
+export function ResultsPanel({ run, loading, isPreview = false }: Props) {
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -82,8 +83,15 @@ export function ResultsPanel({ run, loading }: Props) {
   return (
     <div className={styles.panel}>
       <div className={styles.header}>
-        <span className={styles.title}>Backtest results</span>
-        {run && <span className={styles.meta}>#{run.id} · {fmtTime(run.dateFrom)} → {fmtTime(run.dateTo)}</span>}
+        <span className={styles.titleGroup}>
+          <span className={styles.title}>Backtest results</span>
+          {isPreview && <span className={styles.previewBadge}>Preview (unsaved)</span>}
+        </span>
+        {run && (
+          <span className={styles.meta}>
+            {run.id !== undefined ? `#${run.id} · ` : ''}{fmtTime(run.dateFrom)} → {fmtTime(run.dateTo)}
+          </span>
+        )}
       </div>
 
       {loading && <div className={styles.empty}>Loading…</div>}

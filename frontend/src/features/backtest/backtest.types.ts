@@ -111,13 +111,14 @@ export interface BacktestSetup {
 }
 
 export interface BacktestRun {
-  id: number;
-  strategyId: number;
+  // id / strategyId / createdAt are absent on ephemeral preview runs.
+  id?: number;
+  strategyId?: number;
   broker: string;
   symbol: string;
   timeframe: string;
   dateFrom: string;
   dateTo: string;
-  createdAt: string;
+  createdAt?: string;
   setups: BacktestSetup[];
 }

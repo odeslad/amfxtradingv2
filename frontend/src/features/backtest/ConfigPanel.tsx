@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiUrl } from '../../lib/api';
-import type { Direction, Strategy, StrategyForm, Timeframe } from './backtest.types';
+import type { BacktestRun, Direction, Strategy, StrategyForm, Timeframe } from './backtest.types';
 import { defaultEntry, defaultForm, normalizeForm } from './defaults';
 import { EntryEditor } from './EntryEditor';
 import { CollapsibleSection } from './CollapsibleSection';
@@ -14,12 +14,14 @@ interface Props {
   onSelect: (id: number | null) => void;
   onSaved: (strategy: Strategy) => void;
   onDeleted: (id: number) => void;
+  onPreview: (run: BacktestRun | null) => void;
+  onPreviewStart: () => void;
 }
 
 const TIMEFRAMES: Timeframe[] = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DIRECTIONS: Direction[] = ['buy', 'sell', 'both'];
 
-export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved, onDeleted }: Props) {
+export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved, onDeleted, onPreview, onPreviewStart }: Props) {
   const [broker, setBroker] = useState('');
   const [brokers, setBrokers] = useState<string[]>([]);
   const [symbols, setSymbols] = useState<string[]>([]);
@@ -48,13 +50,19 @@ export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved
       .catch(() => {});
   }, [broker]);
 
+  // Load broker/form from the selected strategy only when the SELECTION
+  // changes — not on every `strategies` array refresh, which would otherwise
+  // overwrite a manual broker change. Read the latest strategies via a ref.
+  const strategiesRef = useRef(strategies);
+  useEffect(() => { strategiesRef.current = strategies; }, [strategies]);
+
   useEffect(() => {
     setConfirmingDelete(false);
-    const selected = strategies.find(s => s.id === selectedId);
+    const selected = strategiesRef.current.find(s => s.id === selectedId);
     if (!selected) return;
     setBroker(selected.broker);
     setForm(normalizeForm(selected.config?.forms?.[0]));
-  }, [selectedId, strategies]);
+  }, [selectedId]);
 
   const setSetup = (partial: Partial<StrategyForm['setup']>) =>
     setForm(f => ({ ...f, setup: { ...f.setup, ...partial } }));
@@ -71,16 +79,17 @@ export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved
     setStatus('');
   };
 
-  const handleSave = async () => {
+  const handleSave = async (asNew = false) => {
     if (!broker || !form.instrument) { setStatus('Broker and symbol are required'); return; }
     setSaving(true);
     setStatus('');
 
     const config = { forms: [form] };
     const payload = { broker, symbol: form.instrument, timeframe: form.timeframe, config };
+    const update = selectedId && !asNew;
 
     try {
-      const res = selectedId
+      const res = update
         ? await fetch(apiUrl(`/strategies/${selectedId}`), {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
@@ -102,6 +111,27 @@ export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved
       setStatus('Save failed');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePreview = async () => {
+    if (!broker || !form.instrument) { setStatus('Broker and symbol are required'); return; }
+    setStatus('');
+    onPreviewStart();
+    try {
+      const res = await fetch(apiUrl('/strategies/preview'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ broker, config: { forms: [form] } }),
+      });
+      if (!res.ok) throw new Error(String(res.status));
+      const run = (await res.json()) as BacktestRun | null;
+      onPreview(run);
+      if (!run) setStatus('No candles for preview');
+    } catch {
+      onPreview(null);
+      setStatus('Preview failed');
     }
   };
 
@@ -279,15 +309,23 @@ export function ConfigPanel({ strategies, selectedId, running, onSelect, onSaved
 
         <div className={styles.footer}>
           <div className={styles.actions}>
-            <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving || running}>
+            <button type="button" className={styles.saveBtn} onClick={() => handleSave(false)} disabled={saving || running}>
               {running
                 ? 'Running backtest…'
                 : selectedId ? 'Update & re-run' : 'Create & run backtest'}
+            </button>
+            <button type="button" className={styles.previewBtn} onClick={handlePreview} disabled={saving || running} title="Run without saving">
+              Preview
             </button>
             <button type="button" className={styles.jsonBtn} onClick={() => setShowJson(v => !v)} title="Toggle config JSON">
               {'{ }'}
             </button>
           </div>
+          {selectedId && (
+            <button type="button" className={styles.saveAsBtn} onClick={() => handleSave(true)} disabled={saving || running} title="Save current config as a new strategy">
+              Save as new
+            </button>
+          )}
           {status && <span className={styles.status}>{status}</span>}
           {showJson && (
             <pre className={styles.json}>{JSON.stringify({ forms: [form] }, null, 2)}</pre>

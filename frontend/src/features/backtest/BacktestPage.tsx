@@ -10,6 +10,7 @@ export function BacktestPage() {
   const [strategies, setStrategies] = useState<Strategy[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [run, setRun] = useState<BacktestRun | null>(null);
+  const [previewRun, setPreviewRun] = useState<BacktestRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
   const pollRef = useRef<number | null>(null);
@@ -32,6 +33,7 @@ export function BacktestPage() {
 
   useEffect(() => {
     if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
+    setPreviewRun(null);
     if (!selectedId) { setRun(null); return; }
 
     setLoading(true);
@@ -60,11 +62,21 @@ export function BacktestPage() {
 
   const handleSaved = useCallback((saved: Strategy) => {
     const prevCreatedAt = run?.createdAt ?? null;
+    setPreviewRun(null);
     void loadStrategies();
     setSelectedId(saved.id);
     setRunning(true);
     pollForRun(saved.id, prevCreatedAt);
   }, [loadStrategies, pollForRun, run]);
+
+  const handlePreviewStart = useCallback(() => {
+    setRunning(true);
+  }, []);
+
+  const handlePreview = useCallback((r: BacktestRun | null) => {
+    if (r) setPreviewRun(r);
+    setRunning(false);
+  }, []);
 
   const handleDeleted = useCallback((id: number) => {
     void loadStrategies();
@@ -89,6 +101,8 @@ export function BacktestPage() {
           onSelect={setSelectedId}
           onSaved={handleSaved}
           onDeleted={handleDeleted}
+          onPreview={handlePreview}
+          onPreviewStart={handlePreviewStart}
         />
       </div>
       <div
@@ -98,7 +112,7 @@ export function BacktestPage() {
         aria-orientation="vertical"
       />
       <div className={styles.results}>
-        <ResultsPanel run={run} loading={loading || running} />
+        <ResultsPanel run={previewRun ?? run} loading={loading || running} isPreview={previewRun !== null} />
       </div>
     </div>
   );

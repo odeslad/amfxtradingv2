@@ -330,6 +330,53 @@
   cursor: not-allowed;
 }
 
+.previewBtn {
+  height: 40px;
+  padding: 0 14px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.previewBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.previewBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.saveAsBtn {
+  height: 34px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.saveAsBtn:hover {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.saveAsBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 .jsonBtn {
   width: 40px;
   height: 40px;

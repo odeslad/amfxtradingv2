@@ -58,9 +58,11 @@ export function applyTrailing(
         ? candles[i].close
         : (direction === 'buy' ? candles[i].low : candles[i].high);
 
+      // Negative offset moves the SL against the trade direction (buy → down,
+      // sell → up), matching the entry / SL offset convention.
       const level = direction === 'buy'
-        ? basePrice - trail.offset * pipSize
-        : basePrice + trail.offset * pipSize;
+        ? basePrice + trail.offset * pipSize
+        : basePrice - trail.offset * pipSize;
 
       if (direction === 'buy' && level > currentSl) {
         if (bestSl === null || level < bestSl) bestSl = level;
@@ -92,8 +94,8 @@ export function applyTrailing(
       if (!hasConfirmation) continue;
 
       newSl = direction === 'buy'
-        ? piv.price - trail.offset * pipSize
-        : piv.price + trail.offset * pipSize;
+        ? piv.price + trail.offset * pipSize
+        : piv.price - trail.offset * pipSize;
       break;
     }
   }

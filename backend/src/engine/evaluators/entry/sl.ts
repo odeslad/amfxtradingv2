@@ -16,14 +16,17 @@ export function calculateSl(
 ): number {
   let slPrice: number;
 
+  // Offset convention (shared with the entry offset): a NEGATIVE offset moves
+  // the price AGAINST the trade direction (buy → down, sell → up). So for buy
+  // we add the offset and for sell we subtract it.
   if (sl.type === 'evl' && levels.evl !== null) {
     slPrice = direction === 'buy'
-      ? levels.evl - sl.evlOffset * pipSize
-      : levels.evl + sl.evlOffset * pipSize;
+      ? levels.evl + sl.evlOffset * pipSize
+      : levels.evl - sl.evlOffset * pipSize;
   } else if (sl.type === 'mhl' && levels.mhl !== null) {
     slPrice = direction === 'buy'
-      ? levels.mhl - sl.mhlOffset * pipSize
-      : levels.mhl + sl.mhlOffset * pipSize;
+      ? levels.mhl + sl.mhlOffset * pipSize
+      : levels.mhl - sl.mhlOffset * pipSize;
   } else {
     slPrice = direction === 'buy'
       ? entryPrice - sl.pips * pipSize

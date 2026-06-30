@@ -22,6 +22,124 @@ interface StrategyConfig {
   forms: StrategyForm[];
 }
 
+export interface PreviewTrade {
+  id: number;
+  entryType: string;
+  entryPrice: number;
+  sl: number;
+  tp: number;
+  entryTime: Date | null;
+  exitTime: Date | null;
+  exitPrice: number | null;
+  resultPips: number | null;
+  status: string;
+  reason: string | null;
+}
+
+export interface PreviewSetup {
+  id: number;
+  direction: string;
+  activationTime: Date;
+  activationPrice: number;
+  closeTime: Date | null;
+  closePrice: number | null;
+  levels: unknown;
+  candleCount: number;
+  trades: PreviewTrade[];
+}
+
+export interface PreviewRun {
+  broker: string;
+  symbol: string;
+  timeframe: string;
+  dateFrom: Date;
+  dateTo: Date;
+  setups: PreviewSetup[];
+}
+
+/**
+ * Evaluate a strategy config in memory and return setups + trades WITHOUT
+ * persisting anything. Shape matches GET /strategies/:id/backtest so the
+ * frontend ResultsPanel can render it directly. Covers the first evaluable
+ * form (same as the persisted run / GET).
+ */
+export async function evaluateStrategy(
+  broker: string,
+  config: StrategyConfig,
+): Promise<PreviewRun | null> {
+  for (const form of config.forms) {
+    if (form.setup.type !== 'ema_cross') continue;
+
+    const symbol = form.instrument;
+    const timeframe = normalizeTimeframe(form.timeframe);
+
+    const candles = await db.candle.findMany({
+      where: { broker, symbol, timeframe },
+      orderBy: { time: 'asc' },
+    });
+    if (candles.length === 0) continue;
+
+    const pipSize = getPipSize(symbol);
+    const tfMs = getTimeframeMs(timeframe);
+    const setups = evaluateSetups(candles as Candle[], form, pipSize);
+
+    let sid = 0;
+    let tid = 0;
+    const previewSetups: PreviewSetup[] = setups.map((setup) => {
+      const trades = form.entries.length > 0
+        ? evaluateEntries(
+            candles as Candle[],
+            setup.direction,
+            setup.activationIndex,
+            setup.closeIndex,
+            setup.levels,
+            form.entries,
+            pipSize,
+            tfMs,
+            setup.weakCandles,
+            setup.strongCandles,
+            setup.pivots,
+          )
+        : [];
+
+      return {
+        id: sid++,
+        direction: setup.direction,
+        activationTime: setup.activationTime,
+        activationPrice: setup.activationPrice,
+        closeTime: setup.closeTime,
+        closePrice: setup.closePrice,
+        levels: setup.levels,
+        candleCount: setup.candleCount,
+        trades: trades.map((t) => ({
+          id: tid++,
+          entryType: t.entryType,
+          entryPrice: t.entryPrice,
+          sl: t.sl,
+          tp: t.tp ?? 0,
+          entryTime: t.entryTime,
+          exitTime: t.exitTime,
+          exitPrice: t.exitPrice,
+          resultPips: t.resultPips,
+          status: t.status,
+          reason: t.reason,
+        })),
+      };
+    });
+
+    return {
+      broker,
+      symbol,
+      timeframe,
+      dateFrom: candles[0].time,
+      dateTo: candles[candles.length - 1].time,
+      setups: previewSetups,
+    };
+  }
+
+  return null;
+}
+
 export async function runBacktest(strategyId: number): Promise<void> {
   const exec = crypto.randomBytes(4).toString('hex');
   const t0 = Date.now();

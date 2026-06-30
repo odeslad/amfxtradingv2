@@ -1,8 +1,30 @@
 import { Router } from 'express';
 import { db } from '../db/client';
-import { runBacktest } from '../services/backtest';
+import { runBacktest, evaluateStrategy } from '../services/backtest';
 
 const router = Router();
+
+// Ephemeral preview: evaluate a config and return the run WITHOUT persisting.
+// Must be declared before the `/:id` routes so it isn't captured by them.
+router.post('/preview', async (req, res) => {
+  try {
+    const { broker, config } = req.body as {
+      broker?: string;
+      config?: { forms?: unknown[] };
+    };
+
+    if (!broker || !config || !Array.isArray(config.forms) || config.forms.length === 0) {
+      res.status(400).json({ error: 'broker and config.forms are required' });
+      return;
+    }
+
+    const result = await evaluateStrategy(broker, config as Parameters<typeof evaluateStrategy>[1]);
+    res.json(result);
+  } catch (err) {
+    console.error('[STRATEGIES] PREVIEW failed:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
 
 router.get('/', async (_req, res) => {
   try {

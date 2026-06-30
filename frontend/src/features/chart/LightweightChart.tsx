@@ -171,7 +171,49 @@ function getMonthStartTimes(candles: Candle[]): Set<number> {
   return new Set(firstOfMonth.values());
 }
 
+export interface BacktestOverlayLevels {
+  ECC: number;
+  EMA: number;
+  EVL: number | null;
+  MHL: number | null;
+}
+
+export interface BacktestOverlayTrade {
+  direction: 'buy' | 'sell';
+  entryTime: string | null;
+  entryPrice: number;
+  exitTime: string | null;
+  exitPrice: number | null;
+  sl: number;
+  tp: number;
+  status: string;
+  reason: string | null;
+}
+
+export interface BacktestOverlaySetup {
+  id: number;
+  direction: 'buy' | 'sell';
+  activationTime: string;
+  closeTime: string | null;
+  levels: BacktestOverlayLevels;
+  trades: BacktestOverlayTrade[];
+}
+
+export interface BacktestOverlayLayers {
+  setups: boolean;
+  levels: boolean;
+  entries: boolean;
+  exits: boolean;
+  sltp: boolean;
+}
+
+export interface BacktestOverlay {
+  setups: BacktestOverlaySetup[];
+  layers: BacktestOverlayLayers;
+}
+
 interface LightweightChartExtendedProps extends LightweightChartProps {
+  backtestOverlay?: BacktestOverlay;
   drawMode?: DrawMode | null;
   onDrawDone?: () => void;
   positions?: Position[];
@@ -187,12 +229,17 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, backtestOverlay, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const alertsRef = useRef(alerts);
   useEffect(() => { alertsRef.current = alerts; }, [alerts]);
+  const backtestOverlayRef = useRef(backtestOverlay);
+  useEffect(() => {
+    backtestOverlayRef.current = backtestOverlay;
+    drawRolloversRef.current();
+  }, [backtestOverlay]);
   const drawRolloversRef = useRef<() => void>(() => { });
 
   // Double activation that works on both desktop (dblclick) and touch (two quick
@@ -239,6 +286,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const [hasDrawings, setHasDrawings] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
   const [hoverOhlc, setHoverOhlc] = useState<{ open: number; high: number; low: number; close: number } | null>(null);
+
+  interface EntryPoint { x: number; y: number; id: string; entryPrice: number; sl: number; tp: number; entryTime: string | null; }
+  const entryPointsRef = useRef<EntryPoint[]>([]);
+  const [entryTip, setEntryTip] = useState<{ left: number; top: number; p: EntryPoint } | null>(null);
   const onDrawDoneRef = useRef(onDrawDone);
   useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
 
@@ -337,6 +388,242 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   // Left-pointing triangle markers pinned to the right edge of the pane (before
   // the price axis) with the alert price as a label. Orange when armed, grey off.
+  const drawBacktestOverlay = useCallback((
+    ctx: CanvasRenderingContext2D,
+    chart: IChartApi,
+    bottom: number,
+    data: Candle[],
+  ) => {
+    entryPointsRef.current = [];
+    const overlay = backtestOverlayRef.current;
+    const series = seriesRef.current;
+    if (!overlay || !series || overlay.setups.length === 0 || data.length === 0) return;
+    const { setups, layers } = overlay;
+
+    const epoch = (iso: string | null): number | null =>
+      iso ? Math.floor(new Date(iso).getTime() / 1000) : null;
+
+    // candle.time in the DB is the candle CLOSE. Setup/level times are also
+    // closes → map a close-time to the candle with the greatest time <= target.
+    const candleTimeAt = (target: number): number | null => {
+      let best: number | null = null;
+      for (const c of data) {
+        if (c.time <= target && (best === null || c.time > best)) best = c.time;
+      }
+      return best;
+    };
+    // Entry/exit times are candle OPENs → the matching candle is the first one
+    // whose close (candle.time) is strictly greater than the open target.
+    const candleTimeForOpen = (target: number): number | null => {
+      let best: number | null = null;
+      for (const c of data) {
+        if (c.time > target && (best === null || c.time < best)) best = c.time;
+      }
+      return best;
+    };
+    const xOf = (sec: number): number | null => {
+      const ct = candleTimeAt(sec);
+      if (ct === null) return null;
+      const x = chart.timeScale().timeToCoordinate(ct as Time);
+      return x === null ? null : Math.round(x) + 0.5;
+    };
+    const xOfOpen = (sec: number): number | null => {
+      const ct = candleTimeForOpen(sec);
+      if (ct === null) return null;
+      const x = chart.timeScale().timeToCoordinate(ct as Time);
+      return x === null ? null : Math.round(x) + 0.5;
+    };
+    const yOf = (price: number): number | null => {
+      const y = series.priceToCoordinate(price);
+      return y === null ? null : Math.round(y) + 0.5;
+    };
+
+    const LEVEL_COLORS: Record<string, string> = {
+      ECC: '#7ee0a0', // light green
+      EMA: '#f5e642', // bright yellow
+      EVL: '#ff9d3a', // orange
+      MHL: '#ff5a5a', // red
+    };
+
+    ctx.lineWidth = 1;
+
+    for (let i = 0; i < setups.length; i++) {
+      const setup = setups[i];
+      const actSec = epoch(setup.activationTime);
+      if (actSec === null) continue;
+
+      const dirColor = setup.direction === 'buy' ? '#4caf84' : '#e05c5c';
+      // A setup ends at its opposite cross (closeTime); fall back to data end.
+      const closeSec = epoch(setup.closeTime);
+
+      // 1. Setup activation: dotted vertical line, green buy / red sell.
+      if (layers.setups) {
+        const x = xOf(actSec);
+        if (x !== null) {
+          ctx.setLineDash([1, 3]);
+          ctx.strokeStyle = dirColor;
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, bottom);
+          ctx.stroke();
+          ctx.setLineDash([]);
+
+          // setup id at the bottom of the line, white text with a black outline
+          const label = String(setup.id);
+          ctx.font = '700 9px "DM Mono", monospace';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'bottom';
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#000';
+          ctx.strokeText(label, x, bottom - 2);
+          ctx.fillStyle = '#fff';
+          ctx.fillText(label, x, bottom - 2);
+          ctx.lineWidth = 1;
+        }
+      }
+
+      // 2. Level lines from this setup's activation to its close (opposite cross).
+      if (layers.levels) {
+        const x1 = xOf(actSec);
+        const x2 = closeSec !== null ? xOf(closeSec) : chart.timeScale().timeToCoordinate(data[data.length - 1].time as Time);
+        if (x1 !== null && x2 !== null) {
+          ctx.font = '700 9px "DM Mono", monospace';
+          ctx.textBaseline = 'middle';
+          ctx.textAlign = 'right';
+          for (const key of ['ECC', 'EMA', 'EVL', 'MHL'] as const) {
+            const price = setup.levels[key];
+            if (price === null || price === undefined) continue;
+            const y = yOf(price);
+            if (y === null) continue;
+            ctx.strokeStyle = LEVEL_COLORS[key];
+            ctx.lineWidth = 1;
+            ctx.setLineDash([1, 3]);
+            ctx.beginPath();
+            ctx.moveTo(x1, y);
+            ctx.lineTo(x2 as number, y);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            // label "NAME price" to the left of the line start, with black outline
+            const label = `${key} ${price.toFixed(precisionRef.current)}`;
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = '#000';
+            ctx.strokeText(label, x1 - 6, y);
+            ctx.fillStyle = LEVEL_COLORS[key];
+            ctx.fillText(label, x1 - 6, y);
+            ctx.lineWidth = 1;
+          }
+        }
+      }
+
+      // 3 & 4. Per-trade: entry/exit short horizontal ticks + SL/TP dotted lines.
+      for (let ti = 0; ti < setup.trades.length; ti++) {
+        const trade = setup.trades[ti];
+        const entSec = epoch(trade.entryTime);
+        const exSec = epoch(trade.exitTime);
+
+        if (layers.entries && entSec !== null) {
+          const x = xOfOpen(entSec);
+          const y = yOf(trade.entryPrice);
+          if (x !== null && y !== null) {
+            // Arrow whose TIP sits exactly on the entry price: up (green) for
+            // buy, down (red) for sell. The base is offset away from the price.
+            const up = trade.direction === 'buy';
+            const w = 5;   // half width
+            const h = 8;   // height
+            const baseY = up ? y + h : y - h; // base behind the tip
+            ctx.setLineDash([]);
+            ctx.beginPath();
+            ctx.moveTo(x, y);          // tip on the entry price
+            ctx.lineTo(x - w, baseY);
+            ctx.lineTo(x + w, baseY);
+            ctx.closePath();
+            ctx.lineWidth = 1.5;
+            ctx.strokeStyle = '#000';
+            ctx.stroke();
+            ctx.fillStyle = up ? '#4caf84' : '#e05c5c';
+            ctx.fill();
+            ctx.lineWidth = 1;
+
+            entryPointsRef.current.push({
+              x, y,
+              id: `${setup.id}.${ti + 1}`,
+              entryPrice: trade.entryPrice,
+              sl: trade.sl,
+              tp: trade.tp,
+              entryTime: trade.entryTime,
+            });
+          }
+        }
+
+        if (layers.exits && exSec !== null && trade.exitPrice !== null) {
+          const x = xOfOpen(exSec);
+          const y = yOf(trade.exitPrice);
+          if (x !== null && y !== null) {
+            // X (red) when closed by SL, check (green) when by TP, else a tick.
+            const sym = trade.reason === 'SL' ? '✕' : trade.reason === 'TP' ? '✓' : '·';
+            const color = trade.reason === 'SL' ? '#e05c5c' : trade.reason === 'TP' ? '#4caf84' : 'rgba(232,232,232,0.8)';
+            ctx.setLineDash([]);
+            ctx.font = '700 13px "DM Mono", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.lineWidth = 3;
+            ctx.strokeStyle = '#000';
+            ctx.strokeText(sym, x, y);
+            ctx.fillStyle = color;
+            ctx.fillText(sym, x, y);
+            ctx.lineWidth = 1;
+          }
+        }
+
+        // SL/TP dotted from entry candle to exit candle (or data end if open).
+        if (layers.sltp && entSec !== null) {
+          const xa = xOfOpen(entSec);
+          const xb = exSec !== null
+            ? xOfOpen(exSec)
+            : chart.timeScale().timeToCoordinate(data[data.length - 1].time as Time);
+          if (xa !== null && xb !== null) {
+            ctx.font = '700 9px "DM Mono", monospace';
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'right';
+            const drawSlTpLabel = (label: string, ly: number, color: string) => {
+              ctx.lineWidth = 2;
+              ctx.strokeStyle = '#000';
+              ctx.strokeText(label, xa - 6, ly);
+              ctx.fillStyle = color;
+              ctx.fillText(label, xa - 6, ly);
+            };
+            ctx.setLineDash([3, 3]);
+            const slY = yOf(trade.sl);
+            if (slY !== null) {
+              ctx.strokeStyle = '#e05c5c';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              ctx.moveTo(xa, slY);
+              ctx.lineTo(xb as number, slY);
+              ctx.stroke();
+              drawSlTpLabel(`SL ${trade.sl.toFixed(precisionRef.current)}`, slY, '#e05c5c');
+            }
+            if (trade.tp) {
+              const tpY = yOf(trade.tp);
+              if (tpY !== null) {
+                ctx.strokeStyle = '#4caf84';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(xa, tpY);
+                ctx.lineTo(xb as number, tpY);
+                ctx.stroke();
+                drawSlTpLabel(`TP ${trade.tp.toFixed(precisionRef.current)}`, tpY, '#4caf84');
+              }
+            }
+            ctx.setLineDash([]);
+            ctx.lineWidth = 1;
+          }
+        }
+      }
+    }
+  }, []);
+
   const drawAlertMarkers = useCallback((
     ctx: CanvasRenderingContext2D,
     chart: IChartApi,
@@ -450,8 +737,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     }
     ctx.setLineDash([]);
 
+    if (seriesRef.current) drawBacktestOverlay(ctx, chart, bottom, data);
     if (seriesRef.current) drawAlertMarkers(ctx, chart, seriesRef.current);
-  }, [drawAlertMarkers]);
+  }, [drawAlertMarkers, drawBacktestOverlay]);
 
   useEffect(() => { drawRolloversRef.current = drawRollovers; }, [drawRollovers]);
 
@@ -599,6 +887,25 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     chart.subscribeCrosshairMove((param) => {
       const bar = param.seriesData.get(series) as { open: number; high: number; low: number; close: number } | undefined;
       setHoverOhlc(bar && bar.open !== undefined ? bar : null);
+
+      // Entry tooltip: show when the cursor is near an entry marker. Match
+      // mostly by X (the entry candle column) with a generous Y window, so it
+      // triggers over both the white entry tick and the arrow below the bar.
+      const pt = param.point;
+      if (pt) {
+        const RX = 8;
+        const RY = 40;
+        let best: EntryPoint | null = null;
+        let bestDx = RX + 1;
+        for (const ep of entryPointsRef.current) {
+          const dx = Math.abs(ep.x - pt.x);
+          const dy = Math.abs(ep.y - pt.y);
+          if (dx <= RX && dy <= RY && dx < bestDx) { bestDx = dx; best = ep; }
+        }
+        setEntryTip(best ? { left: best.x, top: best.y, p: best } : null);
+      } else {
+        setEntryTip(null);
+      }
     });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -626,7 +933,19 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     });
     ro.observe(containerRef.current);
 
+    // The canvas overlay only repaints on logical-range / resize events, which
+    // miss vertical (price-scale) rescales and leave the backtest drawings
+    // lagging. When a backtest overlay is present, repaint every frame — the
+    // overlay is a handful of canvas strokes, so the cost is negligible.
+    let rafId = 0;
+    const tick = () => {
+      if (backtestOverlayRef.current) drawRolloversRef.current();
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+
     return () => {
+      cancelAnimationFrame(rafId);
       ro.disconnect();
       trendlineManagerRef.current?.destroy();
       trendlineManagerRef.current = null;
@@ -825,6 +1144,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       }
     }
 
+    // Backtest entries/exits are drawn on the canvas overlay (arrow at the
+    // entry price, X/check at the exit), not as native series markers.
+
     markers.sort((a, b) => (a.time as number) - (b.time as number));
     markersRef.current?.detach();
     markersRef.current = createSeriesMarkers(series, markers);
@@ -832,7 +1154,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     draggableRef.current = draggable;
     positionLevelsRef.current = levels;
     repositionLabels();
-  }, [positions, candles, repositionLabels, accountBalance, pnlMode]);
+  }, [positions, candles, repositionLabels, accountBalance, pnlMode, backtestOverlay]);
 
   // drag SL/TP lines directly on the chart
   useEffect(() => {
@@ -977,6 +1299,15 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
               C <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.close, precisionRef.current)}</span>
             </span>
           )}
+        </div>
+      )}
+      {entryTip && (
+        <div className={styles.entryTip} style={{ left: entryTip.left + 12, top: entryTip.top - 12 }}>
+          <div className={styles.entryTipRow}><span>ID</span><span>{entryTip.p.id}</span></div>
+          <div className={styles.entryTipRow}><span>Entry</span><span>{fmtPrice(entryTip.p.entryPrice, precisionRef.current)}</span></div>
+          <div className={styles.entryTipRow}><span>SL</span><span>{fmtPrice(entryTip.p.sl, precisionRef.current)}</span></div>
+          <div className={styles.entryTipRow}><span>TP</span><span>{entryTip.p.tp ? fmtPrice(entryTip.p.tp, precisionRef.current) : '—'}</span></div>
+          <div className={styles.entryTipRow}><span>Time</span><span>{entryTip.p.entryTime ? entryTip.p.entryTime.slice(0, 16).replace('T', ' ') : '—'}</span></div>
         </div>
       )}
       {positionLabels.filter(l => l.visible).map(l => (

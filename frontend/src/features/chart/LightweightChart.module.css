@@ -18,6 +18,34 @@
   pointer-events: none;
 }
 
+.entryTip {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 120px;
+}
+
+.entryTipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.entryTipRow span:first-child {
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: var(--tracking-wide);
+}
+
 .positionLabel {
   position: absolute;
   left: 0;

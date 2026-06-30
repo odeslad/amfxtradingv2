@@ -93,6 +93,36 @@
   transition: color 0.12s ease, border-color 0.12s ease;
 }
 
+.layerToggles {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.layerBtn {
+  height: 28px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.layerBtn:hover {
+  color: var(--text);
+}
+
+.layerBtnActive {
+  background: var(--surface2);
+  border-color: var(--orange);
+  color: var(--orange);
+}
+
 .rangeClear:hover {
   color: var(--text);
   border-color: var(--text);

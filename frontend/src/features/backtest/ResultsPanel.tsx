@@ -23,6 +23,7 @@ function setupPips(setup: BacktestSetup): number {
 export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, emaSlow = 26 }: Props) {
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
   const [view, setView] = useState<'table' | 'chart'>('table');
+  const [layers, setLayers] = useState({ setups: true, levels: true, entries: true, exits: true, sltp: true });
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
@@ -154,6 +155,27 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
           {(from || to) && (
             <button type="button" className={styles.rangeClear} onClick={() => { setFrom(''); setTo(''); }}>Clear</button>
           )}
+
+          {view === 'chart' && (
+            <div className={styles.layerToggles}>
+              {([
+                ['setups', 'Setups'],
+                ['levels', 'Levels'],
+                ['entries', 'Entries'],
+                ['exits', 'Exits'],
+                ['sltp', 'SL/TP'],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={`${styles.layerBtn} ${layers[key] ? styles.layerBtnActive : ''}`}
+                  onClick={() => setLayers(l => ({ ...l, [key]: !l[key] }))}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -197,6 +219,8 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                 timeframe={run.timeframe}
                 emaFast={emaFast}
                 emaSlow={emaSlow}
+                setups={filteredSetups}
+                layers={layers}
               />
             </div>
           ) : (
@@ -205,6 +229,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
             <table className={styles.table}>
               <thead>
                 <tr>
+                  <th>#</th>
                   <th>Dir</th>
                   <th>Activation</th>
                   <th>Candles</th>
@@ -217,7 +242,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                 </tr>
               </thead>
               <tbody>
-                {filteredSetups.map(setup => {
+                {filteredSetups.map((setup, i) => {
                   const pips = setupPips(setup);
                   const selected = setup.id === selectedSetupId;
                   return (
@@ -226,6 +251,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                       className={`${styles.masterRow} ${selected ? styles.masterRowActive : ''} ${setup.direction === 'buy' ? styles.rowBuy : styles.rowSell}`}
                       onClick={() => setSelectedSetupId(setup.id)}
                     >
+                      <td>{i + 1}</td>
                       <td className={setup.direction === 'buy' ? styles.buy : styles.sell}>{setup.direction}</td>
                       <td>{fmtTime(setup.activationTime)}</td>
                       <td>{setup.candleCount}</td>
@@ -244,7 +270,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
 
           <div className={styles.detailHeader}>
             {selectedSetup
-              ? <>Entries · <span className={selectedSetup.direction === 'buy' ? styles.buy : styles.sell}>{selectedSetup.direction}</span> {fmtTime(selectedSetup.activationTime)}</>
+              ? <>Entries · #{filteredSetups.findIndex(s => s.id === selectedSetup.id) + 1} · <span className={selectedSetup.direction === 'buy' ? styles.buy : styles.sell}>{selectedSetup.direction}</span> {fmtTime(selectedSetup.activationTime)}</>
               : 'Select a setup'}
           </div>
 
@@ -253,6 +279,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
               <table className={styles.table}>
                 <thead>
                   <tr>
+                    <th>#</th>
                     <th>Entry</th>
                     <th>Entry time</th>
                     <th>Price</th>
@@ -266,8 +293,9 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                   </tr>
                 </thead>
                 <tbody>
-                  {selectedSetup.trades.map(trade => (
+                  {selectedSetup.trades.map((trade, ti) => (
                     <tr key={trade.id}>
+                      <td>{filteredSetups.findIndex(s => s.id === selectedSetup.id) + 1}.{ti + 1}</td>
                       <td>{trade.entryType}</td>
                       <td>{fmtTime(trade.entryTime)}</td>
                       <td>{fmtPrice(trade.entryPrice)}</td>

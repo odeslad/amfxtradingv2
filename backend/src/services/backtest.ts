@@ -140,7 +140,25 @@ export async function evaluateStrategy(
   return null;
 }
 
-export async function runBacktest(strategyId: number): Promise<void> {
+// Serialize backtests per strategy so overlapping runs don't hold several full
+// candle histories in memory at once. A pending run collapses into one.
+const inFlight = new Map<number, Promise<void>>();
+
+export function runBacktest(strategyId: number): Promise<void> {
+  const running = inFlight.get(strategyId);
+  if (running) return running;
+
+  const task = runBacktestInner(strategyId)
+    .finally(() => {
+      inFlight.delete(strategyId);
+      global.gc?.();
+    });
+
+  inFlight.set(strategyId, task);
+  return task;
+}
+
+async function runBacktestInner(strategyId: number): Promise<void> {
   const exec = crypto.randomBytes(4).toString('hex');
   const t0 = Date.now();
   console.log(`[BACKTEST] exec=${exec} strategy=${strategyId} | START`);

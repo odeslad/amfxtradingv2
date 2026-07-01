@@ -214,6 +214,12 @@ export interface BacktestOverlay {
 
 interface LightweightChartExtendedProps extends LightweightChartProps {
   backtestOverlay?: BacktestOverlay;
+  focusRange?: { from: number; to: number; nonce: number } | null;
+  // Sliding-window metadata for the backtest chart. 'older'/'newer' updates
+  // preserve the view (re-anchor on the first visible candle); the rest reset.
+  candlesKind?: 'initial' | 'older' | 'newer' | 'around';
+  onLoadNewer?: () => void;
+  hasNewer?: boolean;
   drawMode?: DrawMode | null;
   onDrawDone?: () => void;
   positions?: Position[];
@@ -229,7 +235,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, backtestOverlay, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, backtestOverlay, focusRange, candlesKind, onLoadNewer, hasNewer, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -240,6 +246,41 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     backtestOverlayRef.current = backtestOverlay;
     drawRolloversRef.current();
   }, [backtestOverlay]);
+
+  // Focus the chart on a given time range (scroll + zoom). Driven by a nonce so
+  // re-focusing the same range works. The candles effect consumes pendingFocus
+  // so the initial auto-scroll-to-end doesn't override it.
+  const pendingFocusRef = useRef<{ from: number; to: number } | null>(null);
+  const applyFocus = useCallback(() => {
+    const f = pendingFocusRef.current;
+    const chart = chartRef.current;
+    if (!f || !chart) return;
+    // Snap the requested [from,to] to real candle times that are actually on the
+    // axis (weekends are filtered out of the series). If the range isn't loaded
+    // yet, keep it pending so the candles effect retries once data arrives.
+    const data = candlesRef.current.filter(c => {
+      const d = new Date(c.time * 1000).getUTCDay();
+      return d !== 0 && d !== 6;
+    });
+    if (data.length === 0) return;
+    // first candle at/after `from`
+    const fromCandle = data.find(c => c.time >= f.from);
+    // last candle at/before `to`
+    let toCandle: typeof data[number] | undefined;
+    for (let i = data.length - 1; i >= 0; i--) { if (data[i].time <= f.to) { toCandle = data[i]; break; } }
+    if (!fromCandle || !toCandle || fromCandle.time > toCandle.time) return; // not loaded yet
+    try {
+      chart.timeScale().setVisibleRange({ from: fromCandle.time as Time, to: toCandle.time as Time });
+      pendingFocusRef.current = null;
+    } catch {
+      // keep pending
+    }
+  }, []);
+  useEffect(() => {
+    if (!focusRange) return;
+    pendingFocusRef.current = { from: focusRange.from, to: focusRange.to };
+    applyFocus();
+  }, [focusRange, applyFocus]);
   const drawRolloversRef = useRef<() => void>(() => { });
 
   // Double activation that works on both desktop (dblclick) and touch (two quick
@@ -268,6 +309,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const timeframeRef = useRef<string>(timeframe);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
+  const onLoadNewerRef = useRef<(() => void) | undefined>(undefined);
+  const hasNewerRef = useRef(false);
+  useEffect(() => { onLoadNewerRef.current = onLoadNewer; }, [onLoadNewer]);
+  useEffect(() => { hasNewerRef.current = hasNewer ?? false; }, [hasNewer]);
   const isLoadingMoreRef = useRef(false);
   const trendlineManagerRef = useRef<DrawingManager | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
@@ -403,23 +448,25 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     const epoch = (iso: string | null): number | null =>
       iso ? Math.floor(new Date(iso).getTime() / 1000) : null;
 
-    // candle.time in the DB is the candle CLOSE. Setup/level times are also
-    // closes → map a close-time to the candle with the greatest time <= target.
+    // data is sorted ascending by time; binary-search for speed (called many
+    // times per repaint across all visible setups).
+    // Greatest candle time <= target (candle CLOSE convention for setup/levels).
     const candleTimeAt = (target: number): number | null => {
-      let best: number | null = null;
-      for (const c of data) {
-        if (c.time <= target && (best === null || c.time > best)) best = c.time;
+      let lo = 0, hi = data.length - 1, res = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (data[mid].time <= target) { res = mid; lo = mid + 1; } else hi = mid - 1;
       }
-      return best;
+      return res === -1 ? null : data[res].time;
     };
-    // Entry/exit times are candle OPENs → the matching candle is the first one
-    // whose close (candle.time) is strictly greater than the open target.
+    // First candle time > target (entry/exit are candle OPENs).
     const candleTimeForOpen = (target: number): number | null => {
-      let best: number | null = null;
-      for (const c of data) {
-        if (c.time > target && (best === null || c.time < best)) best = c.time;
+      let lo = 0, hi = data.length - 1, res = -1;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (data[mid].time > target) { res = mid; hi = mid - 1; } else lo = mid + 1;
       }
-      return best;
+      return res === -1 ? null : data[res].time;
     };
     const xOf = (sec: number): number | null => {
       const ct = candleTimeAt(sec);
@@ -447,10 +494,20 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
     ctx.lineWidth = 1;
 
+    // Only draw setups that overlap the visible time window (plus a margin), so
+    // hundreds of setups don't all get processed every repaint.
+    const visible = chart.timeScale().getVisibleRange();
+    const vFrom = visible ? (visible.from as number) : -Infinity;
+    const vTo = visible ? (visible.to as number) : Infinity;
+
     for (let i = 0; i < setups.length; i++) {
       const setup = setups[i];
       const actSec = epoch(setup.activationTime);
       if (actSec === null) continue;
+
+      // Skip setups fully outside the visible window (activation → close).
+      const endSec = epoch(setup.closeTime) ?? actSec;
+      if (endSec < vFrom || actSec > vTo) continue;
 
       const dirColor = setup.direction === 'buy' ? '#4caf84' : '#e05c5c';
       // A setup ends at its opposite cross (closeTime); fall back to data end.
@@ -582,6 +639,23 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           const xb = exSec !== null
             ? xOfOpen(exSec)
             : chart.timeScale().timeToCoordinate(data[data.length - 1].time as Time);
+
+          // Dotted grey line connecting the entry point to the exit point.
+          if (xa !== null && xb !== null && exSec !== null && trade.exitPrice !== null) {
+            const ya = yOf(trade.entryPrice);
+            const yb = yOf(trade.exitPrice);
+            if (ya !== null && yb !== null) {
+              ctx.setLineDash([1, 3]);
+              ctx.lineWidth = 1;
+              ctx.strokeStyle = 'rgba(180,180,180,0.8)';
+              ctx.beginPath();
+              ctx.moveTo(xa, ya);
+              ctx.lineTo(xb as number, yb);
+              ctx.stroke();
+              ctx.setLineDash([]);
+            }
+          }
+
           if (xa !== null && xb !== null) {
             ctx.font = '700 9px "DM Mono", monospace';
             ctx.textBaseline = 'middle';
@@ -910,10 +984,13 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       drawRollovers();
-      if (!range || isLoadingMoreRef.current || !onLoadMoreRef.current) return;
-      if (range.from <= 30) {
+      if (!range || isLoadingMoreRef.current) return;
+      if (range.from <= 30 && onLoadMoreRef.current) {
         isLoadingMoreRef.current = true;
         onLoadMoreRef.current();
+      } else if (hasNewerRef.current && onLoadNewerRef.current && range.to >= candlesRef.current.length - 30) {
+        isLoadingMoreRef.current = true;
+        onLoadNewerRef.current();
       }
     });
 
@@ -933,13 +1010,22 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     });
     ro.observe(containerRef.current);
 
-    // The canvas overlay only repaints on logical-range / resize events, which
-    // miss vertical (price-scale) rescales and leave the backtest drawings
-    // lagging. When a backtest overlay is present, repaint every frame — the
-    // overlay is a handful of canvas strokes, so the cost is negligible.
+    // The canvas overlay repaints on logical-range / resize events but misses
+    // vertical (price-scale) rescales. Watch for scale changes each frame and
+    // only repaint when something actually moved, so we don't burn CPU idling.
     let rafId = 0;
+    let lastKey = '';
     const tick = () => {
-      if (backtestOverlayRef.current) drawRolloversRef.current();
+      if (backtestOverlayRef.current && chartRef.current && seriesRef.current) {
+        const lr = chartRef.current.timeScale().getVisibleLogicalRange();
+        // sample the price at a fixed pixel to detect vertical scale/scroll cheaply
+        const p = seriesRef.current.coordinateToPrice(50);
+        const key = `${lr?.from ?? ''},${lr?.to ?? ''},${p ?? ''}`;
+        if (key !== lastKey) {
+          lastKey = key;
+          drawRolloversRef.current();
+        }
+      }
       rafId = requestAnimationFrame(tick);
     };
     rafId = requestAnimationFrame(tick);
@@ -962,11 +1048,28 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (!seriesRef.current || !chartRef.current || candles.length === 0) return;
 
     const oldCandles = candlesRef.current;
-    const isPrepend = oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
+    // A sliding-window update (older/newer) preserves the view; anything else
+    // resets it. Fall back to the legacy prepend heuristic when candlesKind is
+    // absent (live chart).
+    const isWindow = candlesKind === 'older' || candlesKind === 'newer';
+    const isPrepend = candlesKind === undefined && oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
+    const preserve = isWindow || isPrepend;
 
-    let savedRange: { from: number; to: number } | null = null;
-    if (isPrepend && chartRef.current) {
-      savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
+    const filterWeekend = (arr: Candle[]) =>
+      arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
+
+    // Re-anchor on the first visible candle's TIME so trims on either side don't
+    // shift the view.
+    let anchorTime: number | null = null;
+    let anchorOffset = 0;
+    if (preserve && chartRef.current) {
+      const vr = chartRef.current.timeScale().getVisibleLogicalRange();
+      if (vr) {
+        const oldFiltered = filterWeekend(oldCandles);
+        const fromIdx = Math.max(0, Math.round(vr.from));
+        anchorTime = oldFiltered[fromIdx]?.time ?? null;
+        anchorOffset = vr.to - vr.from;
+      }
     }
 
     candlesRef.current = candles;
@@ -977,9 +1080,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     seriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
     });
-
-    const filterWeekend = (arr: Candle[]) =>
-      arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
 
     const filteredNew = filterWeekend(candles);
     const seen = new Set<number>();
@@ -996,21 +1096,28 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (data.length === 0) return;
     seriesRef.current.setData(data);
 
-    if (isPrepend && chartRef.current) {
-      if (savedRange) {
-        const prependCount = filteredNew.length - filterWeekend(oldCandles).length;
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: savedRange.from + prependCount,
-          to: savedRange.to + prependCount,
-        });
+    if (preserve && chartRef.current) {
+      if (anchorTime !== null) {
+        const newFromIdx = data.findIndex(d => (d.time as number) >= anchorTime!);
+        if (newFromIdx >= 0) {
+          chartRef.current.timeScale().setVisibleLogicalRange({
+            from: newFromIdx,
+            to: newFromIdx + anchorOffset,
+          });
+        }
       }
       isLoadingMoreRef.current = false;
-    } else if (!isPrepend && chartRef.current && containerRef.current) {
+    } else if (chartRef.current && containerRef.current) {
       seriesRef.current.priceScale().applyOptions({ autoScale: true });
       const barSpacing = 6;
       chartRef.current.timeScale().applyOptions({ barSpacing });
-      const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);
-      chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
+      if (pendingFocusRef.current) {
+        // A focus is pending (double-click) — honour it instead of scrolling to end.
+        applyFocus();
+      } else {
+        const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);
+        chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
+      }
     }
 
     const manager = trendlineManagerRef.current;
@@ -1024,7 +1131,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     }
     syncEmaSeries();
     drawRollovers();
-  }, [candles, drawRollovers, syncEmaSeries]);
+  }, [candles, candlesKind, drawRollovers, syncEmaSeries, applyFocus]);
 
   useEffect(() => {
     emasRef.current = emas;

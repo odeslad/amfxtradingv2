@@ -24,6 +24,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
   const [view, setView] = useState<'table' | 'chart'>('table');
   const [layers, setLayers] = useState({ setups: true, levels: true, entries: true, exits: true, sltp: true });
+  const [focusRange, setFocusRange] = useState<{ from: number; to: number; nonce: number } | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
 
@@ -99,6 +100,18 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
   const fmtRatio = (n: number) => (n === Infinity ? '∞' : n.toFixed(2));
 
   const selectedSetup = filteredSetups.find(s => s.id === selectedSetupId) ?? null;
+
+  // Build a focus range (epoch seconds) from two ISO times, padded by ~25 bars
+  // of the run's timeframe on each side, and switch to the chart view.
+  const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
+  const focusOn = (startIso: string, endIso: string | null) => {
+    const epoch = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
+    const pad = (TF_SECONDS[run?.timeframe ?? 'H1'] ?? 3600) * 25;
+    const a = epoch(startIso);
+    const b = endIso ? epoch(endIso) : a;
+    setFocusRange({ from: a - pad, to: b + pad, nonce: Date.now() });
+    setView('chart');
+  };
 
   return (
     <div className={styles.panel}>
@@ -221,6 +234,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                 emaSlow={emaSlow}
                 setups={filteredSetups}
                 layers={layers}
+                focusRange={focusRange}
               />
             </div>
           ) : (
@@ -250,6 +264,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                       key={setup.id}
                       className={`${styles.masterRow} ${selected ? styles.masterRowActive : ''} ${setup.direction === 'buy' ? styles.rowBuy : styles.rowSell}`}
                       onClick={() => setSelectedSetupId(setup.id)}
+                      onDoubleClick={() => focusOn(setup.activationTime, setup.closeTime)}
                     >
                       <td>{i + 1}</td>
                       <td className={setup.direction === 'buy' ? styles.buy : styles.sell}>{setup.direction}</td>
@@ -294,7 +309,11 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                 </thead>
                 <tbody>
                   {selectedSetup.trades.map((trade, ti) => (
-                    <tr key={trade.id}>
+                    <tr
+                      key={trade.id}
+                      className={styles.detailRow}
+                      onDoubleClick={() => focusOn(trade.entryTime ?? selectedSetup.activationTime, trade.exitTime)}
+                    >
                       <td>{filteredSetups.findIndex(s => s.id === selectedSetup.id) + 1}.{ti + 1}</td>
                       <td>{trade.entryType}</td>
                       <td>{fmtTime(trade.entryTime)}</td>

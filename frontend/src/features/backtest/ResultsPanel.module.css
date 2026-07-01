@@ -270,6 +270,14 @@
   transition: background 0.12s ease;
 }
 
+.detailRow {
+  cursor: pointer;
+}
+
+.detailRow:hover td {
+  background: var(--surface2);
+}
+
 .masterRow td:first-child {
   border-left: 3px solid transparent;
 }

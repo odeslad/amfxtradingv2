@@ -17,12 +17,31 @@ interface RawCandle {
   close: number;
 }
 
-interface Result {
+export type UpdateKind = 'initial' | 'older' | 'newer' | 'around';
+
+// How the last candles update was produced, plus how many candles were
+// trimmed from the opposite side, so the chart can keep the scroll steady.
+export interface CandlesState {
   candles: Candle[];
-  loadMore: () => void;
-  hasMore: boolean;
+  // 'initial'/'around' reset the view; 'older'/'newer' preserve it (the chart
+  // re-anchors on the first visible candle's time, robust to trims).
+  kind: UpdateKind;
+  nonce: number;
+}
+
+interface Result {
+  state: CandlesState;
+  loadOlder: () => void;
+  loadNewer: () => void;
+  loadAround: (targetSec: number) => Promise<void>;
+  hasOlder: boolean;
+  hasNewer: boolean;
   loading: boolean;
 }
+
+const MAX = 2000;
+const PAGE = 1000;
+const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
 
 function parse(data: RawCandle[]): Candle[] {
   return data
@@ -37,42 +56,105 @@ function parse(data: RawCandle[]): Candle[] {
 }
 
 export function useBacktestCandles(broker: string, symbol: string, timeframe: string): Result {
-  const [candles, setCandles] = useState<Candle[]>([]);
-  const [hasMore, setHasMore] = useState(true);
+  const [state, setState] = useState<CandlesState>({ candles: [], kind: 'initial', nonce: 0 });
+  const [hasOlder, setHasOlder] = useState(true);
+  const [hasNewer, setHasNewer] = useState(false);
   const [loading, setLoading] = useState(false);
+
   const candlesRef = useRef<Candle[]>([]);
-  const loadingMoreRef = useRef(false);
-  const hasMoreRef = useRef(true);
+  useEffect(() => { candlesRef.current = state.candles; }, [state.candles]);
+  const busyRef = useRef(false);
+  const nonceRef = useRef(0);
+  const hasOlderRef = useRef(true);
+  const hasNewerRef = useRef(false);
+  useEffect(() => { hasOlderRef.current = hasOlder; }, [hasOlder]);
+  useEffect(() => { hasNewerRef.current = hasNewer; }, [hasNewer]);
 
-  useEffect(() => { candlesRef.current = candles; }, [candles]);
+  const base = useCallback(
+    (extra: string) => apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&${extra}`),
+    [broker, symbol, timeframe],
+  );
 
+  // Initial load: the MAX most recent candles.
   useEffect(() => {
-    if (!broker || !symbol || !timeframe) { setCandles([]); return; }
-    setCandles([]);
-    setHasMore(true);
-    hasMoreRef.current = true;
+    if (!broker || !symbol || !timeframe) { setState({ candles: [], kind: 'initial', nonce: ++nonceRef.current }); return; }
     setLoading(true);
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include' })
-      .then(r => r.json() as Promise<RawCandle[]>)
-      .then(data => setCandles(parse(data)))
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [broker, symbol, timeframe]);
-
-  const loadMore = useCallback(() => {
-    if (loadingMoreRef.current || !hasMoreRef.current || !broker || !symbol || !timeframe) return;
-    const oldest = candlesRef.current[0]?.time;
-    if (!oldest) return;
-    loadingMoreRef.current = true;
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include' })
+    setHasNewer(false);
+    setHasOlder(true);
+    fetch(base(`limit=${MAX}`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
-        if (data.length === 0) { hasMoreRef.current = false; setHasMore(false); return; }
-        setCandles(prev => [...parse(data), ...prev]);
+        const parsed = parse(data);
+        setState({ candles: parsed, kind: 'initial', nonce: ++nonceRef.current });
+        setHasOlder(parsed.length >= MAX);
       })
       .catch(() => {})
-      .finally(() => { loadingMoreRef.current = false; });
-  }, [broker, symbol, timeframe]);
+      .finally(() => setLoading(false));
+  }, [base, broker, symbol, timeframe]);
 
-  return { candles, loadMore, hasMore, loading };
+  const loadOlder = useCallback(() => {
+    if (busyRef.current || !hasOlderRef.current) return;
+    const oldest = candlesRef.current[0]?.time;
+    if (!oldest) return;
+    busyRef.current = true;
+    fetch(base(`limit=${PAGE}&before=${oldest}`), { credentials: 'include' })
+      .then(r => r.json() as Promise<RawCandle[]>)
+      .then(data => {
+        if (data.length === 0) { setHasOlder(false); return; }
+        const older = parse(data);
+        setState(prev => {
+          const merged = [...older, ...prev.candles];
+          const trimmed = Math.max(0, merged.length - MAX);
+          const windowed = trimmed > 0 ? merged.slice(0, merged.length - trimmed) : merged;
+          return { candles: windowed, kind: 'older', nonce: ++nonceRef.current };
+        });
+        if (data.length < PAGE) setHasOlder(false);
+        setHasNewer(true);
+      })
+      .catch(() => {})
+      .finally(() => { busyRef.current = false; });
+  }, [base]);
+
+  const loadNewer = useCallback(() => {
+    if (busyRef.current || !hasNewerRef.current) return;
+    const newest = candlesRef.current[candlesRef.current.length - 1]?.time;
+    if (!newest) return;
+    busyRef.current = true;
+    fetch(base(`limit=${PAGE}&after=${newest}`), { credentials: 'include' })
+      .then(r => r.json() as Promise<RawCandle[]>)
+      .then(data => {
+        if (data.length === 0) { setHasNewer(false); return; }
+        const newer = parse(data);
+        setState(prev => {
+          const merged = [...prev.candles, ...newer];
+          const trimmed = Math.max(0, merged.length - MAX);
+          const windowed = trimmed > 0 ? merged.slice(trimmed) : merged;
+          return { candles: windowed, kind: 'newer', nonce: ++nonceRef.current };
+        });
+        if (data.length < PAGE) setHasNewer(false);
+        setHasOlder(true);
+      })
+      .catch(() => {})
+      .finally(() => { busyRef.current = false; });
+  }, [base]);
+
+  // Replace the window with MAX candles centered around a target time.
+  const loadAround = useCallback(async (targetSec: number) => {
+    if (!broker || !symbol || !timeframe) return;
+    const tfSec = TF_SECONDS[timeframe.toUpperCase()] ?? 3600;
+    const before = targetSec + tfSec * Math.floor(MAX / 2);
+    try {
+      const res = await fetch(base(`limit=${MAX}&before=${before}`), { credentials: 'include' });
+      const data = (await res.json()) as RawCandle[];
+      if (data.length === 0) return;
+      const parsed = parse(data);
+      setState({ candles: parsed, kind: 'around', nonce: ++nonceRef.current });
+      setHasOlder(parsed.length >= MAX);
+      setHasNewer(true);
+    } catch {
+      // ignore
+    }
+  }, [base, broker, symbol, timeframe]);
+
+  return { state, loadOlder, loadNewer, loadAround, hasOlder, hasNewer, loading };
 }

@@ -26,7 +26,9 @@ Invoke-Step "prisma migrate" { node_modules\.bin\prisma migrate deploy }
 Invoke-Step "build" { npm run build }
 
 Invoke-Step "pm2 start" {
-    pm2 start C:\amfxtradingv2\backend\dist\index.js --name amfxtrading-backend
+    pm2 start C:\amfxtradingv2\backend\dist\index.js --name amfxtrading-backend `
+        --node-args="--expose-gc --max-old-space-size=450" `
+        --max-memory-restart 500M
 }
 
 Invoke-Step "pm2 save" { pm2 save }

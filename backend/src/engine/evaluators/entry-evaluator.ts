@@ -35,6 +35,7 @@ export interface TradeResult {
   resultPips: number | null;
   status: 'open' | 'closed' | 'missed';
   reason: 'SL' | 'TP' | 'window elapsed' | 'setup finished' | 'invalid SL' | null;
+  slHistory: { time: Date; sl: number }[];
 }
 
 type Levels = { ECC: number; EMA: number; EVL: number | null; MHL: number | null };
@@ -139,5 +140,5 @@ function missedTrade(
   sl: number,
   reason: 'window elapsed' | 'setup finished' | 'invalid SL',
 ): TradeResult {
-  return { entryType: entryConfig.type, direction, entryPrice, entryTime: null, sl, tp: null, exitTime: null, exitPrice: null, resultPips: null, status: 'missed', reason };
+  return { entryType: entryConfig.type, direction, entryPrice, entryTime: null, sl, tp: null, exitTime: null, exitPrice: null, resultPips: null, status: 'missed', reason, slHistory: [] };
 }

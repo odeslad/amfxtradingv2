@@ -34,6 +34,7 @@ export interface PreviewTrade {
   resultPips: number | null;
   status: string;
   reason: string | null;
+  slHistory: { time: Date; sl: number }[];
 }
 
 export interface PreviewSetup {
@@ -123,6 +124,7 @@ export async function evaluateStrategy(
           resultPips: t.resultPips,
           status: t.status,
           reason: t.reason,
+          slHistory: t.slHistory,
         })),
       };
     });
@@ -274,6 +276,7 @@ async function runBacktestInner(strategyId: number): Promise<void> {
               resultPips: trade.resultPips,
               status: trade.status,
               reason: trade.reason,
+              slHistory: trade.slHistory as object[],
             })),
           });
         }

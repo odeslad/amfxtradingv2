@@ -115,6 +115,7 @@ model BacktestTrade {
   resultPips  Float?
   status      String
   reason      String?
+  slHistory   Json?
 
   @@index([setupId])
   @@map("backtest_trades")

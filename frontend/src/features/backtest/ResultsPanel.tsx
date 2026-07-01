@@ -35,7 +35,9 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
   }, [run]);
 
   const filteredSetups = useMemo(() => {
-    const setups = run?.setups ?? [];
+    const setups = [...(run?.setups ?? [])].sort(
+      (a, b) => new Date(a.activationTime).getTime() - new Date(b.activationTime).getTime(),
+    );
     if (!from && !to) return setups;
     const fromMs = from ? new Date(from).getTime() : -Infinity;
     // `to` is inclusive of the whole day.

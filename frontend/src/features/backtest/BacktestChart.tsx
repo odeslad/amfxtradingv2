@@ -1,9 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { LightweightChart, type BacktestOverlay, type BacktestOverlayLayers } from '../chart/LightweightChart';
 import { ChartErrorBoundary } from '../chart/ChartErrorBoundary';
 import type { Ema } from '../chart/chart.types';
 import type { BacktestSetup } from './backtest.types';
 import { useBacktestCandles } from './useBacktestCandles';
+import { useBacktestEmas } from './useBacktestEmas';
 
 export interface FocusRange { from: number; to: number; nonce: number }
 
@@ -22,16 +23,18 @@ export function BacktestChart({ broker, symbol, timeframe, emaFast, emaSlow, set
   const { state, loadOlder, loadNewer, loadAround, hasOlder, hasNewer } = useBacktestCandles(broker, symbol, timeframe);
   const { candles, kind: candlesKind } = state;
 
-  // When a focus request arrives, make sure its candles are loaded, then pass
-  // the range down to the chart (re-emit the nonce so it applies after load).
-  const [appliedFocus, setAppliedFocus] = useState<FocusRange | null>(null);
+  // Backend EMAs for the currently-loaded span (full-history accurate).
+  const emaData = useBacktestEmas(
+    broker, symbol, timeframe, emaFast, emaSlow,
+    candles[0]?.time, candles[candles.length - 1]?.time,
+  );
+
+  // When a focus request arrives, load its candles. The range is passed straight
+  // to the chart, which applies it as soon as the matching candles are present
+  // (it retries on candle changes), so no manual re-emit is needed here.
   useEffect(() => {
-    if (!focusRange) { setAppliedFocus(null); return; }
-    let cancelled = false;
-    void loadAround(focusRange.from).then(() => {
-      if (!cancelled) setAppliedFocus(focusRange);
-    });
-    return () => { cancelled = true; };
+    if (!focusRange) return;
+    void loadAround(focusRange.from);
   }, [focusRange, loadAround]);
 
   const emas = useMemo<Ema[]>(() => [
@@ -70,8 +73,9 @@ export function BacktestChart({ broker, symbol, timeframe, emaFast, emaSlow, set
         timeframe={timeframe}
         emas={emas}
         backtestOverlay={overlay}
-        focusRange={appliedFocus}
+        focusRange={focusRange}
         candlesKind={candlesKind}
+        emaData={emaData}
         onLoadMore={hasOlder ? loadOlder : undefined}
         onLoadNewer={hasNewer ? loadNewer : undefined}
         hasNewer={hasNewer}

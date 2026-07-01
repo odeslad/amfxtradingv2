@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import type { BacktestRun, Strategy } from './backtest.types';
 import { ConfigPanel } from './ConfigPanel';
@@ -13,7 +13,8 @@ export function BacktestPage() {
   const [previewRun, setPreviewRun] = useState<BacktestRun | null>(null);
   const [loading, setLoading] = useState(false);
   const [running, setRunning] = useState(false);
-  const [emaPeriods, setEmaPeriods] = useState<{ fast: number; slow: number }>({ fast: 12, slow: 26 });
+  // EMA periods edited in the config panel — used for the PREVIEW chart.
+  const [formEma, setFormEma] = useState<{ fast: number; slow: number }>({ fast: 12, slow: 26 });
   const pollRef = useRef<number | null>(null);
 
   const loadStrategies = useCallback(async () => {
@@ -85,9 +86,25 @@ export function BacktestPage() {
     setRun(null);
   }, [loadStrategies]);
 
+  const handleEmaChange = useCallback((fast: number, slow: number) => {
+    setFormEma(prev => (prev.fast === fast && prev.slow === slow ? prev : { fast, slow }));
+  }, []);
+
   const { width, dragging, onHandleMouseDown } = useResizableWidth({
     min: 300, max: 720, initial: 360, storageKey: 'backtest.configWidth',
   });
+
+  // EMA periods for the chart must match what the shown RUN was evaluated with:
+  // a preview uses the edited form; a saved run uses its own strategy's config.
+  const chartEma = useMemo(() => {
+    if (previewRun) return formEma;
+    const strat = strategies.find(s => s.id === run?.strategyId);
+    const setup = strat?.config?.forms?.[0]?.setup;
+    if (setup && typeof setup.emaFast === 'number' && typeof setup.emaSlow === 'number') {
+      return { fast: setup.emaFast, slow: setup.emaSlow };
+    }
+    return formEma;
+  }, [previewRun, run, strategies, formEma]);
 
   return (
     <div
@@ -104,7 +121,7 @@ export function BacktestPage() {
           onDeleted={handleDeleted}
           onPreview={handlePreview}
           onPreviewStart={handlePreviewStart}
-          onEmaChange={(fast, slow) => setEmaPeriods({ fast, slow })}
+          onEmaChange={handleEmaChange}
         />
       </div>
       <div
@@ -114,7 +131,7 @@ export function BacktestPage() {
         aria-orientation="vertical"
       />
       <div className={styles.results}>
-        <ResultsPanel run={previewRun ?? run} loading={loading || running} isPreview={previewRun !== null} emaFast={emaPeriods.fast} emaSlow={emaPeriods.slow} />
+        <ResultsPanel run={previewRun ?? run} loading={loading || running} isPreview={previewRun !== null} emaFast={chartEma.fast} emaSlow={chartEma.slow} />
       </div>
     </div>
   );

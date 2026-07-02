@@ -1,3 +1,4 @@
+// deploy smoke test: verify deploy.ps1 recovers from the Prisma DLL lock
 import 'dotenv/config';
 import http from 'http';
 import app from './app';

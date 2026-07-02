@@ -73,7 +73,9 @@ async function evaluateSymbol(
 
   const setups = detectEmaCrossSetups(candles, { emaFast, emaSlow, direction: 'both' }, pip);
   const lastSetup = setups.length > 0 ? setups[setups.length - 1] : null;
-  const candlesSinceCross = lastSetup !== null ? (n - 1) - lastSetup.activationIndex : null;
+  // Count includes the still-forming candle (not yet in DB) so it matches the
+  // live chart: (n-1) is the last CLOSED candle, +1 for the current forming one.
+  const candlesSinceCross = lastSetup !== null ? ((n - 1) - lastSetup.activationIndex) + 1 : null;
 
   // A cross is "recently done" if it happened within the last `recentWithin`
   // candles. Otherwise the symbol is imminent (converging toward the next cross).

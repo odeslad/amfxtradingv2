@@ -31,7 +31,7 @@ export interface ScannerResult {
 }
 
 const MAX_CANDLES = 1000;
-const LAST_CROSSES = 3;
+const LAST_CROSSES = 5;
 
 async function evaluateSymbol(
   broker: string, symbol: string, timeframe: string,
@@ -69,7 +69,11 @@ async function evaluateSymbol(
   const setups = detectEmaCrossSetups(candles, {
     emaFast, emaSlow, direction: 'both',
   }, pip);
-  const lastCrosses: ScannerCross[] = setups
+  // Only show past crosses in the same direction as the approaching one, so a
+  // bullish row lists bullish crosses (and vice versa). If not converging, show
+  // the most recent regardless of side.
+  const relevant = approaching ? setups.filter(s => s.direction === approaching) : setups;
+  const lastCrosses: ScannerCross[] = relevant
     .slice(-LAST_CROSSES)
     .reverse()
     .map(s => ({

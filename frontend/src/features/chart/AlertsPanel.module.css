@@ -41,6 +41,35 @@
   color: var(--text);
 }
 
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 16px 0;
+}
+
+.tab {
+  flex: 1;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--muted);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab:hover {
+  color: var(--text);
+}
+
+.tabActive {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
 .closeBtn {
   background: transparent;
   border: none;
@@ -118,6 +147,23 @@
   letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--muted);
+  white-space: nowrap;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: pointer;
+  user-select: none;
+}
+
+.checkboxRow input {
+  accent-color: var(--orange);
+  cursor: pointer;
 }
 
 .input {

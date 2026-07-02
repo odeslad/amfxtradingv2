@@ -8,6 +8,7 @@ import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { AlertsPanel } from './AlertsPanel';
 import { useAlerts } from '../../lib/useAlerts';
+import { useEmaAlerts } from '../../lib/useEmaAlerts';
 import { LightweightChart } from './LightweightChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
@@ -78,6 +79,7 @@ export function ChartPage() {
   const [alertFlash, setAlertFlash] = useState(false);
   const { user } = useAuth();
   const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, remove: removeAlert } = useAlerts();
+  const { alerts: emaAlerts, create: createEmaAlert, toggle: toggleEmaAlert, remove: removeEmaAlert } = useEmaAlerts();
   const chartAlerts = useMemo(
     () => alerts.filter(a => a.broker === broker && a.symbol === symbol).map(a => ({ id: a.id, price: a.price, enabled: a.enabled })),
     [alerts, broker, symbol],
@@ -453,6 +455,10 @@ export function ChartPage() {
         onCreate={createAlert}
         onToggle={toggleAlert}
         onDelete={removeAlert}
+        emaAlerts={emaAlerts}
+        onCreateEma={createEmaAlert}
+        onToggleEma={toggleEmaAlert}
+        onDeleteEma={removeEmaAlert}
       />
       <IndicatorsPanel
         open={indicatorsOpen}

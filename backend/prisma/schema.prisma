@@ -162,6 +162,7 @@ model User {
   chartIndicators   ChartIndicators?
   drawings          Drawing[]
   alerts            PriceAlert[]
+  emaCrossAlerts    EmaCrossAlert[]
   pushSubscriptions PushSubscription[]
 
   @@map("users")
@@ -183,6 +184,29 @@ model PriceAlert {
   @@index([userId])
   @@index([broker, symbol, enabled])
   @@map("price_alerts")
+}
+
+// Fires when the fast/slow EMAs are converging (about to cross) at candle close,
+// within thresholdPips. Evaluated per timeframe, independent of the Engine.
+model EmaCrossAlert {
+  id            Int       @id @default(autoincrement())
+  userId        Int
+  user          User      @relation(fields: [userId], references: [id])
+  broker        String
+  symbol        String
+  timeframe     String
+  emaFast       Int
+  emaSlow       Int
+  direction     String    // "buy" | "sell" | "both"
+  thresholdPips Float
+  note          String?
+  enabled       Boolean   @default(true)
+  triggeredAt   DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([broker, symbol, enabled])
+  @@map("ema_cross_alerts")
 }
 
 model PushSubscription {

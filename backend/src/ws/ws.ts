@@ -58,5 +58,8 @@ export function createWss(server: Server) {
     broadcastAlert(userId: number, broker: string, symbol: string, price: number, direction: string) {
       broadcast('alert', { userId, broker, symbol, price, direction });
     },
+    broadcastEmaAlert(userId: number, broker: string, symbol: string, timeframe: string, direction: string) {
+      broadcast('ema_alert', { userId, broker, symbol, timeframe, direction });
+    },
   };
 }

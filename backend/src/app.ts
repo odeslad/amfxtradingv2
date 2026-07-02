@@ -14,6 +14,7 @@ import chartIndicatorsRouter from './routes/chart-indicators';
 import drawingsRouter from './routes/drawings';
 import alertsRouter from './routes/alerts';
 import emaAlertsRouter from './routes/ema-alerts';
+import scannerRouter from './routes/scanner';
 import pushRouter from './routes/push';
 import { requireAuth } from './middleware/requireAuth';
 
@@ -47,6 +48,7 @@ app.use('/chart-indicators', requireAuth, chartIndicatorsRouter);
 app.use('/drawings', requireAuth, drawingsRouter);
 app.use('/alerts', requireAuth, alertsRouter);
 app.use('/ema-alerts', requireAuth, emaAlertsRouter);
+app.use('/scanner', requireAuth, scannerRouter);
 app.use('/push', requireAuth, pushRouter);
 
 export default app;

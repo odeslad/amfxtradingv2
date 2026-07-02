@@ -49,8 +49,10 @@ export function applyTrailing(
   if (trail.type === 'weak') {
     const relevantDates = direction === 'buy' ? weakCandles : strongCandles;
     const relevantSet = new Set(relevantDates.map(d => d.getTime()));
-    let bestSl: number | null = null;
 
+    // Use the MOST RECENT weak candle up to now, not every past one. Scanning
+    // all of them and picking the "best" made the SL crawl through old weak
+    // candles one per bar; the SL should sit at the latest confirmed weak level.
     for (let i = currentIndex; i >= entryIndex; i--) {
       if (!relevantSet.has(candles[i].time.getTime())) continue;
 
@@ -60,18 +62,11 @@ export function applyTrailing(
 
       // Negative offset moves the SL against the trade direction (buy → down,
       // sell → up), matching the entry / SL offset convention.
-      const level = direction === 'buy'
+      newSl = direction === 'buy'
         ? basePrice + trail.offset * pipSize
         : basePrice - trail.offset * pipSize;
-
-      if (direction === 'buy' && level > currentSl) {
-        if (bestSl === null || level < bestSl) bestSl = level;
-      } else if (direction === 'sell' && level < currentSl) {
-        if (bestSl === null || level > bestSl) bestSl = level;
-      }
+      break; // first match walking backwards = most recent weak candle
     }
-
-    newSl = bestSl;
   }
 
   if (trail.type === 'pivot') {

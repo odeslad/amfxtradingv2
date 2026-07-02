@@ -15,23 +15,10 @@ Invoke-Step "git pull" { git pull origin master }
 
 Set-Location backend
 
-# Stop the app AND kill any orphan node processes so the Prisma query engine
-# DLL is released; Windows keeps the file handle for a moment after pm2 delete,
-# which made npm ci fail with EPERM on the locked DLL. Kill, wait, then delete
-# with retries until the handle is gone.
-Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend; $global:LASTEXITCODE = 0 }
-Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
-Start-Sleep -Seconds 3
-
-function Remove-WithRetry([string]$Path) {
-    for ($i = 0; $i -lt 5; $i++) {
-        if (-not (Test-Path $Path)) { return }
-        try { Remove-Item -Recurse -Force $Path -ErrorAction Stop; return }
-        catch { Start-Sleep -Seconds 2 }
-    }
-}
-Remove-WithRetry "node_modules\.prisma"
-Remove-WithRetry "node_modules\prisma\engines"
+# Stop and delete so npm ci can replace the locked Prisma DLL
+Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend }
+Remove-Item -Recurse -Force "node_modules\.prisma" -ErrorAction SilentlyContinue
+Remove-Item -Recurse -Force "node_modules\prisma\engines" -ErrorAction SilentlyContinue
 
 Invoke-Step "npm ci" { npm ci }
 Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }

@@ -46,6 +46,8 @@ export interface PreviewSetup {
   closePrice: number | null;
   levels: unknown;
   candleCount: number;
+  weakCandles: Date[];
+  strongCandles: Date[];
   trades: PreviewTrade[];
 }
 
@@ -112,6 +114,8 @@ export async function evaluateStrategy(
         closePrice: setup.closePrice,
         levels: setup.levels,
         candleCount: setup.candleCount,
+        weakCandles: setup.weakCandles,
+        strongCandles: setup.strongCandles,
         trades: trades.map((t) => ({
           id: tid++,
           entryType: t.entryType,

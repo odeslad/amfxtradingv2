@@ -139,13 +139,18 @@ export function ScannerPage() {
       .catch(() => {});
   }, []);
 
-  const handleRun = () => {
+  // Auto-scan on load and whenever a parameter changes. Debounced so editing the
+  // EMA/N numbers doesn't fire a scan on every keystroke.
+  useEffect(() => {
     const fast = parseInt(emaFast, 10);
     const slow = parseInt(emaSlow, 10);
     const recent = parseInt(recentWithin, 10);
     if (!broker || !Number.isInteger(fast) || !Number.isInteger(slow) || fast === slow) return;
-    void run({ broker, timeframe, emaFast: fast, emaSlow: slow, recentWithin: Number.isInteger(recent) ? recent : 3 });
-  };
+    const id = setTimeout(() => {
+      void run({ broker, timeframe, emaFast: fast, emaSlow: slow, recentWithin: Number.isInteger(recent) ? recent : 3 });
+    }, 400);
+    return () => clearTimeout(id);
+  }, [broker, timeframe, emaFast, emaSlow, recentWithin, run]);
 
   return (
     <div className={styles.root}>
@@ -161,9 +166,7 @@ export function ScannerPage() {
         <input className={styles.inputNum} type="number" step="1" value={emaSlow} onChange={e => setEmaSlow(e.target.value)} title="EMA slow" />
         <input className={styles.inputNum} type="number" step="1" value={recentWithin} onChange={e => setRecentWithin(e.target.value)} title="Crossed within N candles" />
         <span className={styles.hint}>crossed ≤ N</span>
-        <button className={styles.runBtn} onClick={handleRun} disabled={loading}>
-          {loading ? 'Scanning…' : 'Scan'}
-        </button>
+        {loading && <span className={styles.scanning}>Scanning…</span>}
       </div>
 
       <div className={styles.panels}>

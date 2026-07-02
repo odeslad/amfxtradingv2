@@ -1254,14 +1254,20 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   useEffect(() => {
     if (!seriesRef.current || !liveCandle) return;
 
-    // Ignore the tick's own time (it can be unreliable). The live candle always
-    // sits one interval after the last historical candle.
     const data = candlesRef.current;
     if (data.length < 2) return;
     const lastTime = data[data.length - 1].time;
     const interval = lastTime - data[data.length - 2].time;
     if (interval <= 0) return;
-    const liveTime = lastTime + interval;
+
+    // Use the tick's real candle time so the live candle advances even when the
+    // historical feed lags (it persists closed candles only every ~30s). m5_time/
+    // h1_time arrive in ms on the same broker-time base as candles[].time (which
+    // is in seconds), so convert to seconds and snap to the timeframe grid. Floor
+    // at lastTime+interval so it never overlaps the last closed historical candle.
+    const rawSec = Math.floor(liveCandle.time / 1000);
+    const aligned = Math.floor(rawSec / interval) * interval;
+    const liveTime = Math.max(aligned, lastTime + interval);
 
     liveCandleTimeRef.current = liveTime;
     try {

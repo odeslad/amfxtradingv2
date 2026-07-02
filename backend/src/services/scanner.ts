@@ -30,7 +30,7 @@ export interface ScannerResult {
   sells: ScannerRow[];
 }
 
-const MAX_CANDLES = 1000;
+const MAX_CANDLES = 2000;
 const LAST_CROSSES = 5;
 
 async function evaluateSymbol(

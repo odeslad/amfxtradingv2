@@ -15,12 +15,13 @@ Invoke-Step "git pull" { git pull origin master }
 
 Set-Location backend
 
-# Stop and delete so npm ci can replace the locked Prisma DLL
+# Stop the running app first. Use `npm install` (not `npm ci`): ci wipes
+# node_modules and must unlink Prisma's native query-engine DLL, which stays
+# locked by the process for a moment on Windows and caused EPERM. install
+# updates in place without deleting the DLL, avoiding the lock entirely.
 Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend }
-Remove-Item -Recurse -Force "node_modules\.prisma" -ErrorAction SilentlyContinue
-Remove-Item -Recurse -Force "node_modules\prisma\engines" -ErrorAction SilentlyContinue
 
-Invoke-Step "npm ci" { npm ci }
+Invoke-Step "npm install" { npm install }
 Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }
 Invoke-Step "prisma migrate" { node_modules\.bin\prisma migrate deploy }
 Invoke-Step "build" { npm run build }

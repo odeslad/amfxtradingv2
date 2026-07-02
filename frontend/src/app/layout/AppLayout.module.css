@@ -120,6 +120,15 @@
   border-left: 2px solid var(--orange);
 }
 
+/* Experimental, not-yet-enabled entries: muted and non-interactive. */
+.navItemDisabled,
+.navItemDisabled:hover {
+  color: var(--muted);
+  cursor: not-allowed;
+  background: transparent;
+  pointer-events: none;
+}
+
 .navIcon {
   flex-shrink: 0;
   display: flex;

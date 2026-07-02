@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
-import { IconJournal, IconChart, IconBacktest, IconEngine, IconSettings, IconSignOut } from '../../shared/ui/icons';
+import { IconJournal, IconChart, IconScanner, IconBacktest, IconEngine, IconSettings, IconSignOut } from '../../shared/ui/icons';
 import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
@@ -10,6 +10,7 @@ import styles from './AppLayout.module.css';
 const NAV = [
   { label: 'Journal', to: '/journal', icon: <IconJournal /> },
   { label: 'Chart', to: '/chart', icon: <IconChart /> },
+  { label: 'Scanner', to: '/scanner', icon: <IconScanner /> },
   // Experimental: shown muted and not navigable until stabilised.
   { label: 'Backtest', to: '/backtest', icon: <IconBacktest />, disabled: true },
   { label: 'Engine', to: '/engine', icon: <IconEngine />, disabled: true },

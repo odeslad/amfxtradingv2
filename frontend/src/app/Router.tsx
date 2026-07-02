@@ -7,6 +7,7 @@ import { JournalPage } from '../features/journal/JournalPage';
 import { ChartPage } from '../features/chart/ChartPage';
 import { BacktestPage } from '../features/backtest/BacktestPage';
 import { EnginePage } from '../features/engine/EnginePage';
+import { ScannerPage } from '../features/scanner/ScannerPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 
 export function Router() {
@@ -27,6 +28,7 @@ export function Router() {
             <Route path="/chart" element={<ChartPage />} />
             <Route path="/backtest" element={<BacktestPage />} />
             <Route path="/engine" element={<EnginePage />} />
+            <Route path="/scanner" element={<ScannerPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

@@ -3,6 +3,16 @@ interface IconProps {
   color?: string;
 }
 
+export function IconScanner({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="8" cy="8" r="6.5" stroke={color} strokeWidth="1.2" />
+      <circle cx="8" cy="8" r="3" stroke={color} strokeWidth="1.2" />
+      <line x1="8" y1="8" x2="13" y2="4" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconChart({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

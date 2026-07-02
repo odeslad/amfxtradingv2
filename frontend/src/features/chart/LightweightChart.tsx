@@ -198,6 +198,8 @@ export interface BacktestOverlaySetup {
   closeTime: string | null;
   levels: BacktestOverlayLevels;
   trades: BacktestOverlayTrade[];
+  weakCandles?: string[];
+  strongCandles?: string[];
 }
 
 export interface BacktestOverlayLayers {
@@ -206,6 +208,7 @@ export interface BacktestOverlayLayers {
   entries: boolean;
   exits: boolean;
   sltp: boolean;
+  ws: boolean;
 }
 
 export interface BacktestOverlay {
@@ -559,6 +562,45 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           ctx.fillText(label, x, bottom - 2);
           ctx.lineWidth = 1;
         }
+      }
+
+      // 1b. Weak/strong candle markers (debug): violet diamond on weak, lime on
+      // strong. On buy, weak sits below the candle and strong above; on sell,
+      // the opposite. Lets you check the trailing follows the right weak candles.
+      if (layers.ws) {
+        const candleAt = (sec: number): Candle | null => {
+          let lo = 0, hi = data.length - 1, res = -1;
+          while (lo <= hi) {
+            const mid = (lo + hi) >> 1;
+            if (data[mid].time <= sec) { res = mid; lo = mid + 1; } else hi = mid - 1;
+          }
+          return res === -1 ? null : data[res];
+        };
+        const diamond = (x: number, y: number, color: string) => {
+          const r = 4;
+          ctx.beginPath();
+          ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
+          ctx.closePath();
+          ctx.fillStyle = color;
+          ctx.fill();
+        };
+        const drawMarks = (times: string[] | undefined, color: string, below: boolean) => {
+          if (!times) return;
+          for (const t of times) {
+            const sec = epoch(t);
+            if (sec === null) continue;
+            const c = candleAt(sec);
+            const x = xOf(sec);
+            if (!c || x === null) continue;
+            const price = below ? c.low : c.high;
+            const y = yOf(price);
+            if (y === null) continue;
+            diamond(x, y + (below ? 10 : -10), color);
+          }
+        };
+        const weakBelow = setup.direction === 'buy';
+        drawMarks(setup.weakCandles, '#a855f7', weakBelow);       // violet
+        drawMarks(setup.strongCandles, '#a3e635', !weakBelow);    // lime
       }
 
       // 2. Level lines from this setup's activation to its close (opposite cross).

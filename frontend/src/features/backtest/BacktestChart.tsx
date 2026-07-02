@@ -50,6 +50,8 @@ export function BacktestChart({ broker, symbol, timeframe, emaFast, emaSlow, set
       activationTime: s.activationTime,
       closeTime: s.closeTime,
       levels: s.levels,
+      weakCandles: s.weakCandles,
+      strongCandles: s.strongCandles,
       trades: s.trades.map(t => ({
         direction: s.direction,
         entryTime: t.entryTime,

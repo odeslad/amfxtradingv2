@@ -23,7 +23,7 @@ function setupPips(setup: BacktestSetup): number {
 export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, emaSlow = 26 }: Props) {
   const [selectedSetupId, setSelectedSetupId] = useState<number | null>(null);
   const [view, setView] = useState<'table' | 'chart'>('table');
-  const [layers, setLayers] = useState({ setups: true, levels: true, entries: true, exits: true, sltp: true });
+  const [layers, setLayers] = useState({ setups: true, levels: true, entries: true, exits: true, sltp: true, ws: false });
   const [focusRange, setFocusRange] = useState<{ from: number; to: number; nonce: number } | null>(null);
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -179,6 +179,7 @@ export function ResultsPanel({ run, loading, isPreview = false, emaFast = 12, em
                 ['entries', 'Entries'],
                 ['exits', 'Exits'],
                 ['sltp', 'SL/TP'],
+                ['ws', 'W/S'],
               ] as const).map(([key, label]) => (
                 <button
                   key={key}

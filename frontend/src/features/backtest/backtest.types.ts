@@ -109,6 +109,8 @@ export interface BacktestSetup {
   levels: { ECC: number; EMA: number; EVL: number | null; MHL: number | null };
   candleCount: number;
   trades: BacktestTrade[];
+  weakCandles?: string[];
+  strongCandles?: string[];
 }
 
 export interface BacktestRun {

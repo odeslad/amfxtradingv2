@@ -28,6 +28,10 @@ export interface ScannerRow {
   etaMs: number | null;
   // Candles since the last cross (crossed), null otherwise.
   candlesSinceCross: number | null;
+  // Close price of the activation candle of the last cross (crossed), null otherwise.
+  // The frontend uses it with the live bid to show real-time distance in pips.
+  activationClose: number | null;
+  pipSize: number;
   lastCrosses: ScannerCross[];
 }
 
@@ -109,6 +113,8 @@ async function evaluateSymbol(
   return {
     symbol, direction, state, gapPips, convergencePips,
     etaCandles, etaMs, candlesSinceCross: state === 'crossed' ? candlesSinceCross : null,
+    activationClose: state === 'crossed' && lastSetup ? lastSetup.activationPrice : null,
+    pipSize: pip,
     lastCrosses,
   };
 }

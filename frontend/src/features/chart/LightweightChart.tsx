@@ -188,6 +188,7 @@ export interface BacktestOverlayTrade {
   tp: number;
   status: string;
   reason: string | null;
+  slHistory?: { time: string; sl: number }[];
 }
 
 export interface BacktestOverlaySetup {
@@ -689,7 +690,29 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
             };
             ctx.setLineDash([3, 3]);
             const slY = yOf(trade.sl);
-            if (slY !== null) {
+            const steps = trade.slHistory ?? [];
+            if (steps.length > 1) {
+              // Trailing moved the SL: draw a step line so each move is visible
+              // at the candle where it happened, independent of the price path.
+              ctx.strokeStyle = '#e05c5c';
+              ctx.lineWidth = 2;
+              ctx.beginPath();
+              let started = false;
+              for (let s = 0; s < steps.length; s++) {
+                const stepSec = epoch(steps[s].time);
+                const y = yOf(steps[s].sl);
+                if (stepSec === null || y === null) continue;
+                const x = xOfOpen(stepSec) ?? xa;
+                const xEnd = s + 1 < steps.length
+                  ? (xOfOpen(epoch(steps[s + 1].time) ?? stepSec) ?? (xb as number))
+                  : (xb as number);
+                if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
+                ctx.lineTo(xEnd, y); // horizontal run at this SL level
+              }
+              ctx.stroke();
+              const lastY = yOf(steps[steps.length - 1].sl);
+              if (lastY !== null) drawSlTpLabel(`SL ${steps[steps.length - 1].sl.toFixed(precisionRef.current)}`, lastY, '#e05c5c');
+            } else if (slY !== null) {
               ctx.strokeStyle = '#e05c5c';
               ctx.lineWidth = 2;
               ctx.beginPath();

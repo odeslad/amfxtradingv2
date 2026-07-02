@@ -60,6 +60,7 @@ export function BacktestChart({ broker, symbol, timeframe, emaFast, emaSlow, set
         tp: t.tp,
         status: t.status,
         reason: t.reason,
+        slHistory: t.slHistory,
       })),
     })),
   }), [setups, layers]);

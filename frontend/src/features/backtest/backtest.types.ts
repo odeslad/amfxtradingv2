@@ -96,6 +96,7 @@ export interface BacktestTrade {
   resultPips: number | null;
   status: 'open' | 'closed' | 'missed';
   reason: string | null;
+  slHistory?: { time: string; sl: number }[];
 }
 
 export interface BacktestSetup {

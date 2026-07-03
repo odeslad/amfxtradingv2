@@ -167,9 +167,13 @@
 }
 
 .crossRr {
-  color: var(--muted);
-  font-size: var(--text-2xs);
+  font-size: var(--text-base);
 }
+
+.rrLow { color: var(--red); }
+.rrMid { color: var(--orange); }
+.rrHigh { color: var(--green); }
+.rrMuted { color: var(--muted); }
 
 .avgCross {
   display: flex;

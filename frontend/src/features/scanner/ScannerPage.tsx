@@ -38,9 +38,23 @@ function fmtPips(n: number | null): string {
 }
 
 // Risk/reward of a cross: how far it ran in favour (MFE) vs against (MAE).
+function rrValue(mfe: number | null, mae: number | null): number | null {
+  if (mfe === null || mae === null || mae === 0) return null;
+  return mfe / Math.abs(mae);
+}
+
 function fmtRR(mfe: number | null, mae: number | null): string {
-  if (mfe === null || mae === null || mae === 0) return '—';
-  return `${(mfe / Math.abs(mae)).toFixed(1)}R`;
+  const rr = rrValue(mfe, mae);
+  return rr === null ? '—' : `${rr.toFixed(1)}R`;
+}
+
+// Colour the RR by quality: red < 1, orange 1–2, green > 2.
+function rrClass(mfe: number | null, mae: number | null): string {
+  const rr = rrValue(mfe, mae);
+  if (rr === null) return styles.rrMuted;
+  if (rr < 1) return styles.rrLow;
+  if (rr < 2) return styles.rrMid;
+  return styles.rrHigh;
 }
 
 function avgCrosses(row: ScannerRow): { mfe: number | null; mae: number | null } {
@@ -110,7 +124,7 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
                         <div key={i} className={styles.cross}>
                           <span className={styles.crossMfe}>{fmtPips(c.mfePips)}</span>
                           <span className={styles.crossMae}>{fmtPips(c.maePips)}</span>
-                          <span className={styles.crossRr}>{fmtRR(c.mfePips, c.maePips)}</span>
+                          <span className={`${styles.crossRr} ${rrClass(c.mfePips, c.maePips)}`}>{fmtRR(c.mfePips, c.maePips)}</span>
                         </div>
                       ))}
                     </div>
@@ -125,7 +139,7 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
                       <div className={styles.avgCross}>
                         <span className={styles.crossMfe}>{fmtPips(avg.mfe)}</span>
                         <span className={styles.crossMae}>{fmtPips(avg.mae)}</span>
-                        <span className={styles.crossRr}>{fmtRR(avg.mfe, avg.mae)}</span>
+                        <span className={`${styles.crossRr} ${rrClass(avg.mfe, avg.mae)}`}>{fmtRR(avg.mfe, avg.mae)}</span>
                       </div>
                     );
                   })()}

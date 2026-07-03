@@ -68,7 +68,9 @@ function avgCrosses(row: ScannerRow): { mfe: number | null; mae: number | null }
 
 function liveDistancePips(row: ScannerRow, bid: number | undefined): number | null {
   if (row.state !== 'crossed' || row.activationClose === null || bid === undefined) return null;
-  return (bid - row.activationClose) / row.pipSize;
+  // Signed by direction: + means price moved in favour of the cross side.
+  const raw = (bid - row.activationClose) / row.pipSize;
+  return row.direction === 'buy' ? raw : -raw;
 }
 
 function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; rows: ScannerRow[]; accent: string; onOpen: (symbol: string) => void; bids: Record<string, number> }) {

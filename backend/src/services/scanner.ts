@@ -48,7 +48,7 @@ const LAST_CROSSES = 5;
 // the Sells row its bearish ones.
 async function evaluateSymbolBothSides(
   broker: string, symbol: string, timeframe: string,
-  emaFast: number, emaSlow: number, recentWithin: number,
+  emaFast: number, emaSlow: number,
 ): Promise<ScannerRow[]> {
   const need = Math.max(emaFast, emaSlow) + 5;
   const rows = await db.candle.findMany({
@@ -68,34 +68,44 @@ async function evaluateSymbolBothSides(
   const fPrev = fast[n - 2], sPrev = slow[n - 2];
   if (fNow === null || sNow === null || fPrev === null || sPrev === null) return [];
 
-  const gapPips = (fNow - sNow) / pip;
+  const gapPips = (fNow - sNow) / pip;       // >0 fast above slow (bullish position)
   const gapPrev = (fPrev - sPrev) / pip;
   const convergencePips = Math.abs(gapPrev) - Math.abs(gapPips);
   const tfMs = getTimeframeMs(timeframe);
   const converging = convergencePips > 0;
-  // The side the EMAs are approaching a cross toward: fast below slow -> buy.
-  const approachingSide: 'buy' | 'sell' = gapPips < 0 ? 'buy' : 'sell';
 
   const setups = detectEmaCrossSetups(candles, { emaFast, emaSlow, direction: 'both' }, pip);
   const lastSetup = setups.length > 0 ? setups[setups.length - 1] : null;
   const candlesSinceCross = lastSetup !== null ? ((n - 1) - lastSetup.activationIndex) + 1 : null;
-  const justCrossed = candlesSinceCross !== null && candlesSinceCross >= 1 && candlesSinceCross <= recentWithin;
+
+  const dirSetups = (dir: 'buy' | 'sell') => setups.filter(s => s.direction === dir);
 
   const buildRow = (direction: 'buy' | 'sell'): ScannerRow => {
-    // This pair's real situation belongs to one direction; the other side is NA.
-    let state: ScannerState = 'na';
+    const dSetups = dirSetups(direction);
+    const lastDirSetup = dSetups.length > 0 ? dSetups[dSetups.length - 1] : null;
+    const candlesSinceCross = lastDirSetup !== null ? ((n - 1) - lastDirSetup.activationIndex) + 1 : null;
+    // State is defined by the EMA position for THIS panel's direction:
+    // buy: fast above slow = crossed (bullish); fast below slow converging =
+    //   imminent (bullish cross approaching); fast below slow not converging = na.
+    // sell: mirrored.
+    const inFavour = direction === 'buy' ? gapPips > 0 : gapPips < 0; // fast on this side
+    let state: ScannerState;
     let etaCandles: number | null = null;
 
-    if (justCrossed && lastSetup && lastSetup.direction === direction) {
+    if (inFavour) {
+      // EMAs already on this side: the cross of this direction has happened.
       state = 'crossed';
-    } else if (converging && approachingSide === direction) {
+    } else if (converging) {
+      // EMAs on the opposite side but closing in: cross of this direction is near.
       state = 'imminent';
       etaCandles = Math.abs(gapPips) / convergencePips;
+    } else {
+      // Opposite side and diverging: not this direction.
+      state = 'na';
     }
     const etaMs = etaCandles !== null ? Math.round(etaCandles * tfMs) : null;
 
-    const lastCrosses: ScannerCross[] = setups
-      .filter(s => s.direction === direction)
+    const lastCrosses: ScannerCross[] = dSetups
       .slice(-LAST_CROSSES)
       .reverse()
       .map(s => ({
@@ -113,7 +123,7 @@ async function evaluateSymbolBothSides(
       symbol, direction, state,
       gapPips, convergencePips, etaCandles, etaMs,
       candlesSinceCross: state === 'crossed' ? candlesSinceCross : null,
-      activationClose: state === 'crossed' && lastSetup ? lastSetup.activationPrice : null,
+      activationClose: state === 'crossed' && lastDirSetup ? lastDirSetup.activationPrice : null,
       pipSize: pip,
       lastCrosses,
     };
@@ -123,7 +133,7 @@ async function evaluateSymbolBothSides(
 }
 
 export async function runScanner(
-  broker: string, timeframe: string, emaFast: number, emaSlow: number, recentWithin: number,
+  broker: string, timeframe: string, emaFast: number, emaSlow: number,
 ): Promise<ScannerResult> {
   const symbolRows = await db.candle.findMany({
     where: { broker },
@@ -134,7 +144,7 @@ export async function runScanner(
 
   const rows: ScannerRow[] = [];
   for (const { symbol } of symbolRows) {
-    const pair = await evaluateSymbolBothSides(broker, symbol, timeframe, emaFast, emaSlow, recentWithin);
+    const pair = await evaluateSymbolBothSides(broker, symbol, timeframe, emaFast, emaSlow);
     rows.push(...pair);
   }
 

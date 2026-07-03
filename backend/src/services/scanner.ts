@@ -43,10 +43,13 @@ export interface ScannerResult {
 const MAX_CANDLES = 2000;
 const LAST_CROSSES = 5;
 
-async function evaluateSymbol(
+// Returns one row per direction (buy and sell) for a symbol, so every pair is
+// visible in both panels: the Buys row carries its bullish situation/crosses,
+// the Sells row its bearish ones.
+async function evaluateSymbolBothSides(
   broker: string, symbol: string, timeframe: string,
   emaFast: number, emaSlow: number, recentWithin: number,
-): Promise<ScannerRow | null> {
+): Promise<ScannerRow[]> {
   const need = Math.max(emaFast, emaSlow) + 5;
   const rows = await db.candle.findMany({
     where: { broker, symbol, timeframe },
@@ -54,7 +57,7 @@ async function evaluateSymbol(
     take: MAX_CANDLES,
     select: { time: true, open: true, high: true, low: true, close: true },
   });
-  if (rows.length < need) return null;
+  if (rows.length < need) return [];
   const candles = rows.reverse() as Candle[];
 
   const pip = getPipSize(symbol);
@@ -63,70 +66,60 @@ async function evaluateSymbol(
   const n = candles.length;
   const fNow = fast[n - 1], sNow = slow[n - 1];
   const fPrev = fast[n - 2], sPrev = slow[n - 2];
-  if (fNow === null || sNow === null || fPrev === null || sPrev === null) return null;
+  if (fNow === null || sNow === null || fPrev === null || sPrev === null) return [];
 
   const gapPips = (fNow - sNow) / pip;
   const gapPrev = (fPrev - sPrev) / pip;
-  // Positive convergence = the absolute gap is shrinking toward a cross.
   const convergencePips = Math.abs(gapPrev) - Math.abs(gapPips);
   const tfMs = getTimeframeMs(timeframe);
+  const converging = convergencePips > 0;
+  // The side the EMAs are approaching a cross toward: fast below slow -> buy.
+  const approachingSide: 'buy' | 'sell' = gapPips < 0 ? 'buy' : 'sell';
 
   const setups = detectEmaCrossSetups(candles, { emaFast, emaSlow, direction: 'both' }, pip);
   const lastSetup = setups.length > 0 ? setups[setups.length - 1] : null;
-  // Count includes the still-forming candle (not yet in DB) so it matches the
-  // live chart: (n-1) is the last CLOSED candle, +1 for the current forming one.
   const candlesSinceCross = lastSetup !== null ? ((n - 1) - lastSetup.activationIndex) + 1 : null;
-
-  // A cross is "recently done" if it happened within the last `recentWithin`
-  // candles. Otherwise the symbol is imminent (converging toward the next cross).
   const justCrossed = candlesSinceCross !== null && candlesSinceCross >= 1 && candlesSinceCross <= recentWithin;
 
-  const converging = convergencePips > 0;
+  const buildRow = (direction: 'buy' | 'sell'): ScannerRow => {
+    // This pair's real situation belongs to one direction; the other side is NA.
+    let state: ScannerState = 'na';
+    let etaCandles: number | null = null;
 
-  let state: ScannerState;
-  let direction: 'buy' | 'sell';
-  let etaCandles: number | null = null;
+    if (justCrossed && lastSetup && lastSetup.direction === direction) {
+      state = 'crossed';
+    } else if (converging && approachingSide === direction) {
+      state = 'imminent';
+      etaCandles = Math.abs(gapPips) / convergencePips;
+    }
+    const etaMs = etaCandles !== null ? Math.round(etaCandles * tfMs) : null;
 
-  if (justCrossed && lastSetup) {
-    // Recently crossed: side of the cross just made.
-    state = 'crossed';
-    direction = lastSetup.direction;
-  } else if (converging) {
-    // Approaching a cross: fast below slow -> buy, above -> sell.
-    state = 'imminent';
-    direction = gapPips < 0 ? 'buy' : 'sell';
-    etaCandles = Math.abs(gapPips) / convergencePips;
-  } else {
-    // Neither: keep the symbol visible in its current-side panel with no
-    // immediacy info. Side = where the fast EMA currently sits vs the slow.
-    state = 'na';
-    direction = gapPips > 0 ? 'buy' : 'sell';
-  }
-  const etaMs = etaCandles !== null ? Math.round(etaCandles * tfMs) : null;
+    const lastCrosses: ScannerCross[] = setups
+      .filter(s => s.direction === direction)
+      .slice(-LAST_CROSSES)
+      .reverse()
+      .map(s => ({
+        direction: s.direction,
+        time: s.activationTime.toISOString(),
+        mfePips: s.mfePrice !== null
+          ? (s.direction === 'buy' ? (s.mfePrice - s.activationPrice) : (s.activationPrice - s.mfePrice)) / pip
+          : null,
+        maePips: s.maePrice !== null
+          ? (s.direction === 'buy' ? (s.maePrice - s.activationPrice) : (s.activationPrice - s.maePrice)) / pip
+          : null,
+      }));
 
-  // Show past crosses matching this row's direction.
-  const lastCrosses: ScannerCross[] = setups
-    .filter(s => s.direction === direction)
-    .slice(-LAST_CROSSES)
-    .reverse()
-    .map(s => ({
-      direction: s.direction,
-      time: s.activationTime.toISOString(),
-      mfePips: s.mfePrice !== null
-        ? (s.direction === 'buy' ? (s.mfePrice - s.activationPrice) : (s.activationPrice - s.mfePrice)) / pip
-        : null,
-      maePips: s.maePrice !== null
-        ? (s.direction === 'buy' ? (s.maePrice - s.activationPrice) : (s.activationPrice - s.maePrice)) / pip
-        : null,
-    }));
-
-  return {
-    symbol, direction, state, gapPips, convergencePips,
-    etaCandles, etaMs, candlesSinceCross: state === 'crossed' ? candlesSinceCross : null,
-    activationClose: state === 'crossed' && lastSetup ? lastSetup.activationPrice : null,
-    pipSize: pip,
-    lastCrosses,
+    return {
+      symbol, direction, state,
+      gapPips, convergencePips, etaCandles, etaMs,
+      candlesSinceCross: state === 'crossed' ? candlesSinceCross : null,
+      activationClose: state === 'crossed' && lastSetup ? lastSetup.activationPrice : null,
+      pipSize: pip,
+      lastCrosses,
+    };
   };
+
+  return [buildRow('buy'), buildRow('sell')];
 }
 
 export async function runScanner(
@@ -141,8 +134,8 @@ export async function runScanner(
 
   const rows: ScannerRow[] = [];
   for (const { symbol } of symbolRows) {
-    const row = await evaluateSymbol(broker, symbol, timeframe, emaFast, emaSlow, recentWithin);
-    if (row) rows.push(row);
+    const pair = await evaluateSymbolBothSides(broker, symbol, timeframe, emaFast, emaSlow, recentWithin);
+    rows.push(...pair);
   }
 
   // Order: imminent first (soonest ETA), then crossed (freshest), then na.

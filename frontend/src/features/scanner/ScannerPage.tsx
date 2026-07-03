@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { subscribe } from '../../lib/ws';
-import { useScanner, type ScannerRow } from '../../lib/useScanner';
+import { useScanner, type ScannerRow, type ScannerCross } from '../../lib/useScanner';
 import styles from './ScannerPage.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
@@ -57,15 +57,6 @@ function rrClass(mfe: number | null, mae: number | null): string {
   return styles.rrHigh;
 }
 
-function avgCrosses(row: ScannerRow): { mfe: number | null; mae: number | null } {
-  const mfes = row.lastCrosses.map(c => c.mfePips).filter((v): v is number => v !== null);
-  const maes = row.lastCrosses.map(c => c.maePips).filter((v): v is number => v !== null);
-  return {
-    mfe: mfes.length ? mfes.reduce((a, b) => a + b, 0) / mfes.length : null,
-    mae: maes.length ? maes.reduce((a, b) => a + b, 0) / maes.length : null,
-  };
-}
-
 function liveDistancePips(row: ScannerRow, bid: number | undefined): number | null {
   if (row.state !== 'crossed' || row.activationClose === null || bid === undefined) return null;
   // Signed by direction: + means price moved in favour of the cross side.
@@ -73,9 +64,38 @@ function liveDistancePips(row: ScannerRow, bid: number | undefined): number | nu
   return row.direction === 'buy' ? raw : -raw;
 }
 
+interface CrossTip {
+  x: number;
+  y: number;
+  symbol: string;
+  cross: ScannerCross;
+}
+
+// Diameter scaled by |MFE| within a fixed range, so bigger MFE = bigger circle.
+function circleSize(mfe: number | null): number {
+  const v = mfe === null ? 0 : Math.abs(mfe);
+  const min = 22, max = 42;
+  const scaled = Math.min(1, v / 250); // ~250p saturates to max size
+  return Math.round(min + (max - min) * scaled);
+}
+
+function fmtCrossTime(iso: string): string {
+  return iso.slice(0, 16).replace('T', ' ');
+}
+
 function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; rows: ScannerRow[]; accent: string; onOpen: (symbol: string) => void; bids: Record<string, number> }) {
+  const [tip, setTip] = useState<CrossTip | null>(null);
   return (
     <div className={styles.panel}>
+      {tip && (
+        <div className={styles.crossTip} style={{ left: tip.x + 14, top: tip.y + 14 }}>
+          <div className={styles.crossTipSym}>{tip.symbol}</div>
+          <div className={styles.crossTipRow}><span>MFE</span><span className={styles.crossMfe}>{fmtPips(tip.cross.mfePips)}p</span></div>
+          <div className={styles.crossTipRow}><span>MAE</span><span className={styles.crossMae}>{fmtPips(tip.cross.maePips)}p</span></div>
+          <div className={styles.crossTipRow}><span>RR</span><span className={rrClass(tip.cross.mfePips, tip.cross.maePips)}>{fmtRR(tip.cross.mfePips, tip.cross.maePips)}</span></div>
+          <div className={styles.crossTipRow}><span>Date</span><span>{fmtCrossTime(tip.cross.time)}</span></div>
+        </div>
+      )}
       <div className={styles.panelHeader} style={{ color: accent }}>
         {title} <span className={styles.count}>{rows.length}</span>
       </div>
@@ -90,13 +110,12 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
               <th>Candles</th>
               <th>Time</th>
               <th>Dist</th>
-              <th>Last {5} crosses — MFE / MAE (pips)</th>
-              <th>Avg</th>
+              <th>Last crosses — MFE (pips), size by pips, colour by RR</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={9} className={styles.empty}>No symbols</td></tr>
+              <tr><td colSpan={8} className={styles.empty}>No symbols</td></tr>
             )}
             {rows.map(r => (
               <tr key={r.symbol} className={styles.row} onDoubleClick={() => onOpen(r.symbol)} title="Double-click to open in chart">
@@ -122,29 +141,22 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
                     <span className={styles.muted}>—</span>
                   ) : (
                     <div className={styles.crosses}>
-                      {r.lastCrosses.map((c, i) => (
-                        <div key={i} className={styles.cross}>
-                          <span className={styles.crossMfe}>{fmtPips(c.mfePips)}</span>
-                          <span className={styles.crossMae}>{fmtPips(c.maePips)}</span>
-                          <span className={`${styles.crossRr} ${rrClass(c.mfePips, c.maePips)}`}>{fmtRR(c.mfePips, c.maePips)}</span>
-                        </div>
-                      ))}
+                      {r.lastCrosses.map((c, i) => {
+                        const size = circleSize(c.mfePips);
+                        return (
+                          <div
+                            key={i}
+                            className={`${styles.crossCircle} ${rrClass(c.mfePips, c.maePips)}`}
+                            style={{ width: size, height: size }}
+                            onMouseMove={(e) => setTip({ x: e.clientX, y: e.clientY, symbol: r.symbol, cross: c })}
+                            onMouseLeave={() => setTip(null)}
+                          >
+                            {c.mfePips !== null ? Math.round(c.mfePips) : '—'}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
-                </td>
-                <td>
-                  {r.lastCrosses.length === 0 ? (
-                    <span className={styles.muted}>—</span>
-                  ) : (() => {
-                    const avg = avgCrosses(r);
-                    return (
-                      <div className={styles.avgCross}>
-                        <span className={styles.crossMfe}>{fmtPips(avg.mfe)}</span>
-                        <span className={styles.crossMae}>{fmtPips(avg.mae)}</span>
-                        <span className={`${styles.crossRr} ${rrClass(avg.mfe, avg.mae)}`}>{fmtRR(avg.mfe, avg.mae)}</span>
-                      </div>
-                    );
-                  })()}
                 </td>
               </tr>
             ))}

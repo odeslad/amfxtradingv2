@@ -143,6 +143,7 @@
 .crosses {
   display: flex;
   gap: 8px;
+  align-items: center;
 }
 
 .cross {
@@ -174,6 +175,55 @@
 .rrMid { color: var(--orange); }
 .rrHigh { color: var(--green); }
 .rrMuted { color: var(--muted); }
+
+.crossCircle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--text);
+  cursor: default;
+  flex-shrink: 0;
+  border: 1px solid;
+}
+
+/* Circle background/border tinted by RR (the rrLow/Mid/High set the color). */
+.crossCircle.rrLow { background: rgba(224, 92, 92, 0.25); border-color: var(--red); color: var(--text); }
+.crossCircle.rrMid { background: rgba(245, 166, 35, 0.25); border-color: var(--orange); color: var(--text); }
+.crossCircle.rrHigh { background: rgba(76, 175, 132, 0.25); border-color: var(--green); color: var(--text); }
+.crossCircle.rrMuted { background: rgba(255, 255, 255, 0.06); border-color: var(--border-bright); color: var(--muted); }
+
+.crossTip {
+  position: fixed;
+  z-index: 50;
+  pointer-events: none;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  min-width: 130px;
+}
+
+.crossTipSym {
+  font-family: var(--font-sans);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text);
+  margin-bottom: 4px;
+}
+
+.crossTipRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  color: var(--muted);
+}
+
+.crossTipRow span:last-child {
+  color: var(--text);
+}
 
 .avgCross {
   display: flex;

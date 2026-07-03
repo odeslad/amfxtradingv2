@@ -41,7 +41,7 @@ export interface ScannerResult {
 }
 
 const MAX_CANDLES = 2000;
-const LAST_CROSSES = 5;
+const LAST_CROSSES = 10;
 
 // Returns one row per direction (buy and sell) for a symbol, so every pair is
 // visible in both panels: the Buys row carries its bullish situation/crosses,

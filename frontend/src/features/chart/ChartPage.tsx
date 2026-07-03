@@ -17,6 +17,7 @@ import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
+import { ClosePositionPanel } from '../journal/ClosePositionPanel';
 import { NewTradePanel } from '../journal/NewTradePanel';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
@@ -88,6 +89,7 @@ export function ChartPage() {
   const [positionsVisible, setPositionsVisible] = useState(false);
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
+  const [closePosition, setClosePosition] = useState<Position | null>(null);
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
@@ -390,6 +392,11 @@ export function ChartPage() {
     if (pos) setEditPosition(pos);
   }, [positions]);
 
+  const handleClosePosition = useCallback((ticket: number) => {
+    const pos = positions.find(p => p.ticket === ticket);
+    if (pos) setClosePosition(pos);
+  }, [positions]);
+
   const handleModifyPosition = useCallback((ticket: number, sl: number, tp: number) => {
     const pos = positions.find(p => p.ticket === ticket);
     if (!pos) return;
@@ -470,18 +477,24 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsVisible} onNewTrade={() => setNewTradeOpen(true)} />
+              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsVisible} onNewTrade={() => setNewTradeOpen(true)} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>
-      <NewTradePanel open={newTradeOpen} onClose={() => setNewTradeOpen(false)} />
+      <NewTradePanel open={newTradeOpen} onClose={() => setNewTradeOpen(false)} initialBroker={broker} initialSymbol={symbol} initialTimeframe={timeframe} />
 
       <BulkEditPanel
         open={!!editPosition}
         positions={editPosition ? [editPosition] : []}
         onClose={() => setEditPosition(null)}
+      />
+
+      <ClosePositionPanel
+        open={!!closePosition}
+        position={closePosition}
+        onClose={() => setClosePosition(null)}
       />
     </div>
   );

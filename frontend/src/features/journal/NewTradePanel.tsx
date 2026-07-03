@@ -8,6 +8,10 @@ import styles from './NewTradePanel.module.css';
 interface NewTradePanelProps {
   open: boolean;
   onClose: () => void;
+  // Preselect broker/symbol/timeframe when opened from the chart.
+  initialBroker?: string;
+  initialSymbol?: string;
+  initialTimeframe?: string;
 }
 
 interface MirrorBroker {
@@ -18,14 +22,24 @@ interface MirrorBroker {
 }
 
 const ACTION_OPTIONS = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop'];
+const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
+const DEFAULT_EMA_FAST = 24;
+const DEFAULT_EMA_SLOW = 48;
+const LEVEL_KEYS = ['ECC', 'EMA', 'EVL', 'MHL'] as const;
 
 type Mode = 'manual' | 'mirror';
+
+interface SetupLevels {
+  direction: 'buy' | 'sell';
+  levels: { ECC: number; EMA: number; EVL: number | null; MHL: number | null };
+  pipSize: number;
+}
 
 function generateId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
-export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
+export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
   const [mode, setMode] = useState<Mode>('manual');
   const [mirrorBrokers, setMirrorBrokers] = useState<MirrorBroker[]>([]);
   const [brokers, setBrokers] = useState<string[]>([]);
@@ -39,6 +53,9 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
   const [tp, setTp] = useState('');
   const [symbols, setSymbols] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [timeframe, setTimeframe] = useState('H1');
+  const [setup, setSetup] = useState<SetupLevels | null>(null);
+  const [bid, setBid] = useState<number | null>(null);
   const pendingIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -69,6 +86,13 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
     }).catch(() => {});
   }, [open]);
 
+  // Preselect broker/symbol/timeframe from the chart when the panel opens.
+  useEffect(() => {
+    if (!open) return;
+    if (initialBroker) setBroker(initialBroker);
+    if (initialTimeframe) setTimeframe(initialTimeframe);
+  }, [open, initialBroker, initialTimeframe]);
+
   const activeMirrorBrokers = mirrorBrokers.filter(m => m.enabled);
 
   // Load symbols when broker changes (manual) or when mirror brokers change
@@ -77,7 +101,15 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       if (!broker) { setSymbols([]); setSymbol(''); return; }
       fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
         .then(r => r.json() as Promise<string[]>)
-        .then(list => { setSymbols(list); setSymbol(''); })
+        .then(list => {
+          setSymbols(list);
+          // Keep the current symbol if still available, else use the chart's.
+          setSymbol(prev => {
+            if (prev && list.includes(prev)) return prev;
+            if (initialSymbol && list.includes(initialSymbol)) return initialSymbol;
+            return '';
+          });
+        })
         .catch(() => {});
     } else {
       if (activeMirrorBrokers.length === 0) { setSymbols([]); return; }
@@ -97,6 +129,32 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
   const mirrorDisabled = activeMirrorBrokers.length === 0;
   const isPending = ['buylimit', 'selllimit', 'buystop', 'sellstop'].includes(action);
 
+  // Fetch the current setup levels for the chosen broker/symbol/timeframe.
+  useEffect(() => {
+    if (!open || mode !== 'manual' || !broker || !symbol) { setSetup(null); return; }
+    let cancelled = false;
+    const url = apiUrl(
+      `/setup-levels?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}` +
+      `&tf=${timeframe}&emaFast=${DEFAULT_EMA_FAST}&emaSlow=${DEFAULT_EMA_SLOW}`,
+    );
+    fetch(url, { credentials: 'include' })
+      .then(r => r.json() as Promise<{ setup: SetupLevels | null }>)
+      .then(data => { if (!cancelled) setSetup(data.setup); })
+      .catch(() => { if (!cancelled) setSetup(null); });
+    return () => { cancelled = true; };
+  }, [open, mode, broker, symbol, timeframe]);
+
+  // Live bid for the chosen broker/symbol, to show distances to the levels.
+  useEffect(() => {
+    if (!open || !broker || !symbol) { setBid(null); return; }
+    return subscribe((data) => {
+      const m = data as { type?: string; broker?: string; ticks?: { symbol: string; bid: number }[] };
+      if (m.type !== 'ticks' || m.broker !== broker || !m.ticks) return;
+      const t = m.ticks.findLast(x => x.symbol === symbol);
+      if (t) setBid(t.bid);
+    });
+  }, [open, broker, symbol]);
+
   const resetFeedback = () => {};
 
   useEffect(() => {
@@ -110,6 +168,8 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
       setPrice('');
       setSl('');
       setTp('');
+      setSetup(null);
+      setBid(null);
       setSubmitting(false);
       pendingIds.current.clear();
     }
@@ -265,6 +325,45 @@ export function NewTradePanel({ open, onClose }: NewTradePanelProps) {
               {symbols.map(s => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
+
+          {mode === 'manual' && broker && symbol && (
+            <div className={styles.field}>
+              <label className={styles.label}>Setup timeframe</label>
+              <select className={styles.input} value={timeframe} onChange={e => setTimeframe(e.target.value)}>
+                {TIMEFRAMES.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+          )}
+
+          {mode === 'manual' && broker && symbol && (
+            <div className={styles.levels}>
+              <div className={styles.levelsHeader}>
+                <span>Setup levels</span>
+                <span className={styles.levelsQuote}>{bid !== null ? bid.toFixed(5) : '—'}</span>
+              </div>
+              {!setup ? (
+                <div className={styles.levelsEmpty}>No current setup</div>
+              ) : (
+                <table className={styles.levelsTable}>
+                  <tbody>
+                    {LEVEL_KEYS.map(key => {
+                      const val = setup.levels[key];
+                      const dist = val !== null && bid !== null ? (bid - val) / setup.pipSize : null;
+                      return (
+                        <tr key={key} className={styles.levelRow} onClick={() => val !== null && setSl(val.toFixed(5))} title="Click to set SL to this level">
+                          <td className={styles.levelName}>{key}</td>
+                          <td className={styles.levelPrice}>{val !== null ? val.toFixed(5) : '—'}</td>
+                          <td className={dist === null ? styles.levelDistMuted : dist >= 0 ? styles.levelDistPos : styles.levelDistNeg}>
+                            {dist !== null ? `${dist > 0 ? '+' : ''}${dist.toFixed(1)}p` : '—'}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
+            </div>
+          )}
 
           {mode === 'manual' && (
             <div className={styles.row}>

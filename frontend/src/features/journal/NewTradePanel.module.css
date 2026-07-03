@@ -160,6 +160,74 @@
   color: var(--muted);
 }
 
+.levels {
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.levelsHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.levelsQuote {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--orange);
+}
+
+.levelsEmpty {
+  padding: 10px;
+  text-align: center;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+}
+
+.levelsTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: var(--text-base);
+}
+
+.levelRow {
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.levelRow:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.levelRow td {
+  padding: 5px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.levelRow:last-child td {
+  border-bottom: none;
+}
+
+.levelName {
+  color: var(--muted);
+}
+
+.levelPrice {
+  color: var(--text);
+}
+
+.levelDistPos { color: var(--green); text-align: right; }
+.levelDistNeg { color: var(--red); text-align: right; }
+.levelDistMuted { color: var(--muted); text-align: right; }
+
 .input {
   height: 34px;
   padding: 0 10px;

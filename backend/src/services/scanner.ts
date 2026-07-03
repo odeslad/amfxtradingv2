@@ -11,7 +11,7 @@ export interface ScannerCross {
   maePips: number | null;
 }
 
-export type ScannerState = 'imminent' | 'crossed';
+export type ScannerState = 'imminent' | 'crossed' | 'na';
 
 export interface ScannerRow {
   symbol: string;
@@ -81,18 +81,26 @@ async function evaluateSymbol(
   // candles. Otherwise the symbol is imminent (converging toward the next cross).
   const justCrossed = candlesSinceCross !== null && candlesSinceCross >= 1 && candlesSinceCross <= recentWithin;
 
+  const converging = convergencePips > 0;
+
   let state: ScannerState;
   let direction: 'buy' | 'sell';
   let etaCandles: number | null = null;
 
   if (justCrossed && lastSetup) {
+    // Recently crossed: side of the cross just made.
     state = 'crossed';
-    direction = lastSetup.direction; // the side of the cross just made
-  } else {
+    direction = lastSetup.direction;
+  } else if (converging) {
+    // Approaching a cross: fast below slow -> buy, above -> sell.
     state = 'imminent';
-    // Approaching side: fast below slow -> buy, above -> sell.
     direction = gapPips < 0 ? 'buy' : 'sell';
-    etaCandles = convergencePips > 0 ? Math.abs(gapPips) / convergencePips : null;
+    etaCandles = Math.abs(gapPips) / convergencePips;
+  } else {
+    // Neither: keep the symbol visible in its current-side panel with no
+    // immediacy info. Side = where the fast EMA currently sits vs the slow.
+    state = 'na';
+    direction = gapPips > 0 ? 'buy' : 'sell';
   }
   const etaMs = etaCandles !== null ? Math.round(etaCandles * tfMs) : null;
 
@@ -137,11 +145,13 @@ export async function runScanner(
     if (row) rows.push(row);
   }
 
-  // Order: imminent first (soonest ETA on top), then crossed (freshest first).
+  // Order: imminent first (soonest ETA), then crossed (freshest), then na.
+  const stateOrder: Record<ScannerState, number> = { imminent: 0, crossed: 1, na: 2 };
   const rank = (a: ScannerRow, b: ScannerRow) => {
-    if (a.state !== b.state) return a.state === 'imminent' ? -1 : 1;
+    if (a.state !== b.state) return stateOrder[a.state] - stateOrder[b.state];
     if (a.state === 'imminent') return (a.etaCandles ?? Infinity) - (b.etaCandles ?? Infinity);
-    return (a.candlesSinceCross ?? Infinity) - (b.candlesSinceCross ?? Infinity);
+    if (a.state === 'crossed') return (a.candlesSinceCross ?? Infinity) - (b.candlesSinceCross ?? Infinity);
+    return a.symbol.localeCompare(b.symbol); // na: alphabetical
   };
 
   const buys = rows.filter(r => r.direction === 'buy').sort(rank);

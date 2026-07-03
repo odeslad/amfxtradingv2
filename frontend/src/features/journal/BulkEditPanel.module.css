@@ -136,6 +136,23 @@
 .submitBtn:hover { opacity: 0.85; }
 .submitBtn:disabled { opacity: 0.4; cursor: not-allowed; }
 
+.dangerBtn {
+  height: 48px;
+  border: none;
+  background: var(--red);
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: var(--text-md);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  margin-top: 4px;
+  transition: opacity 0.12s ease;
+}
+
+.dangerBtn:hover { opacity: 0.85; }
+.dangerBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
 @media (max-width: 768px) {
   .panel {
     width: 100%;

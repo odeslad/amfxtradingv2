@@ -231,6 +231,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onDrawDone?: () => void;
   positions?: Position[];
   onEditPosition?: (ticket: number) => void;
+  onClosePosition?: (ticket: number) => void;
   onModifyPosition?: (ticket: number, sl: number, tp: number) => void;
   initialDrawings?: PersistedDrawing[] | null;
   onDrawingsChange?: (items: PersistedDrawing[]) => void;
@@ -242,7 +243,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, backtestOverlay, focusRange, candlesKind, emaData, onLoadNewer, hasNewer, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, backtestOverlay, focusRange, candlesKind, emaData, onLoadNewer, hasNewer, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -1545,6 +1546,17 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           title="Double-click to edit"
         >
           {l.text}
+          {l.id.endsWith('-entry') && (
+            <button
+              type="button"
+              className={styles.positionCloseBtn}
+              onClick={(e) => { e.stopPropagation(); onClosePosition?.(l.ticket); }}
+              onDoubleClick={(e) => e.stopPropagation()}
+              title="Close position"
+            >
+              ✕
+            </button>
+          )}
         </div>
       ))}
       {(showNewTrade || hasSelection || hasDrawings) && (

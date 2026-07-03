@@ -52,6 +52,12 @@ export function JournalPage() {
     setBulk(null);
   };
 
+  const handleSelectBroker = (broker: string) => {
+    setFilters(f => ({ ...f, broker }));
+    setTab('open');
+    setBulk(null);
+  };
+
   const handleBulkChange = useCallback((group: BulkGroup | null) => {
     setBulk(group);
   }, []);
@@ -175,7 +181,7 @@ export function JournalPage() {
 
       <div className={styles.tabContent}>
         <div className={tab === 'accounts' ? styles.tabPanel : styles.tabPanelHidden}>
-          <Accounts />
+          <Accounts onSelectBroker={handleSelectBroker} />
         </div>
         <div className={tab === 'open' ? styles.tabPanel : styles.tabPanelHidden}>
           <OpenPositions

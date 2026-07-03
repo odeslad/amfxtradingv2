@@ -18,19 +18,38 @@ function fmtDuration(ms: number): string {
   return remH ? `${d}d ${remH}h` : `${d}d`;
 }
 
-function fmtWhen(row: ScannerRow): string {
+function fmtCandles(row: ScannerRow): string {
+  if (row.state === 'na') return '—';
   if (row.state === 'crossed') {
-    return row.candlesSinceCross !== null ? `${row.candlesSinceCross}c ago` : 'crossed';
+    return row.candlesSinceCross !== null ? `${row.candlesSinceCross}c ago` : '—';
   }
   if (row.etaCandles === null) return '—';
-  const candles = row.etaCandles < 1 ? '<1c' : `${Math.round(row.etaCandles)}c`;
-  const time = row.etaMs !== null ? ` · ${fmtDuration(row.etaMs)}` : '';
-  return `${candles}${time}`;
+  return row.etaCandles < 1 ? '<1c' : `${Math.round(row.etaCandles)}c`;
+}
+
+function fmtTime(row: ScannerRow): string {
+  if (row.state !== 'imminent') return '—';
+  return row.etaMs !== null ? fmtDuration(row.etaMs) : '—';
 }
 
 function fmtPips(n: number | null): string {
   if (n === null) return '—';
   return (n > 0 ? '+' : '') + n.toFixed(1);
+}
+
+// Risk/reward of a cross: how far it ran in favour (MFE) vs against (MAE).
+function fmtRR(mfe: number | null, mae: number | null): string {
+  if (mfe === null || mae === null || mae === 0) return '—';
+  return `${(mfe / Math.abs(mae)).toFixed(1)}R`;
+}
+
+function avgCrosses(row: ScannerRow): { mfe: number | null; mae: number | null } {
+  const mfes = row.lastCrosses.map(c => c.mfePips).filter((v): v is number => v !== null);
+  const maes = row.lastCrosses.map(c => c.maePips).filter((v): v is number => v !== null);
+  return {
+    mfe: mfes.length ? mfes.reduce((a, b) => a + b, 0) / mfes.length : null,
+    mae: maes.length ? maes.reduce((a, b) => a + b, 0) / maes.length : null,
+  };
 }
 
 function liveDistancePips(row: ScannerRow, bid: number | undefined): number | null {
@@ -52,26 +71,29 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
               <th>State</th>
               <th>Gap</th>
               <th>Conv/c</th>
-              <th>When</th>
+              <th>Candles</th>
+              <th>Time</th>
               <th>Dist</th>
               <th>Last {5} crosses — MFE / MAE (pips)</th>
+              <th>Avg</th>
             </tr>
           </thead>
           <tbody>
             {rows.length === 0 && (
-              <tr><td colSpan={7} className={styles.empty}>No symbols</td></tr>
+              <tr><td colSpan={9} className={styles.empty}>No symbols</td></tr>
             )}
             {rows.map(r => (
               <tr key={r.symbol} className={styles.row} onDoubleClick={() => onOpen(r.symbol)} title="Double-click to open in chart">
                 <td className={styles.symbol}>{r.symbol}</td>
                 <td>
-                  <span className={r.state === 'imminent' ? styles.badgeImminent : styles.badgeCrossed}>
-                    {r.state === 'imminent' ? 'IMMINENT' : 'CROSSED'}
+                  <span className={r.state === 'imminent' ? styles.badgeImminent : r.state === 'crossed' ? styles.badgeCrossed : styles.badgeNa}>
+                    {r.state === 'imminent' ? 'IMMINENT' : r.state === 'crossed' ? 'CROSSED' : 'NA'}
                   </span>
                 </td>
-                <td className={styles.mono}>{Math.abs(r.gapPips).toFixed(1)}p</td>
-                <td className={styles.mono}>{r.convergencePips.toFixed(2)}</td>
-                <td className={styles.mono}>{fmtWhen(r)}</td>
+                <td className={styles.mono}>{r.state === 'na' ? <span className={styles.muted}>—</span> : `${Math.abs(r.gapPips).toFixed(1)}p`}</td>
+                <td className={styles.mono}>{r.state === 'na' ? <span className={styles.muted}>—</span> : r.convergencePips.toFixed(2)}</td>
+                <td className={styles.mono}>{fmtCandles(r)}</td>
+                <td className={styles.mono}>{fmtTime(r)}</td>
                 <td className={styles.mono}>
                   {(() => {
                     const d = liveDistancePips(r, bids[r.symbol]);
@@ -88,10 +110,25 @@ function SituationTable({ title, rows, accent, onOpen, bids }: { title: string; 
                         <div key={i} className={styles.cross}>
                           <span className={styles.crossMfe}>{fmtPips(c.mfePips)}</span>
                           <span className={styles.crossMae}>{fmtPips(c.maePips)}</span>
+                          <span className={styles.crossRr}>{fmtRR(c.mfePips, c.maePips)}</span>
                         </div>
                       ))}
                     </div>
                   )}
+                </td>
+                <td>
+                  {r.lastCrosses.length === 0 ? (
+                    <span className={styles.muted}>—</span>
+                  ) : (() => {
+                    const avg = avgCrosses(r);
+                    return (
+                      <div className={styles.avgCross}>
+                        <span className={styles.crossMfe}>{fmtPips(avg.mfe)}</span>
+                        <span className={styles.crossMae}>{fmtPips(avg.mae)}</span>
+                        <span className={styles.crossRr}>{fmtRR(avg.mfe, avg.mae)}</span>
+                      </div>
+                    );
+                  })()}
                 </td>
               </tr>
             ))}

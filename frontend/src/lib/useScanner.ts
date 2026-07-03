@@ -8,7 +8,7 @@ export interface ScannerCross {
   maePips: number | null;
 }
 
-export type ScannerState = 'imminent' | 'crossed';
+export type ScannerState = 'imminent' | 'crossed' | 'na';
 
 export interface ScannerRow {
   symbol: string;

@@ -19,9 +19,10 @@ interface Balance {
 interface AccountCardProps {
   balance: Balance;
   dayPnl?: number;
+  onSelect?: () => void;
 }
 
-export function AccountCard({ balance: b, dayPnl }: AccountCardProps) {
+export function AccountCard({ balance: b, dayPnl, onSelect }: AccountCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   return (
@@ -30,6 +31,7 @@ export function AccountCard({ balance: b, dayPnl }: AccountCardProps) {
         type="button"
         className={`${accountStyles.summary} ${expanded ? accountStyles.summaryActive : ''}`}
         onClick={() => setExpanded(prev => !prev)}
+        onDoubleClick={onSelect}
         aria-expanded={expanded}
       >
         <span className={accountStyles.label}>Broker</span>

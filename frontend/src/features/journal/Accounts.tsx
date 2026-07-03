@@ -22,7 +22,11 @@ interface Balance {
 
 const DAY_PNL_POLL_MS = 5000;
 
-export function Accounts() {
+interface AccountsProps {
+  onSelectBroker?: (broker: string) => void;
+}
+
+export function Accounts({ onSelectBroker }: AccountsProps) {
   const [balances, setBalances] = useState<Balance[]>([]);
   const [dayPnl, setDayPnl] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
@@ -89,7 +93,12 @@ export function Accounts() {
           </thead>
           <tbody>
             {balances.map(b => (
-              <tr key={b.broker}>
+              <tr
+                key={b.broker}
+                className={onSelectBroker ? styles.accountRow : undefined}
+                onDoubleClick={() => onSelectBroker?.(b.broker)}
+                title={onSelectBroker ? 'Double-click to see positions' : undefined}
+              >
                 <td className={styles.broker}>{b.broker}</td>
                 <td>{b.name}</td>
                 <td>{b.number}</td>
@@ -115,7 +124,7 @@ export function Accounts() {
 
       <div className={styles.cards}>
         {balances.map(b => (
-          <AccountCard key={b.broker} balance={b} dayPnl={dayPnl[b.broker]} />
+          <AccountCard key={b.broker} balance={b} dayPnl={dayPnl[b.broker]} onSelect={onSelectBroker ? () => onSelectBroker(b.broker) : undefined} />
         ))}
       </div>
     </>

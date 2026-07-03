@@ -159,7 +159,6 @@ export function ScannerPage() {
   const [timeframe, setTimeframe] = useState('H1');
   const [emaFast, setEmaFast] = useState('24');
   const [emaSlow, setEmaSlow] = useState('48');
-  const [recentWithin, setRecentWithin] = useState('3');
   const [bids, setBids] = useState<Record<string, number>>({});
   const { result, loading, run } = useScanner();
   const navigate = useNavigate();
@@ -191,17 +190,16 @@ export function ScannerPage() {
   }, []);
 
   // Auto-scan on load and whenever a parameter changes. Debounced so editing the
-  // EMA/N numbers doesn't fire a scan on every keystroke.
+  // EMA numbers doesn't fire a scan on every keystroke.
   useEffect(() => {
     const fast = parseInt(emaFast, 10);
     const slow = parseInt(emaSlow, 10);
-    const recent = parseInt(recentWithin, 10);
     if (!broker || !Number.isInteger(fast) || !Number.isInteger(slow) || fast === slow) return;
     const id = setTimeout(() => {
-      void run({ broker, timeframe, emaFast: fast, emaSlow: slow, recentWithin: Number.isInteger(recent) ? recent : 3 });
+      void run({ broker, timeframe, emaFast: fast, emaSlow: slow });
     }, 400);
     return () => clearTimeout(id);
-  }, [broker, timeframe, emaFast, emaSlow, recentWithin, run]);
+  }, [broker, timeframe, emaFast, emaSlow, run]);
 
   return (
     <div className={styles.root}>
@@ -215,8 +213,6 @@ export function ScannerPage() {
         </select>
         <input className={styles.inputNum} type="number" step="1" value={emaFast} onChange={e => setEmaFast(e.target.value)} title="EMA fast" />
         <input className={styles.inputNum} type="number" step="1" value={emaSlow} onChange={e => setEmaSlow(e.target.value)} title="EMA slow" />
-        <input className={styles.inputNum} type="number" step="1" value={recentWithin} onChange={e => setRecentWithin(e.target.value)} title="Crossed within N candles" />
-        <span className={styles.hint}>crossed ≤ N</span>
         {loading && <span className={styles.scanning}>Scanning…</span>}
       </div>
 

@@ -128,6 +128,15 @@ export function IconRect({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconRuler({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="1.2" y="9.6" width="13" height="4.6" transform="rotate(-33 1.2 9.6)" stroke={color} strokeWidth="1.2" fill="none" />
+      <path d="M4.8 7.9l.9 1.4M7.2 6.3l.9 1.4M9.6 4.8l.9 1.4" stroke={color} strokeWidth="1" />
+    </svg>
+  );
+}
+
 export function IconMarkerUp({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

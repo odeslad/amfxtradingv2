@@ -13,7 +13,7 @@ import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type D
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
 import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
 
-export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell';
+export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler';
 
 function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection } {
   if (mode === 'rect') return { kind: 'rect', direction: 'buy' };
@@ -365,7 +365,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
 
   useEffect(() => {
-    if (drawMode) {
+    if (drawMode === 'ruler') {
+      trendlineManagerRef.current?.startRuler(() => onDrawDoneRef.current?.());
+    } else if (drawMode) {
       const { kind, direction } = drawModeToKind(drawMode);
       trendlineManagerRef.current?.startDrawing(kind, () => onDrawDoneRef.current?.(), direction);
     } else {
@@ -1189,6 +1191,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     seriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
     });
+    // pip = 10 × minMove (EURUSD 0.0001, USDJPY 0.01, XAUUSD 0.1)
+    trendlineManagerRef.current?.setPipSize(Math.pow(10, -(precision - 1)));
 
     const filteredNew = filterWeekend(candles);
     const seen = new Set<number>();

@@ -111,6 +111,13 @@ export class DrawingManager {
   private lastTapTime = 0;
   private lastTapPos: Point | null = null;
 
+  // Ephemeral pip ruler: two clicks measure, any later click clears it.
+  private pipSize = 0.0001;
+  private isRulerMode = false;
+  private rulerStart: Logical | null = null;
+  private rulerEnd: Logical | null = null;
+  private rulerFixed = false;
+
   private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed', width: 1 };
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
@@ -163,11 +170,11 @@ export class DrawingManager {
   // RAF loop — only active when there are drawings to repaint on price rescale.
   private scheduleRaf() {
     cancelAnimationFrame(this.rafId);
-    if (this.drawings.length === 0) return;
+    if (this.drawings.length === 0 && !this.rulerStart) return;
     const anchorPrice = () => {
       const d = this.drawings[0];
-      if (!d) return 0;
-      return d.kind === 'marker' ? d.price : d.price1;
+      if (d) return d.kind === 'marker' ? d.price : d.price1;
+      return this.rulerStart?.price ?? 0;
     };
     const safeCoord = () => {
       try { return this.series.priceToCoordinate(anchorPrice()) ?? 0; }
@@ -311,6 +318,26 @@ export class DrawingManager {
       return false;
     }
 
+    // 0) ruler
+    if (this.rulerFixed) this.clearRuler();
+    if (this.isRulerMode) {
+      const logical = this.pixelToLogical(pos);
+      if (!logical) return true;
+      if (!this.rulerStart) {
+        this.rulerStart = logical;
+        this.rulerEnd = logical;
+        this.scheduleRaf();
+      } else {
+        this.rulerEnd = logical;
+        this.rulerFixed = true;
+        this.isRulerMode = false;
+        this.canvas.style.cursor = '';
+        this.onDone?.();
+      }
+      this.redraw();
+      return true;
+    }
+
     // 1) drawing mode
     if (this.isDrawing && this.drawKind) {
       const logical = this.pixelToLogical(pos);
@@ -408,6 +435,15 @@ export class DrawingManager {
     const pos = this.clampToPane(this.toCanvas(clientX, clientY));
     this.cursorPixel = pos;
 
+    if (this.isRulerMode && this.rulerStart && !this.rulerFixed) {
+      const logical = this.pixelToLogical(pos);
+      if (logical) {
+        this.rulerEnd = logical;
+        this.redraw();
+      }
+      return false;
+    }
+
     if (this.isDrawing) {
       if (this.drawStart) this.redraw();
       return false;
@@ -497,7 +533,7 @@ export class DrawingManager {
   }
 
   private onMouseMove(e: MouseEvent) {
-    if (!this.isDrawing && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
+    if (!this.isDrawing && !this.isRulerMode && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
       const hit = this.hitTest(this.toCanvas(e.clientX, e.clientY), false);
       this.canvas.style.cursor = hit ? 'pointer' : '';
     }
@@ -538,10 +574,10 @@ export class DrawingManager {
 
   private onTouchMove(e: TouchEvent) {
     if (e.touches.length !== 1) return;
-    if (!this.isDrawing && !this.dragHandle) return;
+    if (!this.isDrawing && !this.isRulerMode && !this.dragHandle) return;
     const t = e.touches[0];
     const consumed = this.handleMove(t.clientX, t.clientY, false);
-    if (consumed || this.isDrawing) {
+    if (consumed || this.isDrawing || this.isRulerMode) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -552,6 +588,13 @@ export class DrawingManager {
   private onKeyDown(e: KeyboardEvent) {
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
       this.deleteSelected();
+    }
+    if (e.key === 'Escape' && (this.isRulerMode || this.rulerStart)) {
+      const wasMeasuring = this.isRulerMode;
+      this.isRulerMode = false;
+      this.canvas.style.cursor = '';
+      this.clearRuler();
+      if (wasMeasuring) this.onDone?.();
     }
     if (e.key === 'Escape' && this.isDrawing) {
       this.drawStart = null;
@@ -600,6 +643,8 @@ export class DrawingManager {
           else this.paintLine(px, false, true);
         }
       }
+
+      if (this.rulerStart && this.rulerEnd) this.paintRuler();
 
       this.ctx.restore();
     } catch {
@@ -699,6 +744,65 @@ export class DrawingManager {
     return color;
   }
 
+  private paintRuler() {
+    if (!this.rulerStart || !this.rulerEnd) return;
+    const p1 = this.logicalToPixel(this.rulerStart);
+    const p2 = this.logicalToPixel(this.rulerEnd);
+    if (!p1 || !p2) return;
+
+    const up = this.rulerEnd.price >= this.rulerStart.price;
+    const color = up ? RECT_GREEN : RECT_RED;
+    const ctx = this.ctx;
+
+    const x = Math.min(p1.x, p2.x);
+    const y = Math.min(p1.y, p2.y);
+    const w = Math.abs(p2.x - p1.x);
+    const h = Math.abs(p2.y - p1.y);
+
+    ctx.fillStyle = this.withAlpha(color, 0.1);
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.strokeRect(x, y, w, h);
+    ctx.setLineDash([]);
+
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+
+    const dPrice = this.rulerEnd.price - this.rulerStart.price;
+    const pips = dPrice / this.pipSize;
+    const bars = Math.round(Math.abs(this.rulerEnd.logical - this.rulerStart.logical));
+    const pct = this.rulerStart.price !== 0 ? (dPrice / this.rulerStart.price) * 100 : 0;
+    const sign = (n: number) => (n >= 0 ? '+' : '');
+    const text = `${sign(pips)}${pips.toFixed(1)} pips · ${bars} bars · ${sign(pct)}${pct.toFixed(2)}%`;
+
+    ctx.font = '10px "DM Mono", monospace';
+    const pad = 6;
+    const bw = ctx.measureText(text).width + pad * 2;
+    const bh = 18;
+    const r = this.paneRect();
+    const bx = Math.min(Math.max(x + w / 2 - bw / 2, r.left + 2), r.right - bw - 2);
+    const byRaw = up ? y - bh - 6 : y + h + 6;
+    const by = Math.min(Math.max(byRaw, r.top + 2), r.bottom - bh - 2);
+
+    ctx.fillStyle = color;
+    ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#000';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, bx + pad, by + bh / 2 + 1);
+  }
+
+  private clearRuler() {
+    this.rulerStart = null;
+    this.rulerEnd = null;
+    this.rulerFixed = false;
+    this.scheduleRaf();
+    this.redraw();
+  }
+
   private paintHandle(x: number, y: number, color: string) {
     const ctx = this.ctx;
     ctx.beginPath();
@@ -727,8 +831,30 @@ export class DrawingManager {
     this.isDrawing = false;
     this.drawKind = null;
     this.drawStart = null;
+    this.isRulerMode = false;
+    // keep a completed measurement on screen; discard a half-made one
+    if (!this.rulerFixed && this.rulerStart) this.clearRuler();
     this.canvas.style.cursor = '';
     this.redraw();
+  }
+
+  startRuler(onDone?: () => void) {
+    this.isDrawing = false;
+    this.drawKind = null;
+    this.drawStart = null;
+    this.rulerStart = null;
+    this.rulerEnd = null;
+    this.rulerFixed = false;
+    this.isRulerMode = true;
+    this.onDone = onDone ?? null;
+    this.setSelected(null);
+    this.canvas.style.cursor = 'crosshair';
+    this.redraw();
+  }
+
+  setPipSize(pipSize: number) {
+    if (pipSize > 0) this.pipSize = pipSize;
+    if (this.rulerStart) this.redraw();
   }
 
   deleteSelected() {

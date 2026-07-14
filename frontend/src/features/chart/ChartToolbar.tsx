@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconMarkerUp, IconMarkerDown, IconBell } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -104,6 +104,15 @@ export function ChartToolbar({
           aria-label="Rectangle"
         >
           <IconRect size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'ruler' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('ruler')}
+          title="Pip ruler (two clicks to measure, Esc/click to clear)"
+          aria-label="Pip ruler"
+        >
+          <IconRuler size={16} />
         </button>
         <button
           type="button"

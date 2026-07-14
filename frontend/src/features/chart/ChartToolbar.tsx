@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -138,6 +138,24 @@ export function ChartToolbar({
           aria-label="Sell marker"
         >
           <IconMarkerDown size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'symbolCross' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('symbolCross')}
+          title="Cross mark"
+          aria-label="Cross mark"
+        >
+          <IconCross size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'symbolCheck' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('symbolCheck')}
+          title="Check mark"
+          aria-label="Check mark"
+        >
+          <IconCheck size={16} />
         </button>
         <button
           type="button"

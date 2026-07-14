@@ -8,18 +8,20 @@ import {
 } from 'lightweight-charts';
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
-import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection } from './DrawingTools';
+import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection, type SymbolVariant } from './DrawingTools';
 
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
 import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
 
-export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler';
+export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck';
 
-function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection } {
-  if (mode === 'rect') return { kind: 'rect', direction: 'buy' };
-  if (mode === 'markerBuy') return { kind: 'marker', direction: 'buy' };
-  if (mode === 'markerSell') return { kind: 'marker', direction: 'sell' };
-  return { kind: 'line', direction: 'buy' };
+function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection; variant: SymbolVariant } {
+  if (mode === 'rect') return { kind: 'rect', direction: 'buy', variant: 'cross' };
+  if (mode === 'markerBuy') return { kind: 'marker', direction: 'buy', variant: 'cross' };
+  if (mode === 'markerSell') return { kind: 'marker', direction: 'sell', variant: 'cross' };
+  if (mode === 'symbolCross') return { kind: 'symbol', direction: 'buy', variant: 'cross' };
+  if (mode === 'symbolCheck') return { kind: 'symbol', direction: 'buy', variant: 'check' };
+  return { kind: 'line', direction: 'buy', variant: 'cross' };
 }
 import styles from './LightweightChart.module.css';
 
@@ -368,8 +370,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (drawMode === 'ruler') {
       trendlineManagerRef.current?.startRuler(() => onDrawDoneRef.current?.());
     } else if (drawMode) {
-      const { kind, direction } = drawModeToKind(drawMode);
-      trendlineManagerRef.current?.startDrawing(kind, () => onDrawDoneRef.current?.(), direction);
+      const { kind, direction, variant } = drawModeToKind(drawMode);
+      trendlineManagerRef.current?.startDrawing(kind, () => onDrawDoneRef.current?.(), direction, variant);
     } else {
       trendlineManagerRef.current?.stopDrawing();
     }

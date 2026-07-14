@@ -1,7 +1,8 @@
 import type { IChartApi, ISeriesApi, Logical as ChartLogical } from 'lightweight-charts';
 
-export type DrawingKind = 'line' | 'rect' | 'marker';
+export type DrawingKind = 'line' | 'rect' | 'marker' | 'symbol';
 export type MarkerDirection = 'buy' | 'sell';
+export type SymbolVariant = 'cross' | 'check';
 
 // Live drawing held in logical-index space (logical = bar position in filtered array).
 interface BaseDrawing {
@@ -33,7 +34,14 @@ export interface MarkerDrawing extends BaseDrawing {
   direction: MarkerDirection;
 }
 
-type Drawing = LineDrawing | RectDrawing | MarkerDrawing;
+export interface SymbolDrawing extends BaseDrawing {
+  kind: 'symbol';
+  logical: number;
+  price: number;
+  variant: SymbolVariant;
+}
+
+type Drawing = LineDrawing | RectDrawing | MarkerDrawing | SymbolDrawing;
 
 // Persisted form: absolute time + price so drawings survive across sessions,
 // dataset changes and timeframe switches. Reconstructed to logical on load.
@@ -65,7 +73,14 @@ export interface PersistedMarker extends PersistedBase {
   direction: MarkerDirection;
 }
 
-export type PersistedDrawing = PersistedLine | PersistedRect | PersistedMarker;
+export interface PersistedSymbol extends PersistedBase {
+  kind: 'symbol';
+  time: number;
+  price: number;
+  variant: SymbolVariant;
+}
+
+export type PersistedDrawing = PersistedLine | PersistedRect | PersistedMarker | PersistedSymbol;
 
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
@@ -77,6 +92,7 @@ const MARKER_SELL_COLOR = '#e05c5c';
 const MARKER_SIZE = 11;
 const RECT_RED = '#e05c5c';
 const RECT_GREEN = '#4caf84';
+const SYMBOL_SIZE = 11;
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -101,6 +117,7 @@ export class DrawingManager {
 
   private drawKind: DrawingKind | null = null;
   private markerDirection: MarkerDirection = 'buy';
+  private symbolVariant: SymbolVariant = 'cross';
   private isDrawing = false;
   private drawStart: Logical | null = null;
   private cursorPixel: Point = { x: 0, y: 0 };
@@ -173,7 +190,7 @@ export class DrawingManager {
     if (this.drawings.length === 0 && !this.rulerStart) return;
     const anchorPrice = () => {
       const d = this.drawings[0];
-      if (d) return d.kind === 'marker' ? d.price : d.price1;
+      if (d) return d.kind === 'marker' || d.kind === 'symbol' ? d.price : d.price1;
       return this.rulerStart?.price ?? 0;
     };
     const safeCoord = () => {
@@ -266,7 +283,7 @@ export class DrawingManager {
   private hitTest(pos: Point, touch: boolean): { id: string; handle: Handle } | null {
     const r = touch ? HIT_RADIUS_TOUCH : HIT_RADIUS_MOUSE;
     for (const d of [...this.drawings].reverse()) {
-      if (d.kind === 'marker') {
+      if (d.kind === 'marker' || d.kind === 'symbol') {
         const p = this.logicalToPixel({ logical: d.logical, price: d.price });
         if (p && Math.hypot(pos.x - p.x, pos.y - p.y) < r + MARKER_SIZE / 2) {
           return { id: d.id, handle: 'point' };
@@ -343,15 +360,11 @@ export class DrawingManager {
       const logical = this.pixelToLogical(pos);
       if (!logical) return true;
 
-      // marker is a single-click placement
-      if (this.drawKind === 'marker') {
-        const m: MarkerDrawing = {
-          id: `dr-${Date.now()}`,
-          kind: 'marker',
-          logical: logical.logical,
-          price: logical.price,
-          direction: this.markerDirection,
-        };
+      // marker / symbol are single-click placements
+      if (this.drawKind === 'marker' || this.drawKind === 'symbol') {
+        const m: MarkerDrawing | SymbolDrawing = this.drawKind === 'marker'
+          ? { id: `dr-${Date.now()}`, kind: 'marker', logical: logical.logical, price: logical.price, direction: this.markerDirection }
+          : { id: `dr-${Date.now()}`, kind: 'symbol', logical: logical.logical, price: logical.price, variant: this.symbolVariant };
         this.drawings.push(m);
         this.setSelected(m.id);
         this.finishDrawing();
@@ -454,7 +467,7 @@ export class DrawingManager {
       const logical = this.pixelToLogical(pos);
       if (!d || !logical) return true;
 
-      if (d.kind === 'marker') {
+      if (d.kind === 'marker' || d.kind === 'symbol') {
         d.logical = logical.logical;
         d.price = logical.price;
       } else if (this.dragHandle === 'start') {
@@ -623,9 +636,11 @@ export class DrawingManager {
 
       for (const d of this.drawings) {
         const selected = d.id === this.selectedId;
-        if (d.kind === 'marker') {
+        if (d.kind === 'marker' || d.kind === 'symbol') {
           const p = this.logicalToPixel({ logical: d.logical, price: d.price });
-          if (p) this.paintMarker(p, d.direction);
+          if (!p) continue;
+          if (d.kind === 'marker') this.paintMarker(p, d.direction);
+          else this.paintSymbol(p, d.variant);
         } else {
           const px = this.segPixels(d);
           if (!px) continue;
@@ -744,6 +759,28 @@ export class DrawingManager {
     return color;
   }
 
+  private paintSymbol(p: Point, variant: SymbolVariant) {
+    const ctx = this.ctx;
+    const s = SYMBOL_SIZE / 2;
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (variant === 'cross') {
+      ctx.strokeStyle = RECT_RED;
+      ctx.moveTo(p.x - s, p.y - s);
+      ctx.lineTo(p.x + s, p.y + s);
+      ctx.moveTo(p.x + s, p.y - s);
+      ctx.lineTo(p.x - s, p.y + s);
+    } else {
+      ctx.strokeStyle = RECT_GREEN;
+      ctx.moveTo(p.x - s, p.y);
+      ctx.lineTo(p.x - s / 4, p.y + s * 0.8);
+      ctx.lineTo(p.x + s, p.y - s * 0.8);
+    }
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
   private paintRuler() {
     if (!this.rulerStart || !this.rulerEnd) return;
     const p1 = this.logicalToPixel(this.rulerStart);
@@ -816,10 +853,11 @@ export class DrawingManager {
 
   // ─── public API ───────────────────────────────────────────────────────────
 
-  startDrawing(kind: DrawingKind, onDone?: () => void, markerDirection: MarkerDirection = 'buy') {
+  startDrawing(kind: DrawingKind, onDone?: () => void, markerDirection: MarkerDirection = 'buy', symbolVariant: SymbolVariant = 'cross') {
     this.isDrawing = true;
     this.drawKind = kind;
     this.markerDirection = markerDirection;
+    this.symbolVariant = symbolVariant;
     this.drawStart = null;
     this.onDone = onDone ?? null;
     this.setSelected(null);
@@ -962,6 +1000,11 @@ export class DrawingManager {
       if (time === null) return null;
       return { kind: 'marker', time, price: d.price, direction: d.direction };
     }
+    if (d.kind === 'symbol') {
+      const time = this.logicalToTime(d.logical);
+      if (time === null) return null;
+      return { kind: 'symbol', time, price: d.price, variant: d.variant };
+    }
     const t1 = this.logicalToTime(d.logical1);
     const t2 = this.logicalToTime(d.logical2);
     if (t1 === null || t2 === null) return null;
@@ -972,7 +1015,7 @@ export class DrawingManager {
   }
 
   private applyPersisted(d: Drawing, snap: PersistedDrawing) {
-    if (d.kind === 'marker' && snap.kind === 'marker') {
+    if ((d.kind === 'marker' && snap.kind === 'marker') || (d.kind === 'symbol' && snap.kind === 'symbol')) {
       const logical = this.timeToLogical(snap.time);
       if (logical === null) return;
       d.logical = logical;
@@ -1000,16 +1043,12 @@ export class DrawingManager {
   loadPersisted(items: PersistedDrawing[]) {
     this.drawings = [];
     items.forEach((it, idx) => {
-      if (it.kind === 'marker') {
+      if (it.kind === 'marker' || it.kind === 'symbol') {
         const logical = this.timeToLogical(it.time);
         if (logical === null) return;
-        this.drawings.push({
-          id: `dr-${idx}-${it.time}`,
-          kind: 'marker',
-          logical,
-          price: it.price,
-          direction: it.direction,
-        });
+        this.drawings.push(it.kind === 'marker'
+          ? { id: `dr-${idx}-${it.time}`, kind: 'marker', logical, price: it.price, direction: it.direction }
+          : { id: `dr-${idx}-${it.time}`, kind: 'symbol', logical, price: it.price, variant: it.variant });
       } else {
         const l1 = this.timeToLogical(it.time1);
         const l2 = this.timeToLogical(it.time2);

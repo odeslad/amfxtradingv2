@@ -21,6 +21,26 @@ Set-Location backend
 # updates in place without deleting the DLL, avoiding the lock entirely.
 Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend }
 
+# pm2 can lose track of its child (e.g. after a BSOD or failed restart), leaving
+# an orphaned node.exe holding port 3000 and making pm2 start loop on EADDRINUSE.
+# Kill it only if it is actually the backend; anything else holding the port is
+# a config conflict and must fail the deploy, not get killed.
+Invoke-Step "free port 3000" {
+    $ownerPids = Get-NetTCPConnection -LocalPort 3000 -State Listen -ErrorAction SilentlyContinue |
+        Select-Object -ExpandProperty OwningProcess -Unique
+    foreach ($ownerPid in $ownerPids) {
+        $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $ownerPid"
+        if ($null -eq $proc) { continue }
+        if ($proc.CommandLine -like '*amfxtradingv2\backend*') {
+            Write-Host "  killing orphaned backend process $ownerPid"
+            Stop-Process -Id $ownerPid -Force
+        } else {
+            throw "Port 3000 is held by unrelated process $ownerPid ($($proc.Name)): $($proc.CommandLine)"
+        }
+    }
+    $global:LASTEXITCODE = 0
+}
+
 Invoke-Step "npm install" { npm install }
 Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }
 Invoke-Step "prisma migrate" { node_modules\.bin\prisma migrate deploy }

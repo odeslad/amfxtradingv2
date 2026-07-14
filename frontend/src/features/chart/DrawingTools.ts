@@ -23,6 +23,7 @@ export interface RectDrawing extends BaseDrawing {
   price1: number;
   logical2: number;
   price2: number;
+  color?: string;
 }
 
 export interface MarkerDrawing extends BaseDrawing {
@@ -54,6 +55,7 @@ export interface PersistedRect extends PersistedBase {
   price1: number;
   time2: number;
   price2: number;
+  color?: string;
 }
 
 export interface PersistedMarker extends PersistedBase {
@@ -73,6 +75,8 @@ const HANDLE_ACTIVE_COLOR = '#f5a623';
 const MARKER_BUY_COLOR = '#4caf84';
 const MARKER_SELL_COLOR = '#e05c5c';
 const MARKER_SIZE = 11;
+const RECT_RED = '#e05c5c';
+const RECT_GREEN = '#4caf84';
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -104,6 +108,9 @@ export class DrawingManager {
   private dragHandle: Handle | null = null;
   private dragLastLogical: Logical | null = null;
 
+  private lastTapTime = 0;
+  private lastTapPos: Point | null = null;
+
   private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed', width: 1 };
   private onDone: (() => void) | null = null;
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
@@ -111,6 +118,7 @@ export class DrawingManager {
   private onCountChange: ((count: number) => void) | null = null;
   private rafId = 0;
 
+  private boundDblClick: (e: MouseEvent) => void;
   private boundMouseDown: (e: MouseEvent) => void;
   private boundMouseMove: (e: MouseEvent) => void;
   private boundMouseUp: () => void;
@@ -129,6 +137,7 @@ export class DrawingManager {
     if (!ctx) throw new Error('Could not get 2D context');
     this.ctx = ctx;
 
+    this.boundDblClick = e => this.onDblClick(e);
     this.boundMouseDown = e => this.onMouseDown(e);
     this.boundMouseMove = e => this.onMouseMove(e);
     this.boundMouseUp = () => this.endDrag();
@@ -138,6 +147,7 @@ export class DrawingManager {
     this.boundTouchEnd = () => this.endDrag();
     this.boundRangeChange = () => this.redraw();
 
+    document.addEventListener('dblclick', this.boundDblClick, true);
     document.addEventListener('mousedown', this.boundMouseDown, true);
     document.addEventListener('mousemove', this.boundMouseMove, true);
     document.addEventListener('mouseup', this.boundMouseUp, true);
@@ -173,6 +183,7 @@ export class DrawingManager {
   }
 
   destroy() {
+    document.removeEventListener('dblclick', this.boundDblClick, true);
     document.removeEventListener('mousedown', this.boundMouseDown, true);
     document.removeEventListener('mousemove', this.boundMouseMove, true);
     document.removeEventListener('mouseup', this.boundMouseUp, true);
@@ -447,6 +458,36 @@ export class DrawingManager {
 
   // ─── mouse ─────────────────────────────────────────────────────────────────
 
+  // Rect color rotation: default → red → green → default.
+  private nextRectColor(current?: string): string | undefined {
+    if (!current) return RECT_RED;
+    if (current === RECT_RED) return RECT_GREEN;
+    return undefined;
+  }
+
+  private cycleRectColor(clientX: number, clientY: number, touch: boolean): boolean {
+    if (this.isDrawing || !this.inside(clientX, clientY)) return false;
+    const pos = this.toCanvas(clientX, clientY);
+    if (!this.inPane(pos)) return false;
+    const hit = this.hitTest(pos, touch);
+    if (!hit) return false;
+    const d = this.drawings.find(x => x.id === hit.id);
+    if (!d || d.kind !== 'rect') return false;
+    d.color = this.nextRectColor(d.color);
+    this.dragHandle = null;
+    this.dragLastLogical = null;
+    this.redraw();
+    this.onChange?.();
+    return true;
+  }
+
+  private onDblClick(e: MouseEvent) {
+    if (this.cycleRectColor(e.clientX, e.clientY, false)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }
+
   private onMouseDown(e: MouseEvent) {
     const consumed = this.handleDown(e.clientX, e.clientY, e.shiftKey, e.ctrlKey || e.metaKey, false, e.target);
     if (consumed) {
@@ -474,6 +515,20 @@ export class DrawingManager {
   private onTouchStart(e: TouchEvent) {
     if (e.touches.length !== 1) return;
     const t = e.touches[0];
+
+    const now = performance.now();
+    const isDoubleTap = now - this.lastTapTime < 350
+      && this.lastTapPos !== null
+      && Math.hypot(t.clientX - this.lastTapPos.x, t.clientY - this.lastTapPos.y) < 30;
+    this.lastTapTime = now;
+    this.lastTapPos = { x: t.clientX, y: t.clientY };
+
+    if (isDoubleTap && this.cycleRectColor(t.clientX, t.clientY, true)) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+
     const consumed = this.handleDown(t.clientX, t.clientY, false, false, true, e.target);
     if (consumed) {
       e.preventDefault();
@@ -531,7 +586,7 @@ export class DrawingManager {
         } else {
           const px = this.segPixels(d);
           if (!px) continue;
-          if (d.kind === 'rect') this.paintRect(px, selected);
+          if (d.kind === 'rect') this.paintRect(px, selected, false, d.color);
           else this.paintLine(px, selected);
         }
       }
@@ -585,9 +640,10 @@ export class DrawingManager {
     }
   }
 
-  private paintRect(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false) {
+  private paintRect(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false, colorOverride?: string) {
     const ctx = this.ctx;
-    const { color, style, width } = this.strokeStyleFor(preview);
+    const { color: baseColor, style, width } = this.strokeStyleFor(preview);
+    const color = colorOverride ?? baseColor;
     const x = Math.min(px.x1, px.x2);
     const y = Math.min(px.y1, px.y2);
     const w = Math.abs(px.x2 - px.x1);
@@ -783,7 +839,10 @@ export class DrawingManager {
     const t1 = this.logicalToTime(d.logical1);
     const t2 = this.logicalToTime(d.logical2);
     if (t1 === null || t2 === null) return null;
-    return { kind: d.kind, time1: t1, price1: d.price1, time2: t2, price2: d.price2 };
+    if (d.kind === 'rect') {
+      return { kind: 'rect', time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
+    }
+    return { kind: 'line', time1: t1, price1: d.price1, time2: t2, price2: d.price2 };
   }
 
   private applyPersisted(d: Drawing, snap: PersistedDrawing) {
@@ -833,6 +892,7 @@ export class DrawingManager {
           id: `dr-${idx}-${it.time1}`,
           kind: it.kind,
           logical1: l1, price1: it.price1, logical2: l2, price2: it.price2,
+          ...(it.kind === 'rect' && it.color ? { color: it.color } : {}),
         });
       }
     });

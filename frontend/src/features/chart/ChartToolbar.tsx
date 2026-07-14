@@ -1,4 +1,4 @@
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -156,6 +156,15 @@ export function ChartToolbar({
           aria-label="Check mark"
         >
           <IconCheck size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${drawMode === 'text' ? styles.iconBtnActive : ''}`}
+          onClick={() => onDrawMode?.('text')}
+          title="Text label (double-click to edit)"
+          aria-label="Text label"
+        >
+          <IconText size={16} />
         </button>
         <button
           type="button"

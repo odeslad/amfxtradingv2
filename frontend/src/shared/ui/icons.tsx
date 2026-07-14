@@ -137,6 +137,14 @@ export function IconRuler({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconText({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M3.5 4.5V3h9v1.5M8 3v10M6.2 13h3.6" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function IconCross({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -1,6 +1,6 @@
 import type { IChartApi, ISeriesApi, Logical as ChartLogical } from 'lightweight-charts';
 
-export type DrawingKind = 'line' | 'rect' | 'marker' | 'symbol';
+export type DrawingKind = 'line' | 'rect' | 'marker' | 'symbol' | 'text';
 export type MarkerDirection = 'buy' | 'sell';
 export type SymbolVariant = 'cross' | 'check';
 
@@ -41,7 +41,14 @@ export interface SymbolDrawing extends BaseDrawing {
   variant: SymbolVariant;
 }
 
-type Drawing = LineDrawing | RectDrawing | MarkerDrawing | SymbolDrawing;
+export interface TextDrawing extends BaseDrawing {
+  kind: 'text';
+  logical: number;
+  price: number;
+  text: string;
+}
+
+type Drawing = LineDrawing | RectDrawing | MarkerDrawing | SymbolDrawing | TextDrawing;
 
 // Persisted form: absolute time + price so drawings survive across sessions,
 // dataset changes and timeframe switches. Reconstructed to logical on load.
@@ -80,7 +87,14 @@ export interface PersistedSymbol extends PersistedBase {
   variant: SymbolVariant;
 }
 
-export type PersistedDrawing = PersistedLine | PersistedRect | PersistedMarker | PersistedSymbol;
+export interface PersistedText extends PersistedBase {
+  kind: 'text';
+  time: number;
+  price: number;
+  text: string;
+}
+
+export type PersistedDrawing = PersistedLine | PersistedRect | PersistedMarker | PersistedSymbol | PersistedText;
 
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
@@ -93,6 +107,9 @@ const MARKER_SIZE = 11;
 const RECT_RED = '#e05c5c';
 const RECT_GREEN = '#4caf84';
 const SYMBOL_SIZE = 11;
+const TEXT_FONT = '11px "DM Mono", monospace';
+const TEXT_COLOR = '#e8e8e8';
+const TEXT_HEIGHT = 12;
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -127,6 +144,8 @@ export class DrawingManager {
 
   private lastTapTime = 0;
   private lastTapPos: Point | null = null;
+
+  private textInput: HTMLInputElement | null = null;
 
   // Ephemeral pip ruler: two clicks measure, any later click clears it.
   private pipSize = 0.0001;
@@ -190,7 +209,7 @@ export class DrawingManager {
     if (this.drawings.length === 0 && !this.rulerStart) return;
     const anchorPrice = () => {
       const d = this.drawings[0];
-      if (d) return d.kind === 'marker' || d.kind === 'symbol' ? d.price : d.price1;
+      if (d) return 'price' in d ? d.price : d.price1;
       return this.rulerStart?.price ?? 0;
     };
     const safeCoord = () => {
@@ -207,6 +226,7 @@ export class DrawingManager {
   }
 
   destroy() {
+    this.closeTextInput();
     document.removeEventListener('dblclick', this.boundDblClick, true);
     document.removeEventListener('mousedown', this.boundMouseDown, true);
     document.removeEventListener('mousemove', this.boundMouseMove, true);
@@ -290,6 +310,17 @@ export class DrawingManager {
         }
         continue;
       }
+      if (d.kind === 'text') {
+        const p = this.logicalToPixel({ logical: d.logical, price: d.price });
+        if (!p) continue;
+        this.ctx.font = TEXT_FONT;
+        const w = this.ctx.measureText(d.text).width;
+        if (pos.x >= p.x - r / 2 && pos.x <= p.x + w + r / 2
+          && pos.y >= p.y - TEXT_HEIGHT / 2 - r / 2 && pos.y <= p.y + TEXT_HEIGHT / 2 + r / 2) {
+          return { id: d.id, handle: 'point' };
+        }
+        continue;
+      }
       const px = this.segPixels(d);
       if (!px) continue;
       if (Math.hypot(pos.x - px.x1, pos.y - px.y1) < r) return { id: d.id, handle: 'start' };
@@ -359,6 +390,13 @@ export class DrawingManager {
     if (this.isDrawing && this.drawKind) {
       const logical = this.pixelToLogical(pos);
       if (!logical) return true;
+
+      // text is a single-click placement that opens an inline input
+      if (this.drawKind === 'text') {
+        this.finishDrawing();
+        this.openTextInput(pos, logical, null);
+        return true;
+      }
 
       // marker / symbol are single-click placements
       if (this.drawKind === 'marker' || this.drawKind === 'symbol') {
@@ -467,7 +505,7 @@ export class DrawingManager {
       const logical = this.pixelToLogical(pos);
       if (!d || !logical) return true;
 
-      if (d.kind === 'marker' || d.kind === 'symbol') {
+      if (d.kind === 'marker' || d.kind === 'symbol' || d.kind === 'text') {
         d.logical = logical.logical;
         d.price = logical.price;
       } else if (this.dragHandle === 'start') {
@@ -514,24 +552,101 @@ export class DrawingManager {
     return undefined;
   }
 
-  private cycleRectColor(clientX: number, clientY: number, touch: boolean): boolean {
+  // Double click/tap: cycles a rect's color, or edits a text drawing.
+  private handleDoubleAt(clientX: number, clientY: number, touch: boolean): boolean {
     if (this.isDrawing || !this.inside(clientX, clientY)) return false;
     const pos = this.toCanvas(clientX, clientY);
     if (!this.inPane(pos)) return false;
     const hit = this.hitTest(pos, touch);
     if (!hit) return false;
     const d = this.drawings.find(x => x.id === hit.id);
-    if (!d || d.kind !== 'rect') return false;
-    d.color = this.nextRectColor(d.color);
+    if (!d || (d.kind !== 'rect' && d.kind !== 'text')) return false;
+
     this.dragHandle = null;
     this.dragLastLogical = null;
-    this.redraw();
-    this.onChange?.();
+    if (d.kind === 'rect') {
+      d.color = this.nextRectColor(d.color);
+      this.redraw();
+      this.onChange?.();
+    } else {
+      const p = this.logicalToPixel({ logical: d.logical, price: d.price });
+      if (p) this.openTextInput(p, { logical: d.logical, price: d.price }, d);
+    }
     return true;
   }
 
+  private openTextInput(pos: Point, logical: Logical, existing: TextDrawing | null) {
+    this.closeTextInput();
+    const parent = this.canvas.parentElement;
+    if (!parent) return;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = existing?.text ?? '';
+    input.placeholder = 'text…';
+    input.maxLength = 120;
+    input.setAttribute('data-chart-interactive', '');
+    Object.assign(input.style, {
+      position: 'absolute',
+      left: `${pos.x}px`,
+      top: `${pos.y - 12}px`,
+      zIndex: '10',
+      width: '150px',
+      background: 'var(--surface2)',
+      border: '1px solid var(--orange)',
+      color: 'var(--text)',
+      font: TEXT_FONT,
+      padding: '3px 6px',
+      outline: 'none',
+    } satisfies Partial<CSSStyleDeclaration>);
+
+    const commit = () => {
+      if (this.textInput !== input) return;
+      const value = input.value.trim();
+      this.closeTextInput();
+      if (existing) {
+        if (value) existing.text = value;
+        else this.drawings = this.drawings.filter(d => d.id !== existing.id);
+      } else if (value) {
+        const t: TextDrawing = {
+          id: `dr-${Date.now()}`,
+          kind: 'text',
+          logical: logical.logical,
+          price: logical.price,
+          text: value,
+        };
+        this.drawings.push(t);
+        this.setSelected(t.id);
+      } else {
+        return;
+      }
+      this.scheduleRaf();
+      this.redraw();
+      this.notifyCount();
+      this.onChange?.();
+    };
+
+    input.addEventListener('keydown', e => {
+      e.stopPropagation();
+      if (e.key === 'Enter') commit();
+      if (e.key === 'Escape') this.closeTextInput();
+    });
+    input.addEventListener('blur', commit);
+
+    parent.appendChild(input);
+    this.textInput = input;
+    requestAnimationFrame(() => input.focus());
+  }
+
+  private closeTextInput() {
+    const input = this.textInput;
+    if (!input) return;
+    this.textInput = null;
+    input.remove();
+  }
+
   private onDblClick(e: MouseEvent) {
-    if (this.cycleRectColor(e.clientX, e.clientY, false)) {
+    if (this.handleDoubleAt(e.clientX, e.clientY, false)) {
       e.preventDefault();
       e.stopPropagation();
     }
@@ -572,7 +687,7 @@ export class DrawingManager {
     this.lastTapTime = now;
     this.lastTapPos = { x: t.clientX, y: t.clientY };
 
-    if (isDoubleTap && this.cycleRectColor(t.clientX, t.clientY, true)) {
+    if (isDoubleTap && this.handleDoubleAt(t.clientX, t.clientY, true)) {
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -636,11 +751,12 @@ export class DrawingManager {
 
       for (const d of this.drawings) {
         const selected = d.id === this.selectedId;
-        if (d.kind === 'marker' || d.kind === 'symbol') {
+        if (d.kind === 'marker' || d.kind === 'symbol' || d.kind === 'text') {
           const p = this.logicalToPixel({ logical: d.logical, price: d.price });
           if (!p) continue;
           if (d.kind === 'marker') this.paintMarker(p, d.direction);
-          else this.paintSymbol(p, d.variant);
+          else if (d.kind === 'symbol') this.paintSymbol(p, d.variant);
+          else this.paintText(p, d.text, selected);
         } else {
           const px = this.segPixels(d);
           if (!px) continue;
@@ -779,6 +895,23 @@ export class DrawingManager {
     }
     ctx.stroke();
     ctx.lineCap = 'butt';
+  }
+
+  private paintText(p: Point, text: string, selected: boolean) {
+    const ctx = this.ctx;
+    ctx.font = TEXT_FONT;
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, p.x, p.y);
+
+    if (selected) {
+      const w = ctx.measureText(text).width;
+      ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(p.x - 4, p.y - TEXT_HEIGHT / 2 - 3, w + 8, TEXT_HEIGHT + 6);
+      ctx.setLineDash([]);
+    }
   }
 
   private paintRuler() {
@@ -1005,6 +1138,11 @@ export class DrawingManager {
       if (time === null) return null;
       return { kind: 'symbol', time, price: d.price, variant: d.variant };
     }
+    if (d.kind === 'text') {
+      const time = this.logicalToTime(d.logical);
+      if (time === null) return null;
+      return { kind: 'text', time, price: d.price, text: d.text };
+    }
     const t1 = this.logicalToTime(d.logical1);
     const t2 = this.logicalToTime(d.logical2);
     if (t1 === null || t2 === null) return null;
@@ -1015,7 +1153,7 @@ export class DrawingManager {
   }
 
   private applyPersisted(d: Drawing, snap: PersistedDrawing) {
-    if ((d.kind === 'marker' && snap.kind === 'marker') || (d.kind === 'symbol' && snap.kind === 'symbol')) {
+    if ((d.kind === 'marker' && snap.kind === 'marker') || (d.kind === 'symbol' && snap.kind === 'symbol') || (d.kind === 'text' && snap.kind === 'text')) {
       const logical = this.timeToLogical(snap.time);
       if (logical === null) return;
       d.logical = logical;
@@ -1043,12 +1181,16 @@ export class DrawingManager {
   loadPersisted(items: PersistedDrawing[]) {
     this.drawings = [];
     items.forEach((it, idx) => {
-      if (it.kind === 'marker' || it.kind === 'symbol') {
+      if (it.kind === 'marker' || it.kind === 'symbol' || it.kind === 'text') {
         const logical = this.timeToLogical(it.time);
         if (logical === null) return;
-        this.drawings.push(it.kind === 'marker'
-          ? { id: `dr-${idx}-${it.time}`, kind: 'marker', logical, price: it.price, direction: it.direction }
-          : { id: `dr-${idx}-${it.time}`, kind: 'symbol', logical, price: it.price, variant: it.variant });
+        if (it.kind === 'marker') {
+          this.drawings.push({ id: `dr-${idx}-${it.time}`, kind: 'marker', logical, price: it.price, direction: it.direction });
+        } else if (it.kind === 'symbol') {
+          this.drawings.push({ id: `dr-${idx}-${it.time}`, kind: 'symbol', logical, price: it.price, variant: it.variant });
+        } else {
+          this.drawings.push({ id: `dr-${idx}-${it.time}`, kind: 'text', logical, price: it.price, text: it.text });
+        }
       } else {
         const l1 = this.timeToLogical(it.time1);
         const l2 = this.timeToLogical(it.time2);

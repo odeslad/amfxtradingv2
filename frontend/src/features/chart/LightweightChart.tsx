@@ -13,10 +13,11 @@ import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type D
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
 import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
 
-export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck';
+export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck' | 'text';
 
 function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection; variant: SymbolVariant } {
   if (mode === 'rect') return { kind: 'rect', direction: 'buy', variant: 'cross' };
+  if (mode === 'text') return { kind: 'text', direction: 'buy', variant: 'cross' };
   if (mode === 'markerBuy') return { kind: 'marker', direction: 'buy', variant: 'cross' };
   if (mode === 'markerSell') return { kind: 'marker', direction: 'sell', variant: 'cross' };
   if (mode === 'symbolCross') return { kind: 'symbol', direction: 'buy', variant: 'cross' };

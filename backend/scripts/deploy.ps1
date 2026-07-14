@@ -31,7 +31,11 @@ Invoke-Step "free port 3000" {
     foreach ($ownerPid in $ownerPids) {
         $proc = Get-CimInstance Win32_Process -Filter "ProcessId = $ownerPid"
         if ($null -eq $proc) { continue }
-        if ($proc.CommandLine -like '*amfxtradingv2\backend*') {
+        # pm2 forks run wrapped in ProcessContainerFork.js, so the backend path
+        # never appears in their command line — a pm2 child on OUR port is ours.
+        $isBackend = $proc.CommandLine -like '*amfxtradingv2\backend*' -or
+            $proc.CommandLine -like '*pm2\lib\ProcessContainerFork.js*'
+        if ($isBackend) {
             Write-Host "  killing orphaned backend process $ownerPid"
             Stop-Process -Id $ownerPid -Force
         } else {

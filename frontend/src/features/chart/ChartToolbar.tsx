@@ -4,6 +4,8 @@ import styles from './ChartToolbar.module.css';
 
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
 
+export type PositionsMode = 'none' | 'all' | 'buys' | 'sells';
+
 interface ChartToolbarProps {
   brokers: string[];
   symbols: string[];
@@ -18,7 +20,7 @@ interface ChartToolbarProps {
   drawMode?: DrawMode | null;
   onDrawMode?: (mode: DrawMode) => void;
   onPositions?: () => void;
-  positionsActive?: boolean;
+  positionsMode?: PositionsMode;
   onAlerts?: () => void;
   alertsActive?: boolean;
   alertsFlashing?: boolean;
@@ -29,7 +31,7 @@ interface ChartToolbarProps {
 export function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
-  onPositions, positionsActive, onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
+  onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   return (
     <div className={styles.toolbar}>
@@ -71,10 +73,15 @@ export function ChartToolbar({
         </select>
         <button
           type="button"
-          className={`${styles.iconBtn} ${positionsActive ? styles.iconBtnActive : ''}`}
+          className={[
+            styles.iconBtn,
+            positionsMode !== 'none' ? styles.iconBtnActive : '',
+            positionsMode === 'buys' ? styles.iconBtnBuys : '',
+            positionsMode === 'sells' ? styles.iconBtnSells : '',
+          ].join(' ')}
           onClick={onPositions}
-          title="Show positions"
-          aria-label="Show positions"
+          title={`Positions: ${positionsMode} (click to cycle none / all / buys / sells)`}
+          aria-label={`Positions: ${positionsMode}`}
         >
           <IconPositions size={16} />
         </button>

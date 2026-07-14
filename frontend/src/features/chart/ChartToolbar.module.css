@@ -113,6 +113,16 @@
   border-color: var(--orange);
 }
 
+.iconBtnBuys {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.iconBtnSells {
+  color: var(--red);
+  border-color: var(--red);
+}
+
 .iconBtnFlashing {
   animation: alertFlash 0.7s ease-in-out infinite;
 }

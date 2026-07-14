@@ -20,8 +20,16 @@ import { BulkEditPanel } from '../journal/BulkEditPanel';
 import { ClosePositionPanel } from '../journal/ClosePositionPanel';
 import { NewTradePanel } from '../journal/NewTradePanel';
 import type { Ema } from './chart.types';
-import type { Position } from '../journal/utils/position';
+import { isBuySide, type Position } from '../journal/utils/position';
+import type { PositionsMode } from './ChartToolbar';
 import styles from './ChartPage.module.css';
+
+const POSITIONS_MODE_CYCLE: Record<PositionsMode, PositionsMode> = {
+  none: 'all',
+  all: 'buys',
+  buys: 'sells',
+  sells: 'none',
+};
 
 interface RawCandle {
   openTime: string | number;
@@ -86,7 +94,7 @@ export function ChartPage() {
     [alerts, broker, symbol],
   );
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
-  const [positionsVisible, setPositionsVisible] = useState(false);
+  const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [positions, setPositions] = useState<Position[]>([]);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [closePosition, setClosePosition] = useState<Position | null>(null);
@@ -293,7 +301,7 @@ export function ChartPage() {
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
-    if (!positionsVisible || !broker) { setPositions([]); return; }
+    if (positionsMode === 'none' || !broker) { setPositions([]); return; }
     fetch(apiUrl('/positions/live'), { credentials: 'include' })
       .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]> : Promise.resolve([]))
       .then(brokers => {
@@ -306,7 +314,7 @@ export function ChartPage() {
         })));
       })
       .catch(() => {});
-  }, [positionsVisible, broker]);
+  }, [positionsMode, broker]);
 
   useEffect(() => {
     if (!broker || !symbol) { setCandles([]); return; }
@@ -382,10 +390,13 @@ export function ChartPage() {
       .finally(() => { isLoadingMoreRef.current = false; });
   }, [broker, symbol, timeframe]);
 
-  const chartPositions = useMemo(
-    () => (positionsVisible ? positions.filter(p => p.symbol === symbol) : []),
-    [positionsVisible, positions, symbol],
-  );
+  const chartPositions = useMemo(() => {
+    if (positionsMode === 'none') return [];
+    return positions.filter(p =>
+      p.symbol === symbol
+      && (positionsMode === 'all' || (positionsMode === 'buys') === isBuySide(p.type)),
+    );
+  }, [positionsMode, positions, symbol]);
 
   const handleEditPosition = useCallback((ticket: number) => {
     const pos = positions.find(p => p.ticket === ticket);
@@ -435,8 +446,8 @@ export function ChartPage() {
         onAlerts={() => { setAlertsOpen(prev => !prev); setAlertFlash(false); }}
         alertsActive={alertsOpen}
         alertsFlashing={alertFlash}
-        onPositions={() => setPositionsVisible(prev => !prev)}
-        positionsActive={positionsVisible}
+        onPositions={() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev])}
+        positionsMode={positionsMode}
         onFullscreen={toggleFullscreen}
         isFullscreen={isFullscreen}
       />
@@ -477,7 +488,7 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsVisible} onNewTrade={() => setNewTradeOpen(true)} />
+              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsMode !== 'none'} onNewTrade={() => setNewTradeOpen(true)} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>

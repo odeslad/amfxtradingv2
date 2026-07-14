@@ -19,7 +19,13 @@ Set-Location backend
 # node_modules and must unlink Prisma's native query-engine DLL, which stays
 # locked by the process for a moment on Windows and caused EPERM. install
 # updates in place without deleting the DLL, avoiding the lock entirely.
-Invoke-Step "pm2 delete" { pm2 delete amfxtrading-backend }
+# Tolerate a missing process: after a crash/BSOD pm2 may have lost the app
+# (the orphan cleanup below still frees the port), so absence is not an error.
+Invoke-Step "pm2 delete" {
+    pm2 delete amfxtrading-backend
+    if ($LASTEXITCODE -ne 0) { Write-Host "  not registered in pm2, continuing" }
+    $global:LASTEXITCODE = 0
+}
 
 # pm2 can lose track of its child (e.g. after a BSOD or failed restart), leaving
 # an orphaned node.exe holding port 3000 and making pm2 start loop on EADDRINUSE.

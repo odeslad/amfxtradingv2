@@ -290,8 +290,9 @@ Un `PipeReader` + `FileWatcher` por broker. Config en `brokers.json` (excluido d
 ### Deploy backend
 
 Pipeline: push `master` en `backend/**` → GitHub Actions → SCP `deploy.ps1` → SSH VPS → PowerShell.
-El proceso PM2 `amfxtrading-backend` **debe estar activo** antes del deploy — si no existe, la pipeline falla.
-Para arranque inicial manual: `pm2 start dist\index.js --name amfxtrading-backend && pm2 save`
+El script tolera que el proceso PM2 no exista (`pm2 delete` no falla) y mata cualquier
+huérfano del backend que retenga el puerto 3000 (propio o hijo de pm2 `ProcessContainerFork.js`);
+si el puerto lo ocupa un proceso ajeno, el deploy falla explícitamente.
 
 ---
 

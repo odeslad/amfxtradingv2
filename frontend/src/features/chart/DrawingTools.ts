@@ -362,9 +362,14 @@ export class DrawingManager {
           return true;
         }
       }
+      // Two-step interaction: first pointer-down only selects; dragging
+      // requires the drawing to be selected beforehand.
+      const alreadySelected = this.selectedId === hit.id;
       this.setSelected(hit.id);
-      this.dragHandle = hit.handle;
-      this.dragLastLogical = this.pixelToLogical(pos);
+      if (alreadySelected) {
+        this.dragHandle = hit.handle;
+        this.dragLastLogical = this.pixelToLogical(pos);
+      }
       this.redraw();
       return true;
     }

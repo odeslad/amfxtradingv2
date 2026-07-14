@@ -345,6 +345,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
   const draggableRef = useRef<DraggableLevel[]>([]);
   const dragStateRef = useRef<DragState | null>(null);
+  const selectedLevelIdRef = useRef<string | null>(null);
   // optimistic SL/TP overrides (id -> price) kept until server feedback matches
   const pendingPriceRef = useRef<Map<string, number>>(new Map());
   const precisionRef = useRef(5);
@@ -1306,8 +1307,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
         priceLinesRef.current.set(id, series.createPriceLine({
           price,
           color,
-          lineWidth: 1,
-          lineStyle: LineStyle.Dashed,
+          lineWidth: selectedLevelIdRef.current === id ? 2 : 1,
+          lineStyle: selectedLevelIdRef.current === id ? LineStyle.Solid : LineStyle.Dashed,
           axisLabelVisible: false,
         }));
         levels.push({ id, ticket: p.ticket, price, color, text });
@@ -1378,6 +1379,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     markersRef.current?.detach();
     markersRef.current = createSeriesMarkers(series, markers);
 
+    if (selectedLevelIdRef.current && !draggable.some(l => l.id === selectedLevelIdRef.current)) {
+      selectedLevelIdRef.current = null;
+    }
     draggableRef.current = draggable;
     positionLevelsRef.current = levels;
     repositionLabels();
@@ -1424,9 +1428,34 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       repositionLabelsRef.current();
     };
 
+    const applySelectionStyle = (id: string, selected: boolean) => {
+      priceLinesRef.current.get(id)?.applyOptions({
+        lineWidth: selected ? 2 : 1,
+        lineStyle: selected ? LineStyle.Solid : LineStyle.Dashed,
+      });
+    };
+
+    const setSelectedLevel = (id: string | null) => {
+      const prev = selectedLevelIdRef.current;
+      if (prev === id) return;
+      if (prev) applySelectionStyle(prev, false);
+      if (id) applySelectionStyle(id, true);
+      selectedLevelIdRef.current = id;
+    };
+
+    // Two-step interaction: pointer-down on an unselected level only selects
+    // it; dragging starts on a level that is already selected. Pointer-down
+    // away from any level deselects.
     const startDrag = (clientY: number): boolean => {
       const hit = findHit(clientY);
-      if (!hit) return false;
+      if (!hit) {
+        setSelectedLevel(null);
+        return false;
+      }
+      if (selectedLevelIdRef.current !== hit.id) {
+        setSelectedLevel(hit.id);
+        return true;
+      }
       dragStateRef.current = { level: hit, currentPrice: hit.price };
       chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
       container.style.cursor = 'ns-resize';

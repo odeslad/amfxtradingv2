@@ -9,7 +9,6 @@ datasource db {
 }
 
 model Candle {
-  id        Int      @id @default(autoincrement())
   broker    String
   symbol    String
   timeframe String
@@ -19,8 +18,7 @@ model Candle {
   low       Float
   close     Float
 
-  @@unique([broker, symbol, timeframe, time])
-  @@index([broker, symbol, timeframe])
+  @@id([broker, symbol, timeframe, time])
   @@map("candles")
 }
 

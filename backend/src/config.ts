@@ -25,7 +25,16 @@ function loadBrokers(): BrokerConfig[] {
   }
 }
 
+const flag = (key: string): boolean => process.env[key] !== 'false';
+
 export const config = {
+  features: {
+    pipe: flag('FEATURE_PIPE'),
+    watcher: flag('FEATURE_WATCHER'),
+    engine: flag('FEATURE_ENGINE'),
+    alerts: flag('FEATURE_ALERTS'),
+    wsBroadcast: flag('FEATURE_WS_BROADCAST'),
+  },
   port: parseInt(process.env['PORT'] ?? '3000', 10),
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),

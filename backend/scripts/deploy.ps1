@@ -58,8 +58,8 @@ Invoke-Step "build" { npm run build }
 
 Invoke-Step "pm2 start" {
     pm2 start C:\amfxtradingv2\backend\dist\index.js --name amfxtrading-backend `
-        --node-args="--expose-gc --max-old-space-size=450" `
-        --max-memory-restart 500M
+        --node-args="--expose-gc --max-old-space-size=1024" `
+        --max-memory-restart 1200M
 }
 
 Invoke-Step "pm2 save" { pm2 save }

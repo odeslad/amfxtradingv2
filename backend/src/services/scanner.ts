@@ -135,10 +135,11 @@ async function evaluateSymbolBothSides(
 export async function runScanner(
   broker: string, timeframe: string, emaFast: number, emaSlow: number,
 ): Promise<ScannerResult> {
-  const symbolRows = await db.candle.findMany({
+  // groupBy runs DISTINCT in SQL; findMany+distinct would load every candle
+  // row into memory and dedupe in JS, which OOMs the process on this table.
+  const symbolRows = await db.candle.groupBy({
+    by: ['symbol'],
     where: { broker },
-    distinct: ['symbol'],
-    select: { symbol: true },
     orderBy: { symbol: 'asc' },
   });
 

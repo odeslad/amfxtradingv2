@@ -8,10 +8,11 @@ router.get('/', async (req, res) => {
 
   const where = broker ? { broker: String(broker) } : {};
 
-  const rows = await db.candle.findMany({
+  // groupBy runs DISTINCT in SQL; findMany+distinct would load every candle
+  // row into memory and dedupe in JS, which OOMs the process on this table.
+  const rows = await db.candle.groupBy({
+    by: ['symbol'],
     where,
-    distinct: ['symbol'],
-    select: { symbol: true },
     orderBy: { symbol: 'asc' },
   });
 

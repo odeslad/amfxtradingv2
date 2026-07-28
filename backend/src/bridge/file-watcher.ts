@@ -27,11 +27,17 @@ export interface BridgeCandles {
 
 const TIMEFRAME_RE = /^candles_(.+)_(M5|M15|H1|H4|D1)\.json$/;
 
+export type CandlesHandler = (
+  payload: { symbol: string; timeframe: string } & BridgeCandles,
+) => Promise<void>;
+
 export class FileWatcher extends EventEmitter {
   private readonly brokerName: string;
   private readonly bridgePath: string;
   private readonly intervalMs: number;
   private timer: NodeJS.Timeout | null = null;
+  private candlesHandler: CandlesHandler | null = null;
+  private polling = false;
 
   constructor(brokerName: string, bridgePath: string, intervalMs = 30_000) {
     super();
@@ -40,49 +46,66 @@ export class FileWatcher extends EventEmitter {
     this.intervalMs = intervalMs;
   }
 
+  onCandles(handler: CandlesHandler) {
+    this.candlesHandler = handler;
+  }
+
   start() {
     console.log(`[FILE-WATCHER: ${this.brokerName}] started | polls account, history, candles every ${this.intervalMs / 1000}s`);
-    this.poll();
-    this.timer = setInterval(() => this.poll(), this.intervalMs);
+    void this.poll();
+    this.timer = setInterval(() => void this.poll(), this.intervalMs);
   }
 
   stop() {
     if (this.timer) clearInterval(this.timer);
   }
 
-  private poll() {
-    this.readJson<BridgeAccount>('account.json', (data) => this.emit('account', data));
-    this.readJson<BridgeTrade[]>('history.json', (data) => this.emit('history', data));
-    this.readCandles();
+  private async poll() {
+    // Skip the tick if the previous poll is still persisting candles, so
+    // slow DB writes never stack up parsed files in memory.
+    if (this.polling) return;
+    this.polling = true;
+    try {
+      const account = this.readJson<BridgeAccount>('account.json');
+      if (account) this.emit('account', account);
+      const history = this.readJson<BridgeTrade[]>('history.json');
+      if (history) this.emit('history', history);
+      await this.readCandles();
+    } finally {
+      this.polling = false;
+    }
   }
 
-  private readJson<T>(filename: string, cb: (data: T) => void) {
+  private readJson<T>(filename: string): T | null {
     const filepath = path.join(this.bridgePath, filename);
     try {
       const raw = fs.readFileSync(filepath, 'utf8');
-      cb(JSON.parse(raw) as T);
+      return JSON.parse(raw) as T;
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes('ENOENT')) {
         console.error(`[FILE-WATCHER: ${this.brokerName}] error reading ${filename} | ${msg}`);
       }
+      return null;
     }
   }
 
-  private readCandles() {
+  private async readCandles() {
     let files: string[];
     try {
       files = fs.readdirSync(this.bridgePath);
     } catch {
       return;
     }
+    // One file at a time: parse, persist, release before touching the next,
+    // so memory holds a single candles file instead of all of them at once.
     for (const file of files) {
       const match = TIMEFRAME_RE.exec(file);
       if (!match) continue;
       const [, symbol, timeframe] = match;
-      this.readJson<BridgeCandles>(file, (data) => {
-        this.emit('candles', { symbol, timeframe, ...data });
-      });
+      const data = this.readJson<BridgeCandles>(file);
+      if (!data || !this.candlesHandler) continue;
+      await this.candlesHandler({ symbol, timeframe, ...data });
     }
   }
 }

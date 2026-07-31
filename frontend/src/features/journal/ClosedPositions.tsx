@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiUrl } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
+import { dateRangeBounds } from './utils/dateRange';
 import { TradeCard } from './TradeCard';
 import styles from './JournalPage.module.css';
 
@@ -15,8 +16,18 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  // The API returns the latest 200 trades by default, so the date filter must
+  // be applied server-side to reach older trades.
+  const { from, to } = dateRangeBounds(filters);
+
   useEffect(() => {
-    fetch(apiUrl('/trades'), { credentials: 'include' })
+    setLoading(true);
+    setError('');
+    const params = new URLSearchParams();
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const query = params.toString();
+    fetch(apiUrl(`/trades${query ? `?${query}` : ''}`), { credentials: 'include' })
       .then(res => {
         if (!res.ok) throw new Error('Failed to load trades');
         return res.json() as Promise<Trade[]>;
@@ -24,7 +35,7 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
       .then(setTrades)
       .catch(err => setError(err.message))
       .finally(() => setLoading(false));
-  }, []);
+  }, [from, to]);
 
   useEffect(() => {
     const brokers = [...new Set(trades.map(t => t.broker).filter(Boolean))].sort();
@@ -42,7 +53,13 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
 
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;
-  if (trades.length === 0) return <div className={styles.empty}>No closed trades</div>;
+  if (trades.length === 0) {
+    return (
+      <div className={styles.empty}>
+        {filters.dateRange ? 'No trades in the selected period' : 'No closed trades'}
+      </div>
+    );
+  }
   if (filtered.length === 0) return <div className={styles.empty}>No trades match the selected filters</div>;
 
   return (

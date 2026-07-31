@@ -15,7 +15,10 @@ import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'closed';
 
-const DEFAULT_FILTERS: FilterValues = { broker: '', symbol: '', type: '', color: '' };
+const DEFAULT_FILTERS: FilterValues = {
+  broker: '', symbol: '', type: '', color: '',
+  dateRange: '', dateFrom: '', dateTo: '',
+};
 const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [], colors: [] };
 
 function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
@@ -23,7 +26,9 @@ function generateId() { return `${Date.now()}-${Math.random().toString(36).slice
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState<Tab>('accounts');
-  const [filters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
+  const [storedFilters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
+  // Stored filters may predate the date fields; merge so every key exists.
+  const filters: FilterValues = { ...DEFAULT_FILTERS, ...storedFilters };
 
   useEffect(() => {
     const broker = searchParams.get('broker');
@@ -45,7 +50,10 @@ export function JournalPage() {
   const [bulkClosing, setBulkClosing] = useState(false);
 
   const filterOptions = tab === 'open' ? openOptions : closedOptions;
-  const hasActiveFilters = !!(filters.broker || filters.symbol || filters.type || filters.color);
+  const hasActiveFilters = !!(
+    filters.broker || filters.symbol || filters.type || filters.color ||
+    (tab === 'closed' && filters.dateRange)
+  );
 
   const handleTabChange = (next: Tab) => {
     setTab(next);
@@ -160,6 +168,7 @@ export function JournalPage() {
         values={filters}
         options={filterOptions}
         onChange={setFilters}
+        showDateFilter={tab === 'closed'}
       />
 
       <BulkEditPanel

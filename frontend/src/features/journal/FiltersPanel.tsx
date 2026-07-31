@@ -1,4 +1,5 @@
 import { POSITION_COLORS, POSITION_COLOR_VALUES, type PositionColor } from './utils/position';
+import { type DateRange } from './utils/dateRange';
 import styles from './FiltersPanel.module.css';
 
 export interface FilterValues {
@@ -6,7 +7,19 @@ export interface FilterValues {
   symbol: string;
   type: string;
   color: string;
+  dateRange: DateRange;
+  dateFrom: string;
+  dateTo: string;
 }
+
+const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
+  { value: '', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last_week', label: 'Last week' },
+  { value: 'last_month', label: 'Last month' },
+  { value: 'custom', label: 'Custom' },
+];
 
 export interface FilterOptions {
   brokers: string[];
@@ -20,15 +33,17 @@ interface FiltersPanelProps {
   values: FilterValues;
   options: FilterOptions;
   onChange: (values: FilterValues) => void;
+  showDateFilter?: boolean;
 }
 
-export function FiltersPanel({ open, onClose, values, options, onChange }: FiltersPanelProps) {
-  const set = (key: keyof FilterValues) => (e: React.ChangeEvent<HTMLSelectElement>) =>
+export function FiltersPanel({ open, onClose, values, options, onChange, showDateFilter }: FiltersPanelProps) {
+  const set = (key: keyof FilterValues) => (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) =>
     onChange({ ...values, [key]: e.target.value });
 
-  const hasActiveFilters = !!(values.broker || values.symbol || values.type || values.color);
+  const hasActiveFilters = !!(values.broker || values.symbol || values.type || values.color || values.dateRange);
 
-  const reset = () => onChange({ broker: '', symbol: '', type: '', color: '' });
+  const reset = () =>
+    onChange({ broker: '', symbol: '', type: '', color: '', dateRange: '', dateFrom: '', dateTo: '' });
 
   return (
     <>
@@ -77,6 +92,42 @@ export function FiltersPanel({ open, onClose, values, options, onChange }: Filte
                 ))}
               </select>
             </div>
+          )}
+
+          {showDateFilter && (
+            <>
+              <div className={styles.field}>
+                <label className={styles.label}>Date</label>
+                <select className={styles.input} value={values.dateRange} onChange={set('dateRange')}>
+                  {DATE_RANGE_OPTIONS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+
+              {values.dateRange === 'custom' && (
+                <div className={styles.row}>
+                  <div className={styles.field}>
+                    <label className={styles.label}>From</label>
+                    <input
+                      className={`${styles.input} ${styles.dateInput}`}
+                      type="date"
+                      value={values.dateFrom}
+                      max={values.dateTo || undefined}
+                      onChange={set('dateFrom')}
+                    />
+                  </div>
+                  <div className={styles.field}>
+                    <label className={styles.label}>To</label>
+                    <input
+                      className={`${styles.input} ${styles.dateInput}`}
+                      type="date"
+                      value={values.dateTo}
+                      min={values.dateFrom || undefined}
+                      onChange={set('dateTo')}
+                    />
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {hasActiveFilters && (

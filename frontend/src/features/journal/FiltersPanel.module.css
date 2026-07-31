@@ -103,6 +103,25 @@
   background: var(--surface);
 }
 
+.row {
+  display: flex;
+  gap: 8px;
+}
+
+.row .field {
+  flex: 1;
+  min-width: 0;
+}
+
+.dateInput {
+  background-image: none;
+}
+
+.dateInput::-webkit-calendar-picker-indicator {
+  filter: invert(0.6);
+  cursor: pointer;
+}
+
 .resetBtn {
   height: 34px;
   background: transparent;

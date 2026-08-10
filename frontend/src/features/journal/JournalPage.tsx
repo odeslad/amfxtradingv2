@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { OpenPositions, type BulkGroup } from './OpenPositions';
 import { ClosedPositions } from './ClosedPositions';
@@ -28,7 +28,12 @@ export function JournalPage() {
   const [tab, setTab] = useState<Tab>('accounts');
   const [storedFilters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
   // Stored filters may predate the date fields; merge so every key exists.
-  const filters: FilterValues = { ...DEFAULT_FILTERS, ...storedFilters };
+  // Memoised: a fresh object every render retriggers the bulkGroup effect in
+  // OpenPositions, which sets state here and loops the render infinitely.
+  const filters: FilterValues = useMemo(
+    () => ({ ...DEFAULT_FILTERS, ...storedFilters }),
+    [storedFilters],
+  );
 
   useEffect(() => {
     const broker = searchParams.get('broker');

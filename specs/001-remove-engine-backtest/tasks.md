@@ -20,11 +20,11 @@ Each task is one conventional commit. The project must build and run after every
 
 - [x] 7. Delete `features/backtest/` and `features/engine/`; remove their imports and routes from `Router.tsx`; remove `IconBacktest` / `IconEngine` from the `AppLayout.tsx` import and the two disabled nav entries (plus the `disabled` rendering branch if no entry uses it any more); delete both icons from `shared/ui/icons.tsx`. `npm run build` passes. — Design § Frontend — delete / modify. `refactor(frontend): remove backtest and engine pages` [SP: 2]
 
-- [ ] 8. Verify locally against the VPS backend: login, Journal, Chart (full checklist once more), Scanner and Settings pages work; browser console clean. No commit; record the result in Outcome. Frontend is deployed only when the user asks. — Requirements AC 10, 11. [SP: 1]
+- [x] 8. Verify locally against the VPS backend: login, Journal, Chart (full checklist once more), Scanner and Settings pages work; browser console clean. No commit; record the result in Outcome. Frontend is deployed only when the user asks. — Requirements AC 10, 11. [SP: 1]
 
 ## Database
 
-- [ ] 9. Remove the `Strategy`, `BacktestRun`, `BacktestSetup`, `BacktestTrade` models from `schema.prisma`, run `prisma generate`, add `prisma/migrations/20260910000000_drop_engine_backtest_tables/migration.sql` with the four `DROP TABLE IF EXISTS` statements in FK order. `npm run build` passes. **Push only after the user confirms**; the deploy applies the migration unattended. Afterwards check on the VPS that the four tables are gone and `settings_mirror` still exists. — Design § Data model / API. `chore(db): drop engine and backtest tables` [SP: 2]
+- [x] 9. Remove the `Strategy`, `BacktestRun`, `BacktestSetup`, `BacktestTrade` models from `schema.prisma`, run `prisma generate`, add `prisma/migrations/20260910000000_drop_engine_backtest_tables/migration.sql` with the four `DROP TABLE IF EXISTS` statements in FK order. `npm run build` passes. **Push only after the user confirms**; the deploy applies the migration unattended. Afterwards check on the VPS that the four tables are gone and `settings_mirror` still exists. — Design § Data model / API. `chore(db): drop engine and backtest tables` [SP: 2]
 
 ## Estimation
 
@@ -43,3 +43,7 @@ Backend deployed at `04ed605`, pm2 online with 0 restarts. Startup log: `[FEATUR
 ### Order change (2026-09-10)
 
 Task 7 was committed before task 5: `BacktestChart.tsx` is the only consumer of the `BacktestOverlay*` types, so removing them from the chart component cannot build while the backtest pages still exist. Each commit still builds on its own. Task 5 also removes the backtest entry tooltip (`entryPointsRef`, `entryTip`, its JSX and CSS), which is populated only by `drawBacktestOverlay` and was not listed explicitly in the design.
+
+### Task 8 verification (2026-09-10)
+
+Dev server against the production backend. User confirmed: login, Journal, Chart (full checklist run after task 5 and again after task 6), Scanner and Settings work; nav shows only Journal, Chart, Scanner, Settings on desktop and mobile; browser console clean.

@@ -20,11 +20,11 @@ Cada tarea es un commit convencional. El proyecto debe compilar y funcionar tras
 
 - [x] 7. Borrar `features/backtest/` y `features/engine/`; quitar sus imports y rutas de `Router.tsx`; quitar `IconBacktest` / `IconEngine` del import de `AppLayout.tsx` y las dos entradas de menú desactivadas (más la rama de render de `disabled` si ninguna entrada la usa ya); borrar ambos iconos de `shared/ui/icons.tsx`. `npm run build` pasa. — Diseño § Frontend — borrar / modificar. `refactor(frontend): remove backtest and engine pages` [SP: 2]
 
-- [ ] 8. Verificar en local contra el backend del VPS: login, Journal, Chart (lista de verificación completa una vez más), Scanner y Settings funcionan; consola del navegador limpia. Sin commit; registrar el resultado en Outcome. El frontend se despliega solo cuando el usuario lo pida. — Requisitos CA 10, 11. [SP: 1]
+- [x] 8. Verificar en local contra el backend del VPS: login, Journal, Chart (lista de verificación completa una vez más), Scanner y Settings funcionan; consola del navegador limpia. Sin commit; registrar el resultado en Outcome. El frontend se despliega solo cuando el usuario lo pida. — Requisitos CA 10, 11. [SP: 1]
 
 ## Base de datos
 
-- [ ] 9. Quitar los modelos `Strategy`, `BacktestRun`, `BacktestSetup`, `BacktestTrade` de `schema.prisma`, ejecutar `prisma generate`, añadir `prisma/migrations/20260910000000_drop_engine_backtest_tables/migration.sql` con las cuatro sentencias `DROP TABLE IF EXISTS` en orden de claves foráneas. `npm run build` pasa. **Subir solo tras confirmación del usuario**; el despliegue aplica la migración sin supervisión. Después comprobar en el VPS que las cuatro tablas han desaparecido y que `settings_mirror` sigue existiendo. — Diseño § Modelo de datos / API. `chore(db): drop engine and backtest tables` [SP: 2]
+- [x] 9. Quitar los modelos `Strategy`, `BacktestRun`, `BacktestSetup`, `BacktestTrade` de `schema.prisma`, ejecutar `prisma generate`, añadir `prisma/migrations/20260910000000_drop_engine_backtest_tables/migration.sql` con las cuatro sentencias `DROP TABLE IF EXISTS` en orden de claves foráneas. `npm run build` pasa. **Subir solo tras confirmación del usuario**; el despliegue aplica la migración sin supervisión. Después comprobar en el VPS que las cuatro tablas han desaparecido y que `settings_mirror` sigue existiendo. — Diseño § Modelo de datos / API. `chore(db): drop engine and backtest tables` [SP: 2]
 
 ## Estimación
 
@@ -43,3 +43,7 @@ Backend desplegado en `04ed605`, pm2 online con 0 reinicios. Log de arranque: `[
 ### Cambio de orden (2026-09-10)
 
 La tarea 7 se commiteó antes que la 5: `BacktestChart.tsx` es el único consumidor de los tipos `BacktestOverlay*`, así que quitarlos del componente del gráfico no compila mientras existan las páginas del backtest. Cada commit compila por sí solo. La tarea 5 elimina además el tooltip de entradas del backtest (`entryPointsRef`, `entryTip`, su JSX y su CSS), que solo rellena `drawBacktestOverlay` y no estaba listado explícitamente en el diseño.
+
+### Verificación de la tarea 8 (2026-09-10)
+
+Servidor de desarrollo contra el backend de producción. El usuario confirmó: login, Journal, Chart (lista completa tras la tarea 5 y de nuevo tras la 6), Scanner y Settings funcionan; el menú solo muestra Journal, Chart, Scanner y Settings en escritorio y móvil; consola del navegador limpia.

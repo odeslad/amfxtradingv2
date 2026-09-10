@@ -31,7 +31,6 @@ export const config = {
   features: {
     pipe: flag('FEATURE_PIPE'),
     watcher: flag('FEATURE_WATCHER'),
-    engine: flag('FEATURE_ENGINE'),
     alerts: flag('FEATURE_ALERTS'),
     wsBroadcast: flag('FEATURE_WS_BROADCAST'),
   },

@@ -15,7 +15,6 @@ import { setTick } from './store/ticks';
 import { setAccount } from './store/accounts';
 import { syncColors } from './store/positionColors';
 import { setBroadcaster } from './routes/commands';
-import { Engine } from './engine/engine';
 import { evaluateAlerts, setAlertBroadcaster } from './alerts/alert-evaluator';
 import { refreshAlerts } from './alerts/alert-store';
 import { evaluateEmaAlerts, setEmaAlertBroadcaster } from './alerts/ema-alert-evaluator';
@@ -27,7 +26,6 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   const { features } = config;
   const pipe = features.pipe ? new PipeReader(brokerName) : null;
   const watcher = features.watcher ? new FileWatcher(brokerName, bridgePath) : null;
-  const engine = features.engine ? new Engine(brokerName, bridgePath) : null;
 
   let currency = '';
   let brokerOffset = 0;
@@ -36,7 +34,6 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     if (batch.length > 0) brokerOffset = batch[0].broker_offset ?? brokerOffset;
     for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid, tick.ask);
     if (features.wsBroadcast) wss.broadcastTicks(brokerName, batch);
-    engine?.processTicks(batch);
     if (features.alerts) {
       evaluateAlerts(brokerName, batch);
       evaluateEmaAlerts(brokerName, batch);

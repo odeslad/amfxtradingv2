@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/AuthContext';
-import { IconJournal, IconChart, IconScanner, IconBacktest, IconEngine, IconSettings, IconSignOut } from '../../shared/ui/icons';
+import { IconJournal, IconChart, IconScanner, IconSettings, IconSignOut } from '../../shared/ui/icons';
 import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
@@ -11,9 +11,6 @@ const NAV = [
   { label: 'Journal', to: '/journal', icon: <IconJournal /> },
   { label: 'Chart', to: '/chart', icon: <IconChart /> },
   { label: 'Scanner', to: '/scanner', icon: <IconScanner /> },
-  // Experimental: shown muted and not navigable until stabilised.
-  { label: 'Backtest', to: '/backtest', icon: <IconBacktest />, disabled: true },
-  { label: 'Engine', to: '/engine', icon: <IconEngine />, disabled: true },
   { label: 'Settings', to: '/settings', icon: <IconSettings /> },
 ];
 
@@ -47,29 +44,17 @@ export function AppLayout() {
       <div className={styles.body}>
         {/* Desktop sidebar */}
         <nav className={styles.sidebar}>
-          {NAV.map(({ label, to, icon, disabled }) => (
-            disabled ? (
-              <span
-                key={to}
-                className={`${styles.navItem} ${styles.navItemDisabled}`}
-                title="Experimental — coming soon"
-                aria-disabled="true"
-              >
-                <span className={styles.navIcon}>{icon}</span>
-                <span className={styles.navLabel}>{label}</span>
-              </span>
-            ) : (
-              <NavLink
-                key={to}
-                to={to}
-                className={({ isActive }) =>
-                  `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
-                }
-              >
-                <span className={styles.navIcon}>{icon}</span>
-                <span className={styles.navLabel}>{label}</span>
-              </NavLink>
-            )
+          {NAV.map(({ label, to, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `${styles.navItem} ${isActive ? styles.navItemActive : ''}`
+              }
+            >
+              <span className={styles.navIcon}>{icon}</span>
+              <span className={styles.navLabel}>{label}</span>
+            </NavLink>
           ))}
         </nav>
 
@@ -86,28 +71,17 @@ export function AppLayout() {
 
       {/* Mobile bottom nav */}
       <nav className={styles.bottomNav}>
-        {NAV.map(({ label, to, icon, disabled }) => (
-          disabled ? (
-            <span
-              key={to}
-              className={`${styles.bottomNavItem} ${styles.navItemDisabled}`}
-              aria-disabled="true"
-            >
-              {icon}
-              <span className={styles.bottomNavLabel}>{label}</span>
-            </span>
-          ) : (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `${styles.bottomNavItem} ${isActive ? styles.bottomNavItemActive : ''}`
-              }
-            >
-              {icon}
-              <span className={styles.bottomNavLabel}>{label}</span>
-            </NavLink>
-          )
+        {NAV.map(({ label, to, icon }) => (
+          <NavLink
+            key={to}
+            to={to}
+            className={({ isActive }) =>
+              `${styles.bottomNavItem} ${isActive ? styles.bottomNavItemActive : ''}`
+            }
+          >
+            {icon}
+            <span className={styles.bottomNavLabel}>{label}</span>
+          </NavLink>
         ))}
       </nav>
     </div>

@@ -10,7 +10,7 @@ Cada tarea es un commit convencional. El proyecto debe compilar y funcionar tras
 
 - [x] 3. Eliminar el backtest: borrar `services/backtest.ts`, `routes/strategies.ts`, `engine/evaluators/setup-evaluator.ts`, `engine/evaluators/entry-evaluator.ts`, `engine/evaluators/entry/`; quitar el import y el montaje de `strategiesRouter` en `app.ts`; borrar el directorio `backend/src/engine/` ya vacío. Un grep confirma que no queda ninguna referencia a `engine/`, `db.strategy` ni `db.backtest`. `npm run build` pasa. — Diseño § Backend — borrar / modificar. `refactor(backend): remove backtest service and strategies route` [SP: 2]
 
-- [ ] 4. Verificar en el VPS tras el despliegue del backend: `/health` responde, `/strategies` responde 404, la página Scanner carga, se puede crear una alerta de cruce EMA, `/setup-levels` devuelve niveles desde el panel de nueva operación, el log de arranque no muestra `engine` en la línea de features desactivadas. Sin commit; registrar el resultado en Outcome. — Requisitos CA 1, 2, 5. [SP: 1]
+- [x] 4. Verificar en el VPS tras el despliegue del backend: `/health` responde, `/strategies` responde 404, la página Scanner carga, se puede crear una alerta de cruce EMA, `/setup-levels` devuelve niveles desde el panel de nueva operación, el log de arranque no muestra `engine` en la línea de features desactivadas. Sin commit; registrar el resultado en Outcome. — Requisitos CA 1, 2, 5. [SP: 1]
 
 ## Frontend
 
@@ -18,7 +18,7 @@ Cada tarea es un commit convencional. El proyecto debe compilar y funcionar tras
 
 - [ ] 6. (Opcional, reversible por separado) Eliminar las props de ventana exclusivas del backtest de `LightweightChart.tsx` (Grupo B): `focusRange`, `candlesKind`, `emaData`, `onLoadNewer`, `hasNewer` y las ramas que solo ellas alcanzan (rama de EMAs del backend en `syncEmaSeries`, `applyFocus` / `pendingFocusRef`, disparador `onLoadNewer`, reanclaje por `candlesKind`). Un grep demuestra que cada prop solo la pasa `features/backtest/`. La ruta de prepend con `candlesKind === undefined` queda byte a byte. `npm run build`, después lista de verificación manual completa. Omitir o revertir según la regla de parada. — Diseño § Grupo B; § Protocolo de seguridad del gráfico. `refactor(frontend): drop backtest-only chart props` [SP: 5]
 
-- [ ] 7. Borrar `features/backtest/` y `features/engine/`; quitar sus imports y rutas de `Router.tsx`; quitar `IconBacktest` / `IconEngine` del import de `AppLayout.tsx` y las dos entradas de menú desactivadas (más la rama de render de `disabled` si ninguna entrada la usa ya); borrar ambos iconos de `shared/ui/icons.tsx`. `npm run build` pasa. — Diseño § Frontend — borrar / modificar. `refactor(frontend): remove backtest and engine pages` [SP: 2]
+- [x] 7. Borrar `features/backtest/` y `features/engine/`; quitar sus imports y rutas de `Router.tsx`; quitar `IconBacktest` / `IconEngine` del import de `AppLayout.tsx` y las dos entradas de menú desactivadas (más la rama de render de `disabled` si ninguna entrada la usa ya); borrar ambos iconos de `shared/ui/icons.tsx`. `npm run build` pasa. — Diseño § Frontend — borrar / modificar. `refactor(frontend): remove backtest and engine pages` [SP: 2]
 
 - [ ] 8. Verificar en local contra el backend del VPS: login, Journal, Chart (lista de verificación completa una vez más), Scanner y Settings funcionan; consola del navegador limpia. Sin commit; registrar el resultado en Outcome. El frontend se despliega solo cuando el usuario lo pida. — Requisitos CA 10, 11. [SP: 1]
 
@@ -35,3 +35,11 @@ Referencia: sin specs previas — estimaciones base. Notas de calibración para 
 ## Outcome
 
 _(lo rellena /spec-implement)_
+
+### Verificación de la tarea 4 (2026-09-10)
+
+Backend desplegado en `04ed605`, pm2 online con 0 reinicios. Log de arranque: `[FEATURES] Disabled: none`. `/health` 200; `/strategies` y `/strategies/1/backtest` 404; `/scanner`, `/setup-levels`, `/candles/emas`, `/ema-alerts` 401 sin cookie (montadas). El usuario confirmó en producción: la página Scanner carga, se puede crear una alerta de cruce EMA, el panel de nueva operación carga los niveles del setup. Se anotan avisos `EBUSY` del file-watcher preexistentes y sin relación.
+
+### Cambio de orden (2026-09-10)
+
+La tarea 7 se commiteó antes que la 5: `BacktestChart.tsx` es el único consumidor de los tipos `BacktestOverlay*`, así que quitarlos del componente del gráfico no compila mientras existan las páginas del backtest. Cada commit compila por sí solo. La tarea 5 elimina además el tooltip de entradas del backtest (`entryPointsRef`, `entryTip`, su JSX y su CSS), que solo rellena `drawBacktestOverlay` y no estaba listado explícitamente en el diseño.

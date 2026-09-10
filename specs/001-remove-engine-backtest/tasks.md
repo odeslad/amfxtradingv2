@@ -10,7 +10,7 @@ Each task is one conventional commit. The project must build and run after every
 
 - [x] 3. Remove the backtest: delete `services/backtest.ts`, `routes/strategies.ts`, `engine/evaluators/setup-evaluator.ts`, `engine/evaluators/entry-evaluator.ts`, `engine/evaluators/entry/`; remove the `strategiesRouter` import and mount from `app.ts`; delete the now-empty `backend/src/engine/` directory. Grep confirms no reference to `engine/`, `db.strategy` or `db.backtest` remains. `npm run build` passes. — Design § Backend — delete / modify. `refactor(backend): remove backtest service and strategies route` [SP: 2]
 
-- [ ] 4. Verify on the VPS after the backend deploy: `/health` responds, `/strategies` responds 404, scanner page loads, an EMA-cross alert can be created, `/setup-levels` returns levels from the New Trade panel, startup log shows no `engine` in the disabled-features line. No commit; record the result in Outcome. — Requirements AC 1, 2, 5. [SP: 1]
+- [x] 4. Verify on the VPS after the backend deploy: `/health` responds, `/strategies` responds 404, scanner page loads, an EMA-cross alert can be created, `/setup-levels` returns levels from the New Trade panel, startup log shows no `engine` in the disabled-features line. No commit; record the result in Outcome. — Requirements AC 1, 2, 5. [SP: 1]
 
 ## Frontend
 
@@ -18,7 +18,7 @@ Each task is one conventional commit. The project must build and run after every
 
 - [ ] 6. (Optional, revert-alone) Remove the backtest-only window props from `LightweightChart.tsx` (Group B): `focusRange`, `candlesKind`, `emaData`, `onLoadNewer`, `hasNewer` and the branches that only they reach (backend-EMA branch in `syncEmaSeries`, `applyFocus` / `pendingFocusRef`, `onLoadNewer` trigger, `candlesKind` re-anchoring). Grep proves each prop is passed only by `features/backtest/`. The `candlesKind === undefined` prepend path stays byte-for-byte. `npm run build`, then full manual checklist. Skip or revert per the stop rule. — Design § Group B; § Chart safety protocol. `refactor(frontend): drop backtest-only chart props` [SP: 5]
 
-- [ ] 7. Delete `features/backtest/` and `features/engine/`; remove their imports and routes from `Router.tsx`; remove `IconBacktest` / `IconEngine` from the `AppLayout.tsx` import and the two disabled nav entries (plus the `disabled` rendering branch if no entry uses it any more); delete both icons from `shared/ui/icons.tsx`. `npm run build` passes. — Design § Frontend — delete / modify. `refactor(frontend): remove backtest and engine pages` [SP: 2]
+- [x] 7. Delete `features/backtest/` and `features/engine/`; remove their imports and routes from `Router.tsx`; remove `IconBacktest` / `IconEngine` from the `AppLayout.tsx` import and the two disabled nav entries (plus the `disabled` rendering branch if no entry uses it any more); delete both icons from `shared/ui/icons.tsx`. `npm run build` passes. — Design § Frontend — delete / modify. `refactor(frontend): remove backtest and engine pages` [SP: 2]
 
 - [ ] 8. Verify locally against the VPS backend: login, Journal, Chart (full checklist once more), Scanner and Settings pages work; browser console clean. No commit; record the result in Outcome. Frontend is deployed only when the user asks. — Requirements AC 10, 11. [SP: 1]
 
@@ -35,3 +35,11 @@ Reference: no prior specs — baseline estimates. Calibration notes for future s
 ## Outcome
 
 _(filled in by /spec-implement)_
+
+### Task 4 verification (2026-09-10)
+
+Backend deployed at `04ed605`, pm2 online with 0 restarts. Startup log: `[FEATURES] Disabled: none`. `/health` 200; `/strategies` and `/strategies/1/backtest` 404; `/scanner`, `/setup-levels`, `/candles/emas`, `/ema-alerts` 401 without cookie (mounted). User confirmed in production: Scanner page loads, EMA-cross alert can be created, New Trade panel loads setup levels. Pre-existing unrelated `EBUSY` file-watcher warnings noted.
+
+### Order change (2026-09-10)
+
+Task 7 was committed before task 5: `BacktestChart.tsx` is the only consumer of the `BacktestOverlay*` types, so removing them from the chart component cannot build while the backtest pages still exist. Each commit still builds on its own. Task 5 also removes the backtest entry tooltip (`entryPointsRef`, `entryTip`, its JSX and CSS), which is populated only by `drawBacktestOverlay` and was not listed explicitly in the design.

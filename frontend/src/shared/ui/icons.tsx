@@ -22,32 +22,6 @@ export function IconChart({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
-export function IconBacktest({ size = 14, color = 'currentColor' }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <rect x="1" y="3" width="14" height="10" rx="0" stroke={color} strokeWidth="1.2" />
-      <line x1="1" y1="7" x2="15" y2="7" stroke={color} strokeWidth="1.2" />
-      <line x1="5" y1="3" x2="5" y2="13" stroke={color} strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function IconEngine({ size = 14, color = 'currentColor' }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <circle cx="8" cy="8" r="3" stroke={color} strokeWidth="1.2" />
-      <line x1="8" y1="1" x2="8" y2="4" stroke={color} strokeWidth="1.2" />
-      <line x1="8" y1="12" x2="8" y2="15" stroke={color} strokeWidth="1.2" />
-      <line x1="1" y1="8" x2="4" y2="8" stroke={color} strokeWidth="1.2" />
-      <line x1="12" y1="8" x2="15" y2="8" stroke={color} strokeWidth="1.2" />
-      <line x1="2.93" y1="2.93" x2="4.93" y2="4.93" stroke={color} strokeWidth="1.2" />
-      <line x1="11.07" y1="11.07" x2="13.07" y2="13.07" stroke={color} strokeWidth="1.2" />
-      <line x1="13.07" y1="2.93" x2="11.07" y2="4.93" stroke={color} strokeWidth="1.2" />
-      <line x1="4.93" y1="11.07" x2="2.93" y2="13.07" stroke={color} strokeWidth="1.2" />
-    </svg>
-  );
-}
-
 export function IconSignOut({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

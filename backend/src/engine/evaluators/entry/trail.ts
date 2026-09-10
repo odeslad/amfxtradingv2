@@ -1,5 +1,5 @@
-import type { Candle } from '../../indicators/ema';
-import type { PivotPoint } from '../ema-cross';
+import type { Candle } from '../../../indicators/ema';
+import type { PivotPoint } from '../../../indicators/ema-cross';
 
 export interface TrailConfig {
   type: 'none' | 'weak' | 'pivot' | 'fixed';

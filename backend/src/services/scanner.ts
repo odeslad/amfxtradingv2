@@ -1,8 +1,8 @@
 import { db } from '../db/client';
-import { calculateEma, type Candle } from '../engine/indicators/ema';
-import { detectEmaCrossSetups } from '../engine/evaluators/ema-cross';
-import { getPipSize } from '../engine/pip-size';
-import { getTimeframeMs } from '../engine/timeframe';
+import { calculateEma, type Candle } from '../indicators/ema';
+import { detectEmaCrossSetups } from '../indicators/ema-cross';
+import { getPipSize } from '../indicators/pip-size';
+import { getTimeframeMs } from '../indicators/timeframe';
 
 export interface ScannerCross {
   direction: 'buy' | 'sell';

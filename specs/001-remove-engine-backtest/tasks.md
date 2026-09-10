@@ -4,7 +4,7 @@ Each task is one conventional commit. The project must build and run after every
 
 ## Backend
 
-- [ ] 1. Move shared modules to `backend/src/indicators/` (`ema.ts`, `ema-cross.ts`, `pip-size.ts`, `timeframe.ts`) and update the imports in `alerts/ema-alert-evaluator.ts`, `services/scanner.ts`, `routes/candles.ts`, `routes/setup-levels.ts` and the temporary ones in `services/backtest.ts` and `engine/evaluators/*`. No logic changes. `npm run build` passes. — Design § Backend — move. `refactor(backend): move shared indicators out of engine` [SP: 2]
+- [x] 1. Move shared modules to `backend/src/indicators/` (`ema.ts`, `ema-cross.ts`, `pip-size.ts`, `timeframe.ts`) and update the imports in `alerts/ema-alert-evaluator.ts`, `services/scanner.ts`, `routes/candles.ts`, `routes/setup-levels.ts` and the temporary ones in `services/backtest.ts` and `engine/evaluators/*`. No logic changes. `npm run build` passes. — Design § Backend — move. `refactor(backend): move shared indicators out of engine` [SP: 2]
 
 - [ ] 2. Remove the live engine: delete `engine/engine.ts`, `engine/candle-tracker.ts`, `engine/strategy-evaluator.ts`, `engine/order-executor.ts`; remove the `Engine` import, construction and `processTicks` call from `index.ts`; remove the `engine` flag from `config.ts`. `npm run build` passes. — Design § Backend — delete / modify. `refactor(backend): remove trading engine` [SP: 1]
 

@@ -1,4 +1,4 @@
-import { calculateEma, type Candle } from '../indicators/ema';
+import { calculateEma, type Candle } from './ema';
 
 export interface WeakConfig {
   enabled: boolean;

@@ -1,8 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/client';
-import { detectEmaCrossSetups } from '../engine/evaluators/ema-cross';
-import { getPipSize } from '../engine/pip-size';
-import type { Candle } from '../engine/indicators/ema';
+import { detectEmaCrossSetups } from '../indicators/ema-cross';
+import { getPipSize } from '../indicators/pip-size';
+import type { Candle } from '../indicators/ema';
 
 const router = Router();
 

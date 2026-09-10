@@ -1,14 +1,13 @@
 import { Router } from 'express';
 import { db } from '../db/client';
-import { calculateEma } from '../engine/indicators/ema';
+import { calculateEma } from '../indicators/ema';
 
 const router = Router();
 
-// EMA series computed from the FULL history (same calculateEma the backtest
-// uses) so the chart's lines and crosses match the setups exactly. Returns only
-// the points inside [from, to]; the warmup before `from` is computed but not
-// sent. This replaces the frontend's own EMA calc, which drifted from the
-// backend's for slow periods.
+// EMA series computed from the FULL history so the chart's lines and crosses
+// match the scanner exactly. Returns only the points inside [from, to]; the
+// warmup before `from` is computed but not sent. This replaces the frontend's
+// own EMA calc, which drifted from the backend's for slow periods.
 router.get('/emas', async (req, res) => {
   const { broker, symbol, tf, emaFast, emaSlow, from, to } = req.query as Record<string, string>;
 

@@ -1,8 +1,8 @@
 import type { TickData, TickBatch } from '../bridge/pipe-reader';
 import { db } from '../db/client';
 import { sendToUser } from '../services/push';
-import { calculateEma, type Candle } from '../engine/indicators/ema';
-import { getPipSize } from '../engine/pip-size';
+import { calculateEma, type Candle } from '../indicators/ema';
+import { getPipSize } from '../indicators/pip-size';
 import {
   getArmedEmaAlerts, hasAnyEmaAlerts, refreshEmaAlerts, type ArmedEmaAlert,
 } from './ema-alert-store';

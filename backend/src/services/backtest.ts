@@ -4,10 +4,10 @@ import { db } from '../db/client';
 import { evaluateSetups } from '../engine/evaluators/setup-evaluator';
 import { evaluateEntries } from '../engine/evaluators/entry-evaluator';
 import type { EntryConfig } from '../engine/evaluators/entry-evaluator';
-import type { EmaCrossContext } from '../engine/evaluators/ema-cross';
-import { getPipSize } from '../engine/pip-size';
-import { getTimeframeMs } from '../engine/timeframe';
-import type { Candle } from '../engine/indicators/ema';
+import type { EmaCrossContext } from '../indicators/ema-cross';
+import { getPipSize } from '../indicators/pip-size';
+import { getTimeframeMs } from '../indicators/timeframe';
+import type { Candle } from '../indicators/ema';
 
 interface StrategyForm {
   id?: string;

@@ -1,5 +1,5 @@
-import type { Candle } from '../indicators/ema';
-import type { PivotPoint } from './ema-cross';
+import type { Candle } from '../../indicators/ema';
+import type { PivotPoint } from '../../indicators/ema-cross';
 import { calculateSl, type SLConfig } from './entry/sl';
 import { calculateTp, type ExitConfig } from './entry/exit';
 import { scanResult } from './entry/scan';

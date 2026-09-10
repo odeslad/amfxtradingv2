@@ -1,6 +1,6 @@
-import type { Candle } from '../indicators/ema';
-import { detectEmaCrossSetups } from './ema-cross';
-import type { EmaCrossContext, EmaCrossSetup } from './ema-cross';
+import type { Candle } from '../../indicators/ema';
+import { detectEmaCrossSetups } from '../../indicators/ema-cross';
+import type { EmaCrossContext, EmaCrossSetup } from '../../indicators/ema-cross';
 import type { EntryConfig } from './entry-evaluator';
 
 interface SetupForm {

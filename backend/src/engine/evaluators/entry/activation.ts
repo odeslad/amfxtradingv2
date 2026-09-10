@@ -1,4 +1,4 @@
-import type { Candle } from '../../indicators/ema';
+import type { Candle } from '../../../indicators/ema';
 import type { EntryConfig } from '../entry-evaluator';
 
 export function findActivation(

@@ -34,7 +34,22 @@ Referencia: sin specs previas — estimaciones base. Notas de calibración para 
 
 ## Outcome
 
-_(lo rellena /spec-implement)_
+**Entregado (2026-09-10).** Motor y backtest eliminados de backend, frontend y base de datos en 8 commits (`37cfdfb` → `897b1a7`). Los indicadores compartidos viven en `backend/src/indicators/`. Verificado en producción: `/strategies` 404, scanner / alertas EMA / setup-levels funcionando, cuatro tablas eliminadas (`_prisma_migrations` registra `20260910000000_drop_engine_backtest_tables`), `settings_mirror` intacta, el paquete del frontend desplegado no referencia Backtest.
+
+**Desviaciones acordadas:** la tarea 7 se commiteó antes que la 5 (orden de compilación); la tarea 5 eliminó además el tooltip de entradas del backtest; la tarea 6 reescribió tres líneas (la expresión `preserve` y dos condicionales desenvueltos) en lugar de borrado puro, todas equivalentes para el gráfico en vivo.
+
+**Incidencia:** los deploys de backend y frontend corrieron a la vez tras el push final; el `git pull` del backend abortó sobre un árbol a medio actualizar. Relanzar `deploy.ps1` por SSH lo resolvió. Conviene serializar los dos workflows o hacer tolerante el pull del backend.
+
+**Esfuerzo real:**
+- Tarea 1: estimada 2, ajustada.
+- Tarea 2: estimada 1, ajustada.
+- Tarea 3: estimada 2, pareció 1 — borrado puro, grep limpio a la primera.
+- Tarea 4: estimada 1, ajustada; las comprobaciones de UI con sesión las hizo el usuario.
+- Tarea 5: estimada 3, pareció 3 — el tooltip no listado añadió algo; el reorden en dos commits costó más que la edición.
+- Tarea 6: estimada 5, pareció 3 — una vez probadas muertas las props, las ramas se aislaron fácil.
+- Tarea 7: estimada 2, ajustada.
+- Tarea 8: estimada 1, ajustada.
+- Tarea 9: estimada 2, pareció 3 — DLL de Prisma bloqueada por un proceso local huérfano y la incidencia del deploy concurrente.
 
 ### Verificación de la tarea 4 (2026-09-10)
 

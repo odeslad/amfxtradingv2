@@ -34,7 +34,22 @@ Reference: no prior specs — baseline estimates. Calibration notes for future s
 
 ## Outcome
 
-_(filled in by /spec-implement)_
+**Shipped (2026-09-10).** Engine and backtest removed from backend, frontend and database in 8 commits (`37cfdfb` → `897b1a7`). Shared indicators live in `backend/src/indicators/`. Production verified: `/strategies` 404, scanner / EMA alerts / setup-levels working, four tables dropped (`_prisma_migrations` records `20260910000000_drop_engine_backtest_tables`), `settings_mirror` intact, deployed frontend bundle has no reference to Backtest.
+
+**Deviations agreed:** task 7 committed before task 5 (build order); task 5 also removed the backtest entry tooltip; task 6 rewrote three lines (the `preserve` expression and two unwrapped conditionals) instead of pure deletion, all equivalent for the live chart.
+
+**Incident:** the backend and frontend deploys ran concurrently after the final push; the backend `git pull` aborted on a half-updated tree. Re-running `deploy.ps1` over SSH fixed it. Worth serialising the two workflows or making the backend pull tolerant.
+
+**Actual effort:**
+- Task 1: estimated 2, accurate.
+- Task 2: estimated 1, accurate.
+- Task 3: estimated 2, felt like 1 — pure deletion, grep clean on first try.
+- Task 4: estimated 1, accurate; the authenticated UI checks were done by the user.
+- Task 5: estimated 3, felt like 3 — the unlisted entry tooltip added a little; the two-commit reorder cost more than the edit.
+- Task 6: estimated 5, felt like 3 — once the props were proven dead the branches were easy to isolate.
+- Task 7: estimated 2, accurate.
+- Task 8: estimated 1, accurate.
+- Task 9: estimated 2, felt like 3 — a locked Prisma DLL from a leftover local process and the concurrent-deploy incident.
 
 ### Task 4 verification (2026-09-10)
 

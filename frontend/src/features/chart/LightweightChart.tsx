@@ -175,15 +175,6 @@ function getMonthStartTimes(candles: Candle[]): Set<number> {
 }
 
 interface LightweightChartExtendedProps extends LightweightChartProps {
-  focusRange?: { from: number; to: number; nonce: number } | null;
-  // Sliding-window metadata for the backtest chart. 'older'/'newer' updates
-  // preserve the view (re-anchor on the first visible candle); the rest reset.
-  candlesKind?: 'initial' | 'older' | 'newer' | 'around';
-  // EMA series precomputed by the backend over the full history (fast/slow per
-  // candle time). Replaces the chart's own EMA calc so lines match the setups.
-  emaData?: { time: number; fast: number | null; slow: number | null }[];
-  onLoadNewer?: () => void;
-  hasNewer?: boolean;
   drawMode?: DrawMode | null;
   onDrawDone?: () => void;
   positions?: Position[];
@@ -200,61 +191,12 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, focusRange, candlesKind, emaData, onLoadNewer, hasNewer, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
-  // Keep a synchronously-fresh view of the current candles so focus logic never
-  // reads a stale/empty ref (the candles effect updates its own ref too late for
-  // the focus effect, which caused double-click to intermittently miss).
-  const focusCandlesRef = useRef(candles);
-  focusCandlesRef.current = candles;
   const alertsRef = useRef(alerts);
   useEffect(() => { alertsRef.current = alerts; }, [alerts]);
-
-  // Focus the chart on a given time range (scroll + zoom). Driven by a nonce so
-  // re-focusing the same range works. The candles effect consumes pendingFocus
-  // so the initial auto-scroll-to-end doesn't override it.
-  const pendingFocusRef = useRef<{ from: number; to: number } | null>(null);
-  const applyFocus = useCallback(() => {
-    const f = pendingFocusRef.current;
-    const chart = chartRef.current;
-    if (!f || !chart) return;
-    // Snap the requested [from,to] to real candle times that are actually on the
-    // axis (weekends are filtered out of the series). Read the latest candles ref
-    // (updated by the candles effect) so a retry sees freshly-loaded data. If the
-    // range isn't loaded yet, keep it pending so a later change retries.
-    const data = focusCandlesRef.current.filter(c => {
-      const d = new Date(c.time * 1000).getUTCDay();
-      return d !== 0 && d !== 6;
-    });
-    if (data.length === 0) return;
-    // first candle at/after `from`
-    const fromCandle = data.find(c => c.time >= f.from);
-    // last candle at/before `to`
-    let toCandle: typeof data[number] | undefined;
-    for (let i = data.length - 1; i >= 0; i--) { if (data[i].time <= f.to) { toCandle = data[i]; break; } }
-    if (!fromCandle || !toCandle || fromCandle.time > toCandle.time) return; // not loaded yet
-    try {
-      chart.timeScale().setVisibleRange({ from: fromCandle.time as Time, to: toCandle.time as Time });
-      pendingFocusRef.current = null;
-    } catch {
-      // keep pending
-    }
-  }, []);
-  // Set the pending focus when a request arrives.
-  useEffect(() => {
-    if (!focusRange) return;
-    pendingFocusRef.current = { from: focusRange.from, to: focusRange.to };
-    applyFocus();
-  }, [focusRange, applyFocus]);
-
-  // Retry the pending focus whenever candles change: after a jump the target
-  // range arrives one render later than the focus request. Reading the fresh
-  // candles ref, this applies as soon as the right data is present.
-  useEffect(() => {
-    if (pendingFocusRef.current) applyFocus();
-  }, [candles, applyFocus]);
 
   const drawRolloversRef = useRef<() => void>(() => { });
 
@@ -281,15 +223,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const emaSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const candlesRef = useRef<Candle[]>([]);
   const emasRef = useRef<Ema[]>(emas);
-  const emaDataRef = useRef<NonNullable<typeof emaData>>(emaData ?? []);
-  emaDataRef.current = emaData ?? [];
   const timeframeRef = useRef<string>(timeframe);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
-  const onLoadNewerRef = useRef<(() => void) | undefined>(undefined);
-  const hasNewerRef = useRef(false);
-  useEffect(() => { onLoadNewerRef.current = onLoadNewer; }, [onLoadNewer]);
-  useEffect(() => { hasNewerRef.current = hasNewer ?? false; }, [hasNewer]);
   const isLoadingMoreRef = useRef(false);
   const trendlineManagerRef = useRef<DrawingManager | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
@@ -561,31 +497,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       emaSeriesRef.current.delete(id);
     }
 
-    const backendEmas = emaDataRef.current;
-
-    // Backtest chart: EMA values come from the backend (full-history accurate)
-    // so lines and crosses match the setups exactly.
-    if (backendEmas.length > 0) {
-      for (const ema of currentEmas) {
-        const series = emaSeriesRef.current.get(ema.id)!;
-        const seenT = new Set<number>();
-        const data = backendEmas
-          .filter(p => {
-            const val = ema.id === 'fast' ? p.fast : p.slow;
-            if (val === null || !Number.isFinite(p.time)) return false;
-            const d = new Date(p.time * 1000).getUTCDay();
-            if (d === 0 || d === 6 || seenT.has(p.time)) return false;
-            seenT.add(p.time);
-            return true;
-          })
-          .sort((a, b) => a.time - b.time)
-          .map(p => ({ time: p.time as Time, value: (ema.id === 'fast' ? p.fast : p.slow) as number }));
-        series.setData(data);
-      }
-      return;
-    }
-
-    // Live chart: no backend EMAs supplied — compute locally from the candles.
     const seen = new Set<number>();
     const filteredCandles = candlesRef.current
       .filter(c => {
@@ -702,9 +613,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       if (range.from <= 30 && onLoadMoreRef.current) {
         isLoadingMoreRef.current = true;
         onLoadMoreRef.current();
-      } else if (hasNewerRef.current && onLoadNewerRef.current && range.to >= candlesRef.current.length - 30) {
-        isLoadingMoreRef.current = true;
-        onLoadNewerRef.current();
       }
     });
 
@@ -741,12 +649,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     if (!seriesRef.current || !chartRef.current || candles.length === 0) return;
 
     const oldCandles = candlesRef.current;
-    // A sliding-window update (older/newer) preserves the view; anything else
-    // resets it. Fall back to the legacy prepend heuristic when candlesKind is
-    // absent (live chart).
-    const isWindow = candlesKind === 'older' || candlesKind === 'newer';
-    const isPrepend = candlesKind === undefined && oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
-    const preserve = isWindow || isPrepend;
+    // Prepending older candles preserves the view; anything else resets it.
+    const preserve = oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
 
     const filterWeekend = (arr: Candle[]) =>
       arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
@@ -792,11 +696,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     seriesRef.current.setData(data);
 
     if (preserve && chartRef.current) {
-      // A focus is pending (double-click) and its candles may have just arrived
-      // via pagination — honour it instead of restoring the previous viewport.
-      if (pendingFocusRef.current) {
-        applyFocus();
-      } else if (anchorTime !== null) {
+      if (anchorTime !== null) {
         const newFromIdx = data.findIndex(d => (d.time as number) >= anchorTime!);
         if (newFromIdx >= 0) {
           chartRef.current.timeScale().setVisibleLogicalRange({
@@ -810,15 +710,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       seriesRef.current.priceScale().applyOptions({ autoScale: true });
       const barSpacing = 6;
       chartRef.current.timeScale().applyOptions({ barSpacing });
-      if (pendingFocusRef.current) {
-        // A focus is pending (double-click) — honour it instead of scrolling to end.
-        applyFocus();
-      } else if (candlesKind !== 'around') {
-        // An 'around' update comes from a double-click focus; never scroll to end
-        // for it, or it would undo a focus that was already applied.
-        const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);
-        chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
-      }
+      const visibleBars = Math.floor(containerRef.current.clientWidth / barSpacing);
+      chartRef.current.timeScale().scrollToPosition(Math.floor(visibleBars * 0.3), false);
     }
 
     const manager = trendlineManagerRef.current;
@@ -832,12 +725,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     }
     syncEmaSeries();
     drawRollovers();
-  }, [candles, candlesKind, drawRollovers, syncEmaSeries, applyFocus]);
+  }, [candles, drawRollovers, syncEmaSeries]);
 
   useEffect(() => {
     emasRef.current = emas;
     syncEmaSeries();
-  }, [emas, emaData, syncEmaSeries]);
+  }, [emas, syncEmaSeries]);
 
   useEffect(() => {
     if (!seriesRef.current || !liveCandle) return;

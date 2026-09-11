@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { fmt, currencySymbol } from './utils/position';
 import styles from './JournalPage.module.css';
 import accountStyles from './Accounts.module.css';
+
+const DOUBLE_TAP_MS = 300;
 
 interface Balance {
   broker: string;
@@ -24,13 +26,26 @@ interface AccountCardProps {
 
 export function AccountCard({ balance: b, dayPnl, onSelect }: AccountCardProps) {
   const [expanded, setExpanded] = useState(false);
+  const lastTapTime = useRef(0);
+
+  // iOS Safari doesn't fire dblclick on double-tap, so detect it from clicks.
+  const onSummaryClick = () => {
+    const now = Date.now();
+    if (onSelect && now - lastTapTime.current < DOUBLE_TAP_MS) {
+      onSelect();
+      lastTapTime.current = 0;
+      return;
+    }
+    lastTapTime.current = now;
+    setExpanded(prev => !prev);
+  };
 
   return (
     <div className={`${accountStyles.card} ${expanded ? accountStyles.cardExpanded : ''}`}>
       <button
         type="button"
         className={`${accountStyles.summary} ${expanded ? accountStyles.summaryActive : ''}`}
-        onClick={() => setExpanded(prev => !prev)}
+        onClick={onSummaryClick}
         onDoubleClick={onSelect}
         aria-expanded={expanded}
       >

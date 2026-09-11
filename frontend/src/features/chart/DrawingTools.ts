@@ -16,6 +16,7 @@ export interface LineDrawing extends BaseDrawing {
   price1: number;
   logical2: number;
   price2: number;
+  color?: string;
 }
 
 export interface RectDrawing extends BaseDrawing {
@@ -62,6 +63,7 @@ export interface PersistedLine extends PersistedBase {
   price1: number;
   time2: number;
   price2: number;
+  color?: string;
 }
 
 export interface PersistedRect extends PersistedBase {
@@ -545,14 +547,14 @@ export class DrawingManager {
 
   // ─── mouse ─────────────────────────────────────────────────────────────────
 
-  // Rect color rotation: default → red → green → default.
-  private nextRectColor(current?: string): string | undefined {
+  // Line/rect color rotation: default → red → green → default.
+  private nextDrawingColor(current?: string): string | undefined {
     if (!current) return RECT_RED;
     if (current === RECT_RED) return RECT_GREEN;
     return undefined;
   }
 
-  // Double click/tap: cycles a rect's color, or edits a text drawing.
+  // Double click/tap: cycles a line/rect color, or edits a text drawing.
   private handleDoubleAt(clientX: number, clientY: number, touch: boolean): boolean {
     if (this.isDrawing || !this.inside(clientX, clientY)) return false;
     const pos = this.toCanvas(clientX, clientY);
@@ -560,12 +562,12 @@ export class DrawingManager {
     const hit = this.hitTest(pos, touch);
     if (!hit) return false;
     const d = this.drawings.find(x => x.id === hit.id);
-    if (!d || (d.kind !== 'rect' && d.kind !== 'text')) return false;
+    if (!d || (d.kind !== 'line' && d.kind !== 'rect' && d.kind !== 'text')) return false;
 
     this.dragHandle = null;
     this.dragLastLogical = null;
-    if (d.kind === 'rect') {
-      d.color = this.nextRectColor(d.color);
+    if (d.kind === 'line' || d.kind === 'rect') {
+      d.color = this.nextDrawingColor(d.color);
       this.redraw();
       this.onChange?.();
     } else {
@@ -761,7 +763,7 @@ export class DrawingManager {
           const px = this.segPixels(d);
           if (!px) continue;
           if (d.kind === 'rect') this.paintRect(px, selected, false, d.color);
-          else this.paintLine(px, selected);
+          else this.paintLine(px, selected, false, d.color);
         }
       }
 
@@ -797,9 +799,10 @@ export class DrawingManager {
     else this.ctx.setLineDash([]);
   }
 
-  private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false) {
+  private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false, colorOverride?: string) {
     const ctx = this.ctx;
-    const { color, style, width } = this.strokeStyleFor(preview);
+    const { color: baseColor, style, width } = this.strokeStyleFor(preview);
+    const color = colorOverride ?? baseColor;
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
     this.applyDash(style);
@@ -1149,7 +1152,7 @@ export class DrawingManager {
     if (d.kind === 'rect') {
       return { kind: 'rect', time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
     }
-    return { kind: 'line', time1: t1, price1: d.price1, time2: t2, price2: d.price2 };
+    return { kind: 'line', time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
   }
 
   private applyPersisted(d: Drawing, snap: PersistedDrawing) {
@@ -1199,7 +1202,7 @@ export class DrawingManager {
           id: `dr-${idx}-${it.time1}`,
           kind: it.kind,
           logical1: l1, price1: it.price1, logical2: l2, price2: it.price2,
-          ...(it.kind === 'rect' && it.color ? { color: it.color } : {}),
+          ...(it.color ? { color: it.color } : {}),
         });
       }
     });

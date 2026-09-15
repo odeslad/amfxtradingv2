@@ -16,6 +16,7 @@ import emaAlertsRouter from './routes/ema-alerts';
 import scannerRouter from './routes/scanner';
 import setupLevelsRouter from './routes/setup-levels';
 import pushRouter from './routes/push';
+import statsRouter from './routes/stats';
 import { requireAuth } from './middleware/requireAuth';
 
 const app = express();
@@ -50,5 +51,6 @@ app.use('/ema-alerts', requireAuth, emaAlertsRouter);
 app.use('/scanner', requireAuth, scannerRouter);
 app.use('/setup-levels', requireAuth, setupLevelsRouter);
 app.use('/push', requireAuth, pushRouter);
+app.use('/stats', requireAuth, statsRouter);
 
 export default app;

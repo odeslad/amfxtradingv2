@@ -185,7 +185,7 @@ Array de todas las posiciones abiertas:
 `type`: 0 = BUY, 1 = SELL, 2-5 = órdenes pendientes.
 
 ### `bridge/history.json`
-Últimas 50 operaciones cerradas. Mismo formato que `positions.json` más `closePrice` y `closeTime`.
+Últimas `HISTORY_MAX` operaciones cerradas (50 por defecto; `0` = sin límite). Con `HISTORY_FULL_ON_START = true` (por defecto) la **primera** escritura tras arrancar el EA exporta todo el historial visible en la pestaña *Account History* del terminal, para que el backend cargue el histórico completo; poner esa pestaña en *All History* antes de arrancar. Mismo formato que `positions.json` más `closePrice` y `closeTime`.
 
 ### `bridge/candles_SYMBOL_TF.json`
 Un archivo por símbolo y timeframe (ej. `candles_EURUSD_M15.json`):

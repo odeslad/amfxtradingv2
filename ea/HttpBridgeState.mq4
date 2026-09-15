@@ -18,6 +18,10 @@ input int    RECENT_BARS   = 100;
 input int    STATE_EVERY_S = 60;         // seconds between state updates (history, candles).
 input int    POSITIONS_EVERY_S = 1;      // seconds between live position pushes over the pipe.
 input int    ACCOUNT_EVERY_S = 1;        // seconds between live account pushes over the pipe.
+input int    HISTORY_MAX    = 50;        // closed trades per history.json write (0 = no limit).
+input bool   HISTORY_FULL_ON_START = true; // first history.json write after start exports every closed trade.
+
+bool g_historyFullPending = HISTORY_FULL_ON_START;
 
 // ── Runtime config (config.json overrides inputs) ────────────────────────────
 string g_brokerName  = "";
@@ -216,7 +220,9 @@ int OnInit() {
    Print("[STATE] HttpBridgeState v3.13 | broker: ", g_brokerName,
          " | symbols: ", g_symbolsRaw,
          " | symbol count: ", g_symbolCount,
-         " | state every: ", STATE_EVERY_S, "s");
+         " | state every: ", STATE_EVERY_S, "s",
+         " | history max: ", HISTORY_MAX,
+         " | full history on start: ", HISTORY_FULL_ON_START);
 
    Print("[STATE] Writing historical candles (", g_symbolCount, " symbols × 5 timeframes × all available bars)...");
    for (int i = 0; i < g_symbolCount; i++) {
@@ -377,7 +383,12 @@ string BuildPositionsJson(int total) {
 void WriteHistory() {
    string j = "[";
    int total = OrdersHistoryTotal(), count = 0;
-   for (int i = total - 1; i >= 0 && count < 50; i--) {
+   int limit = (g_historyFullPending || HISTORY_MAX <= 0) ? total : HISTORY_MAX;
+   if (g_historyFullPending) {
+      Print("[STATE] Full history export: ", total, " orders visible in Account History");
+      g_historyFullPending = false;
+   }
+   for (int i = total - 1; i >= 0 && count < limit; i--) {
       if (!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
       if (OrderType() != OP_BUY && OrderType() != OP_SELL) continue;
       if (count > 0) j += ",";

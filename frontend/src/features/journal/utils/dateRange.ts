@@ -1,4 +1,25 @@
-export type DateRange = '' | 'today' | 'yesterday' | 'last_week' | 'last_month' | 'custom';
+export type DateRange =
+  | ''
+  | 'today'
+  | 'yesterday'
+  | 'last_week'
+  | 'this_month'
+  | 'last_month'
+  | 'last_3_months'
+  | 'this_year'
+  | 'custom';
+
+export const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
+  { value: '', label: 'All time' },
+  { value: 'today', label: 'Today' },
+  { value: 'yesterday', label: 'Yesterday' },
+  { value: 'last_week', label: 'Last week' },
+  { value: 'this_month', label: 'This month' },
+  { value: 'last_month', label: 'Last month' },
+  { value: 'last_3_months', label: 'Last 3 months' },
+  { value: 'this_year', label: 'This year' },
+  { value: 'custom', label: 'Custom' },
+];
 
 export interface DateRangeValues {
   dateRange: DateRange;
@@ -35,11 +56,17 @@ export function dateRangeBounds({ dateRange, dateFrom, dateTo }: DateRangeValues
       const lastMonday = addDays(today, -daysSinceMonday - 7);
       return { from: lastMonday.toISOString(), to: addDays(lastMonday, 7).toISOString() };
     }
+    case 'this_month':
+      return { from: new Date(today.getFullYear(), today.getMonth(), 1).toISOString() };
     case 'last_month': {
       const first = new Date(today.getFullYear(), today.getMonth() - 1, 1);
       const next = new Date(today.getFullYear(), today.getMonth(), 1);
       return { from: first.toISOString(), to: next.toISOString() };
     }
+    case 'last_3_months':
+      return { from: new Date(today.getFullYear(), today.getMonth() - 2, 1).toISOString() };
+    case 'this_year':
+      return { from: new Date(today.getFullYear(), 0, 1).toISOString() };
     case 'custom':
       return {
         from: dateFrom ? new Date(`${dateFrom}T00:00:00`).toISOString() : undefined,

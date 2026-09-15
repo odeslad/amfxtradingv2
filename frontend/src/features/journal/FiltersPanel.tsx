@@ -1,5 +1,5 @@
 import { POSITION_COLORS, POSITION_COLOR_VALUES, type PositionColor } from './utils/position';
-import { type DateRange } from './utils/dateRange';
+import { type DateRange, DATE_RANGE_OPTIONS } from './utils/dateRange';
 import styles from './FiltersPanel.module.css';
 
 export interface FilterValues {
@@ -11,15 +11,6 @@ export interface FilterValues {
   dateFrom: string;
   dateTo: string;
 }
-
-const DATE_RANGE_OPTIONS: { value: DateRange; label: string }[] = [
-  { value: '', label: 'All time' },
-  { value: 'today', label: 'Today' },
-  { value: 'yesterday', label: 'Yesterday' },
-  { value: 'last_week', label: 'Last week' },
-  { value: 'last_month', label: 'Last month' },
-  { value: 'custom', label: 'Custom' },
-];
 
 export interface FilterOptions {
   brokers: string[];

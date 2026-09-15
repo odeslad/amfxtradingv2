@@ -22,6 +22,16 @@ export function IconChart({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconStats({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <rect x="2" y="8" width="3" height="6" stroke={color} strokeWidth="1.2" />
+      <rect x="6.5" y="4" width="3" height="10" stroke={color} strokeWidth="1.2" />
+      <rect x="11" y="1.5" width="3" height="12.5" stroke={color} strokeWidth="1.2" />
+    </svg>
+  );
+}
+
 export function IconSignOut({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

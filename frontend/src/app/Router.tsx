@@ -6,6 +6,7 @@ import { AppLayout } from './layout/AppLayout';
 import { JournalPage } from '../features/journal/JournalPage';
 import { ChartPage } from '../features/chart/ChartPage';
 import { ScannerPage } from '../features/scanner/ScannerPage';
+import { StatsPage } from '../features/stats/StatsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
 
 export function Router() {
@@ -25,6 +26,7 @@ export function Router() {
             <Route path="/journal" element={<JournalPage />} />
             <Route path="/chart" element={<ChartPage />} />
             <Route path="/scanner" element={<ScannerPage />} />
+            <Route path="/stats" element={<StatsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />

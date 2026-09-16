@@ -1,9 +1,20 @@
-export type StartBalanceSource = 'snapshot' | 'derived' | 'none';
-
 export interface MonthlyStats {
   month: string;
   trades: number;
   netPnl: number;
+  cashFlow: number;
+  returnPct: number | null;
+}
+
+export interface CurvePoint {
+  date: string;
+  balance: number;
+}
+
+export interface BalanceOperation {
+  time: string;
+  amount: number;
+  comment: string;
 }
 
 export interface BrokerStats {
@@ -14,9 +25,11 @@ export interface BrokerStats {
   wins: number;
   losses: number;
   netPnl: number;
+  cashFlow: number;
   tradesPerMonth: number;
   startBalance: number | null;
-  startBalanceSource: StartBalanceSource;
   returnPct: number | null;
   monthly: MonthlyStats[];
+  curve: CurvePoint[];
+  operations: BalanceOperation[];
 }

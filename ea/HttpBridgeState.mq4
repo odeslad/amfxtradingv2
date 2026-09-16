@@ -391,9 +391,9 @@ void WriteHistory() {
    for (int i = total - 1; i >= 0 && count < limit; i--) {
       if (!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
       int type = OrderType();
-      // Trades plus balance/credit operations (deposits, withdrawals, adjustments);
-      // pending orders that never filled are skipped.
-      if (type != OP_BUY && type != OP_SELL && type != OP_BALANCE && type != OP_CREDIT) continue;
+      // Trades plus balance (6) and credit (7) operations: deposits, withdrawals,
+      // adjustments. MQL4 has no named constants for those two types.
+      if (type != OP_BUY && type != OP_SELL && type != 6 && type != 7) continue;
       if (count > 0) j += ",";
       j += "{";
       j += "\"ticket\":"      + IntegerToString(OrderTicket())        + ",";

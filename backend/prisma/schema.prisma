@@ -187,3 +187,15 @@ model Balance {
   @@index([broker, timestamp])
   @@map("balances")
 }
+
+model BalanceOperation {
+  ticket  Int      @id
+  broker  String
+  type    Int
+  amount  Float
+  comment String
+  time    DateTime
+
+  @@index([broker, time])
+  @@map("balance_operations")
+}

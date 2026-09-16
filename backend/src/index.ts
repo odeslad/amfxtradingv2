@@ -5,10 +5,11 @@ import app from './app';
 import { config } from './config';
 import { db } from './db/client';
 import { PipeReader } from './bridge/pipe-reader';
-import { FileWatcher } from './bridge/file-watcher';
+import { FileWatcher, type BridgeTrade } from './bridge/file-watcher';
 import { createWss } from './ws/ws';
 import { upsertCandles } from './services/candles';
 import { syncTrades } from './services/trades';
+import { syncBalanceOperations, BALANCE_OPERATION_TYPES } from './services/balance-operations';
 import { saveDailyBalances } from './services/account';
 import { setPositions } from './store/positions';
 import { setTick } from './store/ticks';
@@ -58,9 +59,13 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }
   });
 
-  watcher?.on('history', async (trades) => {
+  watcher?.on('history', async (entries: BridgeTrade[]) => {
+    const trades = entries.filter(e => e.type === 0 || e.type === 1);
+    const operations = entries.filter(e => BALANCE_OPERATION_TYPES.has(e.type));
     try { await syncTrades(brokerName, trades); }
     catch (err) { console.error(`[DB:${brokerName}] trades sync failed`, err); }
+    try { await syncBalanceOperations(brokerName, operations); }
+    catch (err) { console.error(`[DB:${brokerName}] balance operations sync failed`, err); }
   });
 
   watcher?.on('account', async (account) => {

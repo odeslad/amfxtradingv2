@@ -1,11 +1,22 @@
 import { db } from '../db/client';
 
-export type StartBalanceSource = 'snapshot' | 'derived' | 'none';
-
 export interface MonthlyStats {
   month: string;
   trades: number;
   netPnl: number;
+  cashFlow: number;
+  returnPct: number | null;
+}
+
+export interface CurvePoint {
+  date: string;
+  balance: number;
+}
+
+export interface BalanceOperationSummary {
+  time: string;
+  amount: number;
+  comment: string;
 }
 
 export interface BrokerStats {
@@ -16,107 +27,166 @@ export interface BrokerStats {
   wins: number;
   losses: number;
   netPnl: number;
+  cashFlow: number;
   tradesPerMonth: number;
   startBalance: number | null;
-  startBalanceSource: StartBalanceSource;
   returnPct: number | null;
   monthly: MonthlyStats[];
+  curve: CurvePoint[];
+  operations: BalanceOperationSummary[];
 }
 
-interface TradeNet {
-  net: number;
-  closeTime: Date;
+interface Movement {
+  amount: number;
+  time: Date;
+  comment?: string;
 }
+
+const DAY_MS = 86_400_000;
 
 const monthKey = (date: Date): string =>
   `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 
+const dayKey = (date: Date): string => date.toISOString().slice(0, 10);
+
+const startOfUtcMonth = (date: Date): Date => new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+
+const startOfUtcDay = (date: Date): Date => new Date(Math.floor(date.getTime() / DAY_MS) * DAY_MS);
+
 const monthsBetween = (start: Date, end: Date): number =>
   (end.getUTCFullYear() - start.getUTCFullYear()) * 12 + (end.getUTCMonth() - start.getUTCMonth()) + 1;
 
-const buildMonthly = (start: Date, months: number, trades: TradeNet[]): MonthlyStats[] => {
-  const byMonth = new Map<string, MonthlyStats>();
-  for (let i = 0; i < months; i++) {
-    const month = monthKey(new Date(Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i, 1)));
-    byMonth.set(month, { month, trades: 0, netPnl: 0 });
-  }
-  for (const t of trades) {
-    const bucket = byMonth.get(monthKey(t.closeTime));
-    if (!bucket) continue;
-    bucket.trades += 1;
-    bucket.netPnl += t.net;
-  }
-  return [...byMonth.values()];
+const sum = (items: Movement[]): number => items.reduce((acc, m) => acc + m.amount, 0);
+
+const returnPct = (pnl: number, startBalance: number, cashFlow: number): number | null => {
+  const denominator = startBalance + cashFlow;
+  return denominator > 0 ? (pnl / denominator) * 100 : null;
 };
 
-const sumNet = (trades: TradeNet[]): number => trades.reduce((sum, t) => sum + t.net, 0);
-
-async function loadTrades(broker: string, from?: Date, to?: Date): Promise<TradeNet[]> {
-  const rows = await db.trade.findMany({
-    where: {
-      broker,
-      ...(from || to ? { closeTime: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {}),
-    },
-    select: { profit: true, swap: true, commission: true, closeTime: true },
-    orderBy: { closeTime: 'asc' },
-  });
-  return rows.map(r => ({ net: r.profit + r.swap + r.commission, closeTime: r.closeTime }));
-}
-
-async function resolveStartBalance(
-  broker: string,
-  periodStart: Date | null,
-  hasFrom: boolean,
-  tradesSinceStart: TradeNet[],
-): Promise<{ startBalance: number | null; source: StartBalanceSource }> {
-  if (hasFrom && periodStart) {
-    const snapshot = await db.balance.findFirst({
-      where: { broker, timestamp: { lte: periodStart } },
-      orderBy: { timestamp: 'desc' },
-      select: { balance: true },
-    });
-    if (snapshot) return { startBalance: snapshot.balance, source: 'snapshot' };
+// Amount of movements strictly after `t`, via a suffix sum over the list sorted ascending by time.
+const afterSum = (sorted: Movement[], suffix: number[]) => (t: Date): number => {
+  let lo = 0;
+  let hi = sorted.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (sorted[mid].time.getTime() > t.getTime()) hi = mid;
+    else lo = mid + 1;
   }
+  return suffix[lo];
+};
 
-  const latest = await db.balance.findFirst({
-    where: { broker },
-    orderBy: { timestamp: 'desc' },
-    select: { balance: true },
-  });
-  if (!latest) return { startBalance: null, source: 'none' };
+const suffixSums = (sorted: Movement[]): number[] => {
+  const suffix = new Array<number>(sorted.length + 1).fill(0);
+  for (let i = sorted.length - 1; i >= 0; i--) suffix[i] = suffix[i + 1] + sorted[i].amount;
+  return suffix;
+};
 
-  return { startBalance: latest.balance - sumNet(tradesSinceStart), source: 'derived' };
+const inWindow = (items: Movement[], from: Date, to: Date): Movement[] =>
+  items.filter(m => m.time >= from && m.time <= to);
+
+async function loadMovements(broker: string, since?: Date): Promise<{ trades: Movement[]; operations: Movement[] }> {
+  const timeFilter = since ? { gte: since } : undefined;
+  const [tradeRows, opRows] = await Promise.all([
+    db.trade.findMany({
+      where: { broker, ...(timeFilter ? { closeTime: timeFilter } : {}) },
+      select: { profit: true, swap: true, commission: true, closeTime: true },
+      orderBy: { closeTime: 'asc' },
+    }),
+    db.balanceOperation.findMany({
+      where: { broker, ...(timeFilter ? { time: timeFilter } : {}) },
+      select: { amount: true, comment: true, time: true },
+      orderBy: { time: 'asc' },
+    }),
+  ]);
+  return {
+    trades: tradeRows.map(r => ({ amount: r.profit + r.swap + r.commission, time: r.closeTime })),
+    operations: opRows.map(r => ({ amount: r.amount, time: r.time, comment: r.comment })),
+  };
 }
 
 export async function computeBrokerStats(broker: string, from?: Date, to?: Date): Promise<BrokerStats> {
-  const [trades, latest] = await Promise.all([
-    loadTrades(broker, from, to),
-    db.balance.findFirst({ where: { broker }, orderBy: { timestamp: 'desc' }, select: { currency: true } }),
+  const [latest, all] = await Promise.all([
+    db.balance.findFirst({
+      where: { broker },
+      orderBy: { timestamp: 'desc' },
+      select: { balance: true, currency: true, timestamp: true },
+    }),
+    loadMovements(broker, from),
   ]);
 
-  const periodStart = from ?? trades[0]?.closeTime ?? null;
-  const periodEnd = to ?? new Date();
+  const now = new Date();
+  const periodEnd = to ?? now;
+  const periodTrades = to ? all.trades.filter(t => t.time <= periodEnd) : all.trades;
+  const periodStart = from ?? periodTrades[0]?.time ?? null;
+  const periodOps = periodStart ? inWindow(all.operations, periodStart, periodEnd) : [];
+
+  const tradesAfter = afterSum(all.trades, suffixSums(all.trades));
+  const opsAfter = afterSum(all.operations, suffixSums(all.operations));
+  const anchor = latest?.balance ?? 0;
+  // Balance once every movement at or before `t` has been applied.
+  const balanceAt = (t: Date): number => {
+    if (latest && t >= latest.timestamp) return anchor;
+    return anchor - tradesAfter(t) - opsAfter(t);
+  };
+  // Balance before any movement at `t` itself: what the account held when the window opened.
+  const balanceBefore = (t: Date): number => balanceAt(new Date(t.getTime() - 1));
+
+  const netPnl = sum(periodTrades);
+  const cashFlow = sum(periodOps);
+  const startBalance = periodStart ? balanceBefore(periodStart) : anchor;
   const months = periodStart ? monthsBetween(periodStart, periodEnd) : 0;
 
-  const netPnl = sumNet(trades);
-  const wins = trades.filter(t => t.net > 0).length;
-  const losses = trades.filter(t => t.net < 0).length;
+  const monthly: MonthlyStats[] = [];
+  if (periodStart) {
+    const byMonth = new Map<string, MonthlyStats>();
+    for (let i = 0; i < months; i++) {
+      const monthStart = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + i, 1));
+      byMonth.set(monthKey(monthStart), { month: monthKey(monthStart), trades: 0, netPnl: 0, cashFlow: 0, returnPct: null });
+    }
+    for (const t of periodTrades) {
+      const bucket = byMonth.get(monthKey(t.time));
+      if (bucket) { bucket.trades += 1; bucket.netPnl += t.amount; }
+    }
+    for (const op of periodOps) {
+      const bucket = byMonth.get(monthKey(op.time));
+      if (bucket) bucket.cashFlow += op.amount;
+    }
+    for (const bucket of byMonth.values()) {
+      const monthStart = startOfUtcMonth(new Date(`${bucket.month}-01T00:00:00Z`));
+      const effectiveStart = monthStart > periodStart ? monthStart : periodStart;
+      bucket.returnPct = returnPct(bucket.netPnl, balanceBefore(effectiveStart), bucket.cashFlow);
+      monthly.push(bucket);
+    }
+  }
 
-  const tradesSinceStart = to && periodStart ? await loadTrades(broker, periodStart) : trades;
-  const { startBalance, source } = await resolveStartBalance(broker, periodStart, !!from, tradesSinceStart);
+  const curve: CurvePoint[] = [];
+  if (periodStart) {
+    const firstDay = startOfUtcDay(periodStart);
+    const lastDay = startOfUtcDay(periodEnd);
+    for (let d = firstDay.getTime(); d <= lastDay.getTime(); d += DAY_MS) {
+      const endOfDay = new Date(d + DAY_MS - 1);
+      curve.push({ date: dayKey(new Date(d)), balance: balanceAt(endOfDay) });
+    }
+  }
+
+  const operations: BalanceOperationSummary[] = [...periodOps]
+    .reverse()
+    .map(op => ({ time: op.time.toISOString(), amount: op.amount, comment: op.comment ?? '' }));
 
   return {
     broker,
     currency: latest?.currency ?? '',
     period: { from: periodStart?.toISOString() ?? null, to: to?.toISOString() ?? null, months },
-    trades: trades.length,
-    wins,
-    losses,
+    trades: periodTrades.length,
+    wins: periodTrades.filter(t => t.amount > 0).length,
+    losses: periodTrades.filter(t => t.amount < 0).length,
     netPnl,
-    tradesPerMonth: months > 0 ? trades.length / months : 0,
-    startBalance,
-    startBalanceSource: source,
-    returnPct: startBalance ? (netPnl / startBalance) * 100 : null,
-    monthly: periodStart ? buildMonthly(periodStart, months, trades) : [],
+    cashFlow,
+    tradesPerMonth: months > 0 ? periodTrades.length / months : 0,
+    startBalance: latest ? startBalance : null,
+    returnPct: latest ? returnPct(netPnl, startBalance, cashFlow) : null,
+    monthly,
+    curve,
+    operations,
   };
 }

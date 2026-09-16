@@ -57,3 +57,7 @@ Reference: spec 002 — its backend service task (1) was 3 SP and accurate, so t
 - Task 8: estimated 2, accurate.
 - Task 9: estimated 1, felt like 5 — the local stack did not authenticate (cookie domain, third-party cookies, Git Bash path mangling of `/__api`); most of the day's effort went here, none of it spec work.
 - Task 10: estimated 1, accurate.
+
+### Amendment (2026-09-16, after production data)
+
+AC 15's operation markers were removed: with real data (Solidary II has 256 balance operations, including internal transfers and per-trade fees) the arrows and labels covered the curve. Cash flow stays visible in the tile and the monthly column; the `operations` field remains in the API response for a future, less intrusive rendering.

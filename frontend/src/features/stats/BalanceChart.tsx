@@ -1,33 +1,20 @@
 import { useEffect, useRef } from 'react';
 import {
-  createChart, createSeriesMarkers, AreaSeries, LineStyle, CrosshairMode,
-  type IChartApi, type SeriesMarker, type Time,
+  createChart, AreaSeries, LineStyle, CrosshairMode,
+  type IChartApi, type Time,
 } from 'lightweight-charts';
-import { fmtPnl } from '../journal/utils/position';
-import type { CurvePoint, BalanceOperation } from './types';
+import type { CurvePoint } from './types';
 import styles from './BalanceChart.module.css';
 
 interface BalanceChartProps {
   curve: CurvePoint[];
-  operations: BalanceOperation[];
-  currency: string;
 }
 
 const COLOR_LINE = '#f5a623';
 const COLOR_AREA_TOP = 'rgba(245, 166, 35, 0.45)';
 const COLOR_AREA_BOTTOM = 'rgba(245, 166, 35, 0.03)';
-const COLOR_DEPOSIT = '#4caf84';
-const COLOR_WITHDRAWAL = '#e05c5c';
 
-const toMarker = (op: BalanceOperation, currency: string): SeriesMarker<Time> => ({
-  time: op.time.slice(0, 10) as Time,
-  position: op.amount >= 0 ? 'aboveBar' : 'belowBar',
-  shape: op.amount >= 0 ? 'arrowUp' : 'arrowDown',
-  color: op.amount >= 0 ? COLOR_DEPOSIT : COLOR_WITHDRAWAL,
-  text: fmtPnl(op.amount, currency),
-});
-
-export function BalanceChart({ curve, operations, currency }: BalanceChartProps) {
+export function BalanceChart({ curve }: BalanceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -73,13 +60,6 @@ export function BalanceChart({ curve, operations, currency }: BalanceChartProps)
     });
     series.setData(curve.map(p => ({ time: p.date as Time, value: p.balance })));
 
-    const validDays = new Set(curve.map(p => p.date));
-    const markers = operations
-      .filter(op => validDays.has(op.time.slice(0, 10)))
-      .map(op => toMarker(op, currency))
-      .sort((a, b) => String(a.time).localeCompare(String(b.time)));
-    createSeriesMarkers(series, markers);
-
     chart.timeScale().fitContent();
     chartRef.current = chart;
 
@@ -91,7 +71,7 @@ export function BalanceChart({ curve, operations, currency }: BalanceChartProps)
       chart.remove();
       chartRef.current = null;
     };
-  }, [curve, operations, currency]);
+  }, [curve]);
 
   return <div ref={containerRef} className={styles.chart} />;
 }

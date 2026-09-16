@@ -103,7 +103,7 @@ export function StatsPage() {
             <div className={styles.split}>
               <MonthlyBreakdown rows={stats.monthly} currency={stats.currency} />
               <div className={styles.chartPane}>
-                <BalanceChart curve={stats.curve} operations={stats.operations} currency={stats.currency} />
+                <BalanceChart curve={stats.curve} />
               </div>
             </div>
           )}

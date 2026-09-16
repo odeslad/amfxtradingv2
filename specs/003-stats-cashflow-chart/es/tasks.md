@@ -57,3 +57,7 @@ Referencia: spec 002 — su tarea de servicio backend (1) fue de 3 SP y acertada
 - Tarea 8: estimada 2, acertada.
 - Tarea 9: estimada 1, pareció 5 — el stack local no autenticaba (dominio de cookie, cookies de terceros, conversión de rutas de Git Bash en `/__api`); la mayor parte del esfuerzo del día se fue aquí, y nada de ello era trabajo de la spec.
 - Tarea 10: estimada 1, acertada.
+
+### Enmienda (2026-09-16, tras ver datos de producción)
+
+Se eliminaron los marcadores de operaciones del CA 15: con datos reales (Solidary II tiene 256 operaciones de balance, incluidas transferencias internas y comisiones por operación) las flechas y etiquetas tapaban la curva. El flujo de caja sigue visible en el tile y en la columna mensual; el campo `operations` se mantiene en la respuesta de la API para una futura representación menos intrusiva.

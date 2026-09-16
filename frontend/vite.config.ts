@@ -28,6 +28,15 @@ export default defineConfig(({ command }) => ({
             key: fs.readFileSync(KEY_PATH),
             cert: fs.readFileSync(CERT_PATH),
           },
+          // Same-origin API for local development: run the backend on localhost,
+          // start Vite with VITE_API_BASE=/__api and the session cookie becomes first-party.
+          proxy: {
+            '/__api': {
+              target: process.env.DEV_API_TARGET ?? 'http://localhost:3000',
+              ws: true,
+              rewrite: (path: string) => path.replace(/^\/__api/, ''),
+            },
+          },
         }
       : undefined,
 }));

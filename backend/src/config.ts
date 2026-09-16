@@ -37,6 +37,9 @@ export const config = {
   port: parseInt(process.env['PORT'] ?? '3000', 10),
   databaseUrl: required('DATABASE_URL'),
   jwtSecret: required('JWT_SECRET'),
+  // Session cookie domain. COOKIE_DOMAIN=none issues a host-only cookie, needed
+  // when the API runs on localhost for local development.
+  cookieDomain: process.env['COOKIE_DOMAIN'] === 'none' ? undefined : process.env['COOKIE_DOMAIN'] ?? '.amfxtrading.com',
   brokers: loadBrokers(),
   // Web Push (VAPID). Optional: when unset, push notifications are disabled.
   vapidPublicKey: process.env['VAPID_PUBLIC_KEY'] ?? '',

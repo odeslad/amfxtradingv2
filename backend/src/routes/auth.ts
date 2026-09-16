@@ -11,7 +11,7 @@ const COOKIE_OPTIONS = {
   httpOnly: true,
   secure: true,
   sameSite: 'none' as const,
-  domain: '.amfxtrading.com',
+  domain: config.cookieDomain,
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 

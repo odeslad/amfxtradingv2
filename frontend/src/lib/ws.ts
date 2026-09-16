@@ -1,6 +1,8 @@
-const WS_BASE = import.meta.env.VITE_API_BASE
-  ? import.meta.env.VITE_API_BASE.replace(/^https?/, 'wss').replace(/^http/, 'ws')
-  : '';
+const API_BASE: string = import.meta.env.VITE_API_BASE ?? '';
+
+const WS_BASE = API_BASE.startsWith('/')
+  ? `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${API_BASE}`
+  : API_BASE.replace(/^https?/, 'wss').replace(/^http/, 'ws');
 
 type Listener = (data: unknown) => void;
 

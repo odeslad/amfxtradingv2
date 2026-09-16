@@ -26,10 +26,34 @@ Each task is one conventional commit. The project must build and run after every
 
 ## EA
 
-- [ ] 10. `WriteHistory()` in `HttpBridgeState.mq4`: accept `OP_BALANCE` and `OP_CREDIT`; document in `ea/docs/HttpBridgeState.md`. Push only after the backend is deployed; the user then reloads the EA per terminal (Account History on *All History*). Afterwards check on the VPS that `balance_operations` has rows and that Stats shows the cash flow. — Design § Affected files (EA); § Risks. `feat(ea): export balance and credit operations in history` [SP: 1]
+- [x] 10. `WriteHistory()` in `HttpBridgeState.mq4`: accept `OP_BALANCE` and `OP_CREDIT`; document in `ea/docs/HttpBridgeState.md`. Push only after the backend is deployed; the user then reloads the EA per terminal (Account History on *All History*). Afterwards check on the VPS that `balance_operations` has rows and that Stats shows the cash flow. — Design § Affected files (EA); § Risks. `feat(ea): export balance and credit operations in history` [SP: 1]
 
 ## Estimation
 
 Total: 16 SP.
 
 Reference: spec 002 — its backend service task (1) was 3 SP and accurate, so the rewrite here with the extra curve is kept at 3; its DB-through-tunnel verification (task 3) ran over by one point, so task 4 here is 2 SP up front. Spec 001's chart-component work (task 5, 3 SP accurate) sets `BalanceChart` at 3. Small wiring tasks are 1 SP as in both prior specs, where they came in at or under estimate.
+
+## Outcome
+
+**Shipped (2026-09-16).** Balance operations table and sync, cash-flow aware stats with a daily balance curve, Return / Cash flow columns, a paginated monthly breakdown beside an area chart, and the EA change that exports balance/credit orders. Ten commits (`3e4b3bb` → `01fa7fe`) plus one dev-environment commit. Backend and frontend deployed together at `62d2b67` without the concurrent-pull incident; EA deployed from `01fa7fe`. The migration was applied through the tunnel before the deploy so task 4 could run against production data; `prisma migrate deploy` then found it already recorded.
+
+**Deviations agreed during implementation:**
+- `startBalance` uses the instant *before* the period start (`balanceAt(t − 1 ms)`), otherwise a trade closing exactly at the period start leaked into the start balance. Same for month starts.
+- Monthly breakdown is **paginated** (12 months, newest first, Newer / Older pager) after the user saw brokers with five years of history overflow the page; months without trades show `—`.
+- `BalanceChart` is an **area** series in `--orange` with a 1 px line (user preference over the blue line in the design), auto-sized to the table height on desktop (280 px on mobile), and `minBarSpacing: 0.01` so years of daily points fit; the default 0.5 px minimum clipped everything before 2023.
+- Dev environment (outside the spec, committed separately): `COOKIE_DOMAIN` env var (default `.amfxtrading.com`, `none` for host-only), a Vite `/__api` proxy so the local API is same-origin, and a relative-base WebSocket URL. Without it the local login silently failed (cookie domain mismatch plus Chrome third-party cookie blocking), which means spec 002's task 9 could not have been exercised end-to-end locally as recorded.
+
+**Pending on the user:** reload `HttpBridgeState` on each terminal with Account History set to *All History* so balance operations reach `balance_operations`; the table is empty until then and Cash flow shows `—`.
+
+**Actual effort:**
+- Task 1: estimated 1, accurate.
+- Task 2: estimated 1, accurate.
+- Task 3: estimated 3, accurate — the boundary bug at the period start was the only surprise.
+- Task 4: estimated 2, accurate — script plus fake rows, tunnel reopened once.
+- Task 5: estimated 1, accurate.
+- Task 6: estimated 1, felt like 2 — pagination and the `—` rules were added on review.
+- Task 7: estimated 3, felt like 3 — area/autosize/minBarSpacing iterations were small each.
+- Task 8: estimated 2, accurate.
+- Task 9: estimated 1, felt like 5 — the local stack did not authenticate (cookie domain, third-party cookies, Git Bash path mangling of `/__api`); most of the day's effort went here, none of it spec work.
+- Task 10: estimated 1, accurate.

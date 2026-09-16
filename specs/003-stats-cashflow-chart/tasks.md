@@ -14,15 +14,15 @@ Each task is one conventional commit. The project must build and run after every
 
 ## Frontend
 
-- [ ] 5. Update `features/stats/types.ts` and extract `fmtPct` into `features/stats/format.ts`. `npm run build` passes. — Design § Affected files (frontend). `refactor(frontend): update stats types and share fmtPct` [SP: 1]
+- [x] 5. Update `features/stats/types.ts` and extract `fmtPct` into `features/stats/format.ts`. `npm run build` passes. — Design § Affected files (frontend). `refactor(frontend): update stats types and share fmtPct` [SP: 1]
 
-- [ ] 6. `MonthlyBreakdown`: add Return and Cash flow columns and card fields, coloured by sign, `—` for null / zero. `npm run build` passes. — Design § `MonthlyBreakdown`. `feat(frontend): add return and cash flow to monthly breakdown` [SP: 1]
+- [x] 6. `MonthlyBreakdown`: add Return and Cash flow columns and card fields, coloured by sign, `—` for null / zero. `npm run build` passes. — Design § `MonthlyBreakdown`. `feat(frontend): add return and cash flow to monthly breakdown` [SP: 1]
 
-- [ ] 7. Create `features/stats/BalanceChart.tsx` + `.module.css`: lightweight-charts line series, business-day times, operation markers, crosshair, resize observer, cleanup. `npm run build` passes. — Design § `BalanceChart`. `feat(frontend): add BalanceChart component` [SP: 3]
+- [x] 7. Create `features/stats/BalanceChart.tsx` + `.module.css`: lightweight-charts line series, business-day times, operation markers, crosshair, resize observer, cleanup. `npm run build` passes. — Design § `BalanceChart`. `feat(frontend): add BalanceChart component` [SP: 3]
 
-- [ ] 8. `StatsPage`: Cash flow tile, six-tile grid, remove the derived hint, `split` layout with the chart on the right (first on mobile), empty state covering both halves. `npm run build` passes. — Design § `StatsPage`. `feat(frontend): show balance chart beside monthly breakdown` [SP: 2]
+- [x] 8. `StatsPage`: Cash flow tile, six-tile grid, remove the derived hint, `split` layout with the chart on the right (first on mobile), empty state covering both halves. `npm run build` passes. — Design § `StatsPage`. `feat(frontend): show balance chart beside monthly breakdown` [SP: 2]
 
-- [ ] 9. Verify locally on desktop and phone width against the local backend + tunnel: two columns at 50 %, chart fits the period, tooltip shows date and balance, markers appear when a fake deposit is present, table columns and cards, empty state, console clean. No commit; record in Outcome. — Requirements AC 12–16. [SP: 1]
+- [x] 9. Verify locally on desktop and phone width against the local backend + tunnel: two columns at 50 %, chart fits the period, tooltip shows date and balance, markers appear when a fake deposit is present, table columns and cards, empty state, console clean. No commit; record in Outcome. — Requirements AC 12–16. [SP: 1]
 
 ## EA
 

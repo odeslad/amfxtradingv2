@@ -2,9 +2,21 @@
 
 .tiles {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 12px;
   margin-bottom: 24px;
+}
+
+.split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.chartPane {
+  min-width: 0;
+  display: flex;
 }
 
 .empty {
@@ -25,5 +37,14 @@
   .tiles {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 8px;
+  }
+
+  .split {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .chartPane {
+    order: -1;
   }
 }

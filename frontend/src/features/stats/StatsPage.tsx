@@ -6,6 +6,8 @@ import { fmt, fmtPnl } from '../journal/utils/position';
 import { StatsFilters, type StatsFilterValues } from './StatsFilters';
 import { StatTile, type StatTone } from './StatTile';
 import { MonthlyBreakdown } from './MonthlyBreakdown';
+import { BalanceChart } from './BalanceChart';
+import { fmtPct } from './format';
 import type { BrokerStats } from './types';
 import styles from './StatsPage.module.css';
 
@@ -16,11 +18,8 @@ interface StatsResult {
 }
 
 const DEFAULT_FILTERS: StatsFilterValues = { broker: '', dateRange: '', dateFrom: '', dateTo: '' };
-const DERIVED_HINT = 'Assumes no deposits or withdrawals in the period';
 
 const toneOf = (n: number): StatTone => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'neutral');
-
-const fmtPct = (n: number | null): string => (n === null ? '—' : `${n >= 0 ? '+' : ''}${fmt(n, 2)} %`);
 
 export function StatsPage() {
   const [storedFilters, setFilters] = useLocalStorage<StatsFilterValues>('stats.filters', DEFAULT_FILTERS);
@@ -85,9 +84,13 @@ export function StatsPage() {
               label="Return"
               value={fmtPct(stats.returnPct)}
               tone={stats.returnPct === null ? 'neutral' : toneOf(stats.returnPct)}
-              hint={stats.startBalanceSource === 'derived' ? DERIVED_HINT : undefined}
             />
             <StatTile label="Net P&L" value={fmtPnl(stats.netPnl, stats.currency)} tone={toneOf(stats.netPnl)} />
+            <StatTile
+              label="Cash flow"
+              value={stats.cashFlow === 0 ? '—' : fmtPnl(stats.cashFlow, stats.currency)}
+              tone={toneOf(stats.cashFlow)}
+            />
             <StatTile label="Trades" value={String(stats.trades)} />
             <StatTile label="Win rate" value={winRate === null ? '—' : `${fmt(winRate, 1)} %`} />
           </div>
@@ -97,7 +100,12 @@ export function StatsPage() {
               {filters.dateRange ? 'No trades in the selected period' : 'No closed trades for this broker'}
             </div>
           ) : (
-            <MonthlyBreakdown rows={stats.monthly} currency={stats.currency} />
+            <div className={styles.split}>
+              <MonthlyBreakdown rows={stats.monthly} currency={stats.currency} />
+              <div className={styles.chartPane}>
+                <BalanceChart curve={stats.curve} operations={stats.operations} currency={stats.currency} />
+              </div>
+            </div>
           )}
         </>
       )}

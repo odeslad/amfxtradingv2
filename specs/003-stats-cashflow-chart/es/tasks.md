@@ -14,15 +14,15 @@ Cada tarea es un commit convencional. El proyecto debe compilar y funcionar tras
 
 ## Frontend
 
-- [ ] 5. Actualizar `features/stats/types.ts` y extraer `fmtPct` a `features/stats/format.ts`. `npm run build` pasa. — Diseño § Archivos afectados (frontend). `refactor(frontend): update stats types and share fmtPct` [SP: 1]
+- [x] 5. Actualizar `features/stats/types.ts` y extraer `fmtPct` a `features/stats/format.ts`. `npm run build` pasa. — Diseño § Archivos afectados (frontend). `refactor(frontend): update stats types and share fmtPct` [SP: 1]
 
-- [ ] 6. `MonthlyBreakdown`: añadir columnas y campos de card Return y Cash flow, coloreados por signo, `—` para null / cero. `npm run build` pasa. — Diseño § `MonthlyBreakdown`. `feat(frontend): add return and cash flow to monthly breakdown` [SP: 1]
+- [x] 6. `MonthlyBreakdown`: añadir columnas y campos de card Return y Cash flow, coloreados por signo, `—` para null / cero. `npm run build` pasa. — Diseño § `MonthlyBreakdown`. `feat(frontend): add return and cash flow to monthly breakdown` [SP: 1]
 
-- [ ] 7. Crear `features/stats/BalanceChart.tsx` + `.module.css`: serie de línea de lightweight-charts, tiempos de día hábil, marcadores de operaciones, crosshair, resize observer, limpieza. `npm run build` pasa. — Diseño § `BalanceChart`. `feat(frontend): add BalanceChart component` [SP: 3]
+- [x] 7. Crear `features/stats/BalanceChart.tsx` + `.module.css`: serie de línea de lightweight-charts, tiempos de día hábil, marcadores de operaciones, crosshair, resize observer, limpieza. `npm run build` pasa. — Diseño § `BalanceChart`. `feat(frontend): add BalanceChart component` [SP: 3]
 
-- [ ] 8. `StatsPage`: tile Cash flow, grid de seis tiles, quitar el aviso de derivado, layout `split` con el gráfico a la derecha (primero en móvil), estado vacío cubriendo ambas mitades. `npm run build` pasa. — Diseño § `StatsPage`. `feat(frontend): show balance chart beside monthly breakdown` [SP: 2]
+- [x] 8. `StatsPage`: tile Cash flow, grid de seis tiles, quitar el aviso de derivado, layout `split` con el gráfico a la derecha (primero en móvil), estado vacío cubriendo ambas mitades. `npm run build` pasa. — Diseño § `StatsPage`. `feat(frontend): show balance chart beside monthly breakdown` [SP: 2]
 
-- [ ] 9. Verificar en local en escritorio y ancho de móvil contra el backend local + túnel: dos columnas al 50 %, el gráfico ajusta al periodo, el tooltip muestra fecha y balance, los marcadores aparecen con un depósito falso, columnas de tabla y cards, estado vacío, consola limpia. Sin commit; registrar en Outcome. — Requisitos CA 12–16. [SP: 1]
+- [x] 9. Verificar en local en escritorio y ancho de móvil contra el backend local + túnel: dos columnas al 50 %, el gráfico ajusta al periodo, el tooltip muestra fecha y balance, los marcadores aparecen con un depósito falso, columnas de tabla y cards, estado vacío, consola limpia. Sin commit; registrar en Outcome. — Requisitos CA 12–16. [SP: 1]
 
 ## EA
 

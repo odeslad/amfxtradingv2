@@ -390,7 +390,10 @@ void WriteHistory() {
    }
    for (int i = total - 1; i >= 0 && count < limit; i--) {
       if (!OrderSelect(i, SELECT_BY_POS, MODE_HISTORY)) continue;
-      if (OrderType() != OP_BUY && OrderType() != OP_SELL) continue;
+      int type = OrderType();
+      // Trades plus balance/credit operations (deposits, withdrawals, adjustments);
+      // pending orders that never filled are skipped.
+      if (type != OP_BUY && type != OP_SELL && type != OP_BALANCE && type != OP_CREDIT) continue;
       if (count > 0) j += ",";
       j += "{";
       j += "\"ticket\":"      + IntegerToString(OrderTicket())        + ",";

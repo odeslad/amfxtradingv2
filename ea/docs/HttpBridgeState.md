@@ -187,6 +187,8 @@ Array de todas las posiciones abiertas:
 ### `bridge/history.json`
 Últimas `HISTORY_MAX` operaciones cerradas (50 por defecto; `0` = sin límite). Con `HISTORY_FULL_ON_START = true` (por defecto) la **primera** escritura tras arrancar el EA exporta todo el historial visible en la pestaña *Account History* del terminal, para que el backend cargue el histórico completo; poner esa pestaña en *All History* antes de arrancar. Mismo formato que `positions.json` más `closePrice` y `closeTime`.
 
+Además de BUY (0) y SELL (1) se incluyen las **operaciones de balance** de MT4: `type` 6 (balance: depósitos, retiradas, ajustes) y 7 (crédito). En ellas `symbol` va vacío, `lots` y precios a `0`, `profit` lleva el importe con signo y `comment` la etiqueta del broker (p. ej. `Deposit`). El backend las guarda en `balance_operations`, no en `trades`.
+
 ### `bridge/candles_SYMBOL_TF.json`
 Un archivo por símbolo y timeframe (ej. `candles_EURUSD_M15.json`):
 ```json

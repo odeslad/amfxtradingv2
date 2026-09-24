@@ -1,6 +1,7 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
+import { useSort, type SortColumn } from '../../lib/useSort';
 import { fmt, currencySymbol } from './utils/position';
 import { AccountCard } from './AccountCard';
 import styles from './JournalPage.module.css';
@@ -24,6 +25,24 @@ const DAY_PNL_POLL_MS = 5000;
 
 const dayPnlClass = (value: number): string =>
   value === 0 ? styles.muted : value > 0 ? styles.profit : styles.loss;
+
+type ColumnKey =
+  | 'broker' | 'name' | 'number' | 'balance' | 'equity' | 'profit'
+  | 'dayPnl' | 'margin' | 'freeMargin' | 'leverage' | 'currency';
+
+const buildColumns = (dayPnl: Record<string, number>): SortColumn<Balance, ColumnKey>[] => [
+  { key: 'broker', label: 'Broker', value: b => b.broker },
+  { key: 'name', label: 'Account', value: b => b.name },
+  { key: 'number', label: 'Number', value: b => b.number },
+  { key: 'balance', label: 'Balance', value: b => b.balance },
+  { key: 'equity', label: 'Equity', value: b => b.equity },
+  { key: 'profit', label: 'Profit', value: b => b.profit },
+  { key: 'dayPnl', label: 'Day P&L', value: b => dayPnl[b.broker] },
+  { key: 'margin', label: 'Margin', value: b => b.margin },
+  { key: 'freeMargin', label: 'Free Margin', value: b => b.freeMargin },
+  { key: 'leverage', label: 'Leverage', value: b => b.leverage },
+  { key: 'currency', label: 'Currency', value: b => b.currency },
+];
 
 interface AccountsProps {
   onSelectBroker?: (broker: string) => void;
@@ -71,6 +90,9 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
 
   useWs(handleWsMessage);
 
+  const columns = useMemo(() => buildColumns(dayPnl), [dayPnl]);
+  const { sorted, sort, toggle } = useSort(balances, columns, { key: 'broker', dir: 'asc' });
+
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;
   if (balances.length === 0) return <div className={styles.empty}>No accounts</div>;
@@ -81,21 +103,21 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Broker</th>
-              <th>Account</th>
-              <th>Number</th>
-              <th>Balance</th>
-              <th>Equity</th>
-              <th>Profit</th>
-              <th>Day P&amp;L</th>
-              <th>Margin</th>
-              <th>Free Margin</th>
-              <th>Leverage</th>
-              <th>Currency</th>
+              {columns.map(c => (
+                <th
+                  key={c.key}
+                  className={`${styles.sortable} ${sort.key === c.key ? styles.sortActive : ''}`}
+                  onClick={() => toggle(c.key)}
+                  aria-sort={sort.key === c.key ? (sort.dir === 'asc' ? 'ascending' : 'descending') : 'none'}
+                >
+                  {c.label}
+                  {sort.key === c.key && <span className={styles.sortArrow}>{sort.dir === 'asc' ? '▲' : '▼'}</span>}
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
-            {balances.map(b => (
+            {sorted.map(b => (
               <tr
                 key={b.broker}
                 className={[
@@ -129,7 +151,7 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
       </div>
 
       <div className={styles.cards}>
-        {balances.map(b => (
+        {sorted.map(b => (
           <AccountCard key={b.broker} balance={b} dayPnl={dayPnl[b.broker]} onSelect={onSelectBroker ? () => onSelectBroker(b.broker) : undefined} />
         ))}
       </div>

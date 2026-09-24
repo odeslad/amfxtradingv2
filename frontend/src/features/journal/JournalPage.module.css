@@ -383,6 +383,23 @@
   padding-left: 0;
 }
 
+.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: color 0.12s ease;
+}
+
+.sortable:hover,
+.sortActive {
+  color: var(--text);
+}
+
+.sortArrow {
+  margin-left: 4px;
+  font-size: 7px;
+  vertical-align: middle;
+}
+
 .table td {
   padding: 8px 12px;
   border-bottom: 1px solid var(--border);

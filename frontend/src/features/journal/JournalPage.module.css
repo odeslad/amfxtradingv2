@@ -406,6 +406,13 @@
   background: rgba(255, 255, 255, 0.03);
 }
 
+.inactiveRow td,
+.inactiveRow .broker,
+.inactiveRow .profit,
+.inactiveRow .loss {
+  color: var(--muted);
+}
+
 .table tr:hover td {
   background: rgba(255, 255, 255, 0.02);
 }

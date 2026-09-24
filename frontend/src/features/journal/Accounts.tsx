@@ -22,6 +22,9 @@ interface Balance {
 
 const DAY_PNL_POLL_MS = 5000;
 
+const dayPnlClass = (value: number): string =>
+  value === 0 ? styles.muted : value > 0 ? styles.profit : styles.loss;
+
 interface AccountsProps {
   onSelectBroker?: (broker: string) => void;
 }
@@ -95,7 +98,10 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
             {balances.map(b => (
               <tr
                 key={b.broker}
-                className={onSelectBroker ? styles.accountRow : undefined}
+                className={[
+                  onSelectBroker ? styles.accountRow : '',
+                  dayPnl[b.broker] == null ? styles.inactiveRow : '',
+                ].join(' ')}
                 onDoubleClick={() => onSelectBroker?.(b.broker)}
                 title={onSelectBroker ? 'Double-click to see positions' : undefined}
               >
@@ -107,7 +113,7 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
                 <td className={b.profit >= 0 ? styles.profit : styles.loss}>
                   {b.profit >= 0 ? '+' : ''}{fmt(b.profit, 2)} {currencySymbol(b.currency)}
                 </td>
-                <td className={(dayPnl[b.broker] ?? 0) >= 0 ? styles.profit : styles.loss}>
+                <td className={dayPnl[b.broker] != null ? dayPnlClass(dayPnl[b.broker]) : styles.muted}>
                   {dayPnl[b.broker] != null
                     ? `${dayPnl[b.broker] >= 0 ? '+' : ''}${fmt(dayPnl[b.broker], 2)} ${currencySymbol(b.currency)}`
                     : '—'}

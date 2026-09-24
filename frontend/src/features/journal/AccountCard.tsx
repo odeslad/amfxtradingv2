@@ -5,6 +5,9 @@ import accountStyles from './Accounts.module.css';
 
 const DOUBLE_TAP_MS = 300;
 
+const dayPnlClass = (value: number): string =>
+  value === 0 ? styles.muted : value > 0 ? styles.profit : styles.loss;
+
 interface Balance {
   broker: string;
   balance: number;
@@ -41,7 +44,7 @@ export function AccountCard({ balance: b, dayPnl, onSelect }: AccountCardProps) 
   };
 
   return (
-    <div className={`${accountStyles.card} ${expanded ? accountStyles.cardExpanded : ''}`}>
+    <div className={`${accountStyles.card} ${expanded ? accountStyles.cardExpanded : ''} ${dayPnl == null ? accountStyles.cardInactive : ''}`}>
       <button
         type="button"
         className={`${accountStyles.summary} ${expanded ? accountStyles.summaryActive : ''}`}
@@ -72,7 +75,7 @@ export function AccountCard({ balance: b, dayPnl, onSelect }: AccountCardProps) 
           </div>
           <div className={accountStyles.field}>
             <span className={accountStyles.label}>Day P&amp;L</span>
-            <span className={`${accountStyles.fieldValue} ${dayPnl != null ? ((dayPnl >= 0) ? styles.profit : styles.loss) : ''}`}>
+            <span className={`${accountStyles.fieldValue} ${dayPnl != null ? dayPnlClass(dayPnl) : styles.muted}`}>
               {dayPnl != null ? `${dayPnl >= 0 ? '+' : ''}${fmt(dayPnl, 2)} ${currencySymbol(b.currency)}` : '—'}
             </span>
           </div>

@@ -1,5 +1,3 @@
-.page {}
-
 .tabBar {
   display: flex;
   align-items: center;
@@ -150,8 +148,6 @@
   border-bottom-color: var(--blue);
 }
 
-.tabContent {}
-
 .tabPanel {
   display: block;
 }
@@ -231,7 +227,7 @@
     margin-top: 8px;
   }
 
-  .tabBarRight > * {
+  .tabBarRight>* {
     flex: auto;
   }
 
@@ -341,7 +337,9 @@
   transition: color 0.12s ease;
 }
 
-.modalCancel:hover { color: var(--text); }
+.modalCancel:hover {
+  color: var(--text);
+}
 
 .modalConfirm {
   height: 34px;
@@ -357,8 +355,14 @@
   transition: opacity 0.12s ease;
 }
 
-.modalConfirm:hover { opacity: 0.85; }
-.modalConfirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.modalConfirm:hover {
+  opacity: 0.85;
+}
+
+.modalConfirm:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
 
 .table {
   width: 100%;

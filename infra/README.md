@@ -20,7 +20,7 @@ Idempotente. En cada ejecución:
 
 1. Espera a que `postgresql-x64-17` esté en marcha (máx. 120 s).
 2. Backend: si `http://localhost:3000/health` no responde, `pm2 resurrect`; si sigue caído,
-   `pm2 start dist/index.js` con los mismos flags que `backend/scripts/deploy.ps1` y `pm2 save`.
+   `pm2 start backend/ecosystem.config.js` (la misma definición que usa `backend/scripts/deploy.ps1`) y `pm2 save`.
 3. Terminales: por cada broker de `brokers.json` resuelve `bridgePath → data dir → origin.txt → terminal.exe`
    y lo lanza si no hay ya un proceso con ese ejecutable. 20 s entre lanzamientos para no saturar el VPS.
 4. Escribe el resultado en `C:\monitoring\startup.log` (`OK` o `DEGRADED (backend=… terminals=…)`).

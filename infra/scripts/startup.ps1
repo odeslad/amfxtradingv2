@@ -4,7 +4,7 @@
 $ErrorActionPreference = 'Continue'
 
 $BrokersFile   = 'C:\amfxtradingv2\backend\brokers.json'
-$BackendEntry  = 'C:\amfxtradingv2\backend\dist\index.js'
+$BackendEcosystem = 'C:\amfxtradingv2\backend\ecosystem.config.js'
 $BackendName   = 'amfxtrading-backend'
 $HealthUrl     = 'http://localhost:3000/health'
 $LogDir        = 'C:\monitoring'
@@ -53,9 +53,7 @@ function Ensure-Backend {
 
     Log "backend: resurrect did not bring it up, starting explicitly"
     pm2 delete $BackendName 2>&1 | Out-Null
-    pm2 start $BackendEntry --name $BackendName `
-        --node-args="--expose-gc --max-old-space-size=1024" `
-        --max-memory-restart 1200M 2>&1 | Out-Null
+    pm2 start $BackendEcosystem 2>&1 | Out-Null
     pm2 save 2>&1 | Out-Null
     if (Wait-BackendHealth 30) { Log "backend: up after pm2 start"; return $true }
 

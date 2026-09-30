@@ -1,6 +1,6 @@
 # 005 — Arreglos de sesión y deploy seguro · Diseño
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Parte A — Sesión (`backend/src/routes/auth.ts`)
 

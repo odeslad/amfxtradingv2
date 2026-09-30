@@ -1,6 +1,6 @@
 # 005 — Session fixes and safe deploy · Design
 
-> Status: **approved**
+> Status: **closed**
 
 ## Part A — Session (`backend/src/routes/auth.ts`)
 

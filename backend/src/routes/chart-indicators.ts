@@ -2,6 +2,8 @@ import { Router } from 'express';
 import { db } from '../db/client';
 import type { AuthRequest } from '../middleware/requireAuth';
 import { asyncRoute } from '../middleware/asyncRoute';
+import { BadRequest } from '../middleware/errors';
+import { bodyRecord } from '../middleware/parse';
 
 const router = Router();
 
@@ -11,7 +13,8 @@ router.get('/', asyncRoute<AuthRequest>(async (req, res) => {
 }));
 
 router.put('/', asyncRoute<AuthRequest>(async (req, res) => {
-  const { emas } = req.body as { emas: object };
+  const { emas } = bodyRecord(req.body);
+  if (!Array.isArray(emas)) throw new BadRequest('emas must be an array');
   const record = await db.chartIndicators.upsert({
     where:  { userId: req.userId! },
     update: { emas },

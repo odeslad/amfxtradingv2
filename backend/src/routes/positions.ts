@@ -3,6 +3,7 @@ import { getAllPositions } from '../store/positions';
 import { setColor, getAllColors } from '../store/positionColors';
 import { getBid, getAsk } from '../store/ticks';
 import { asyncRoute } from '../middleware/asyncRoute';
+import { bodyRecord, nonEmptyString, integer, optionalString } from '../middleware/parse';
 
 const router = Router();
 
@@ -23,12 +24,11 @@ router.get('/live', asyncRoute(async (_req, res) => {
 }));
 
 router.patch('/color', asyncRoute(async (req, res) => {
-  const { broker, ticket, color } = req.body as { broker: string; ticket: number; color: string };
-  if (!broker || ticket == null) {
-    res.status(400).json({ error: 'broker and ticket are required' });
-    return;
-  }
-  await setColor(broker, ticket, color ?? '');
+  const body = bodyRecord(req.body);
+  const broker = nonEmptyString(body.broker, 'broker');
+  const ticket = integer(body.ticket, 'ticket');
+  const color = optionalString(body.color, 'color') ?? '';
+  await setColor(broker, ticket, color);
   res.json({ ok: true });
 }));
 

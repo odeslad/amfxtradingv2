@@ -1,6 +1,18 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
+import { execSync } from 'child_process';
+
+// Commits on the current branch touching `dir` (relative to the repo root, one level up).
+function gitCommitCount(dir: string): number {
+  try {
+    const out = execSync(`git rev-list --count HEAD -- ${dir}`, { cwd: '..', stdio: ['ignore', 'pipe', 'ignore'] });
+    return Number(out.toString().trim()) || 0;
+  } catch {
+    console.warn(`[build] git commit count for ${dir} unavailable, using 0`);
+    return 0;
+  }
+}
 
 const KEY_PATH = './certs/local.amfxtrading.com-key.pem';
 const CERT_PATH = './certs/local.amfxtrading.com.pem';
@@ -9,6 +21,9 @@ const hasCerts = fs.existsSync(KEY_PATH) && fs.existsSync(CERT_PATH);
 
 export default defineConfig(({ command }) => ({
   plugins: [react()],
+  define: {
+    __BUILD_FRONTEND__: JSON.stringify(gitCommitCount('frontend')),
+  },
   build: {
     rollupOptions: {
       output: {

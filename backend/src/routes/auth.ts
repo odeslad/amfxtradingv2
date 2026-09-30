@@ -5,6 +5,7 @@ import { db } from '../db/client';
 import { config } from '../config';
 import { requireAuth, type AuthRequest } from '../middleware/requireAuth';
 import { asyncRoute } from '../middleware/asyncRoute';
+import { loginKey, isBlocked, recordFailure, clearFailures } from '../middleware/loginLimiter';
 
 const router = Router();
 
@@ -33,12 +34,21 @@ router.post('/login', asyncRoute(async (req, res) => {
     return;
   }
 
+  const key = loginKey(req, email);
+  if (isBlocked(key)) {
+    const message = 'Too many attempts, try again later';
+    res.status(429).json({ error: message, message });
+    return;
+  }
+
   const user = await db.user.findUnique({ where: { email } });
   const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
   if (!user || !valid) {
+    recordFailure(key);
     res.status(401).json({ message: 'Invalid credentials' });
     return;
   }
+  clearFailures(key);
 
   const token = jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: '7d' });
   res.cookie('token', token, COOKIE_OPTIONS);

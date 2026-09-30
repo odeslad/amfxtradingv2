@@ -23,6 +23,10 @@ import { version } from './version';
 
 const app = express();
 
+// One hop (nginx) in front of us, itself behind Cloudflare: lets req.ip read the
+// client address from X-Forwarded-For instead of nginx's.
+app.set('trust proxy', 1);
+
 const ALLOWED_ORIGINS = [/\.amfxtrading\.com(:\d+)?$/];
 
 app.use(cors({

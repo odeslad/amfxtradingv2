@@ -1,31 +1,69 @@
 $ErrorActionPreference = 'Stop'
 
+$Root      = 'C:\amfxtradingv2'
+$Backend   = Join-Path $Root 'backend'
+$Ecosystem = Join-Path $Backend 'ecosystem.config.js'
+$AppName   = 'amfxtrading-backend'
+$HealthUrl = 'http://localhost:3000/health'
+$Dist      = Join-Path $Backend 'dist'
+$DistNext  = Join-Path $Backend 'dist.next'
+$DistPrev  = Join-Path $Backend 'dist.prev'
+
+# Name of the step being run, so a failure message can point at it.
+$script:Step = 'start'
+# Set once dist/ holds the new build and dist.prev the old one.
+$script:Swapped = $false
+
 function Invoke-Step {
     param([string]$Label, [scriptblock]$Command)
+    $script:Step = $Label
     Write-Host "[$Label]"
+    # Test hook: never set by the workflow; only an interactive SSH session sets it
+    # to rehearse the rollback path (spec 005).
+    if ($env:AMFX_DEPLOY_FAIL_AT -eq $Label) { throw "injected failure at '$Label' (AMFX_DEPLOY_FAIL_AT)" }
     & $Command
     if ($LASTEXITCODE -ne 0) { throw "$Label failed with exit code $LASTEXITCODE" }
 }
 
-Set-Location C:\amfxtradingv2
+function Test-Health {
+    try {
+        $r = Invoke-WebRequest -Uri $HealthUrl -UseBasicParsing -TimeoutSec 3
+        return $r.StatusCode -eq 200
+    } catch { return $false }
+}
+
+function Wait-Health([int]$TimeoutSec) {
+    $deadline = (Get-Date).AddSeconds($TimeoutSec)
+    while ((Get-Date) -lt $deadline) {
+        if (Test-Health) { return $true }
+        Start-Sleep -Seconds 2
+    }
+    return $false
+}
+
+function Stop-App {
+    # Tolerate a missing process: after a crash/BSOD pm2 may have lost the app.
+    pm2 delete $AppName 2>&1 | Out-Null
+    $global:LASTEXITCODE = 0
+}
+
+function Start-App {
+    pm2 start $Ecosystem 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "pm2 start failed with exit code $LASTEXITCODE" }
+}
+
+Set-Location $Root
 
 Invoke-Step "git reset" { git reset --hard HEAD }
 Invoke-Step "git clean" { git clean -fd }
-Invoke-Step "git pull" { git pull origin master }
+Invoke-Step "git pull"  { git pull origin master }
 
-Set-Location backend
+Set-Location $Backend
 
-# Stop the running app first. Use `npm install` (not `npm ci`): ci wipes
-# node_modules and must unlink Prisma's native query-engine DLL, which stays
-# locked by the process for a moment on Windows and caused EPERM. install
-# updates in place without deleting the DLL, avoiding the lock entirely.
-# Tolerate a missing process: after a crash/BSOD pm2 may have lost the app
-# (the orphan cleanup below still frees the port), so absence is not an error.
-Invoke-Step "pm2 delete" {
-    pm2 delete amfxtrading-backend
-    if ($LASTEXITCODE -ne 0) { Write-Host "  not registered in pm2, continuing" }
-    $global:LASTEXITCODE = 0
-}
+# Stop the running app before touching node_modules: Prisma's native query-engine
+# DLL stays locked by the process on Windows and `npm install` would hit EPERM.
+# This is why the pre-stop compile gate lives in CI, not here.
+Invoke-Step "pm2 delete" { Stop-App }
 
 # pm2 can lose track of its child (e.g. after a BSOD or failed restart), leaving
 # an orphaned node.exe holding port 3000 and making pm2 start loop on EADDRINUSE.
@@ -51,17 +89,68 @@ Invoke-Step "free port 3000" {
     $global:LASTEXITCODE = 0
 }
 
-Invoke-Step "npm install" { npm install }
-Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }
-Invoke-Step "prisma migrate" { node_modules\.bin\prisma migrate deploy }
-Invoke-Step "build" { npm run build }
+# A previous build we can fall back to.
+$rollbackReady = Test-Path (Join-Path $Dist 'index.js')
 
-Invoke-Step "pm2 start" {
-    pm2 start C:\amfxtradingv2\backend\dist\index.js --name amfxtrading-backend `
-        --node-args="--expose-gc --max-old-space-size=1024" `
-        --max-memory-restart 1200M
+try {
+    # `npm install` (not `npm ci`): ci wipes node_modules and re-links the Prisma
+    # DLL, which caused EPERM right after the stop; install updates in place.
+    Invoke-Step "npm install"     { npm install }
+    Invoke-Step "prisma generate" { node_modules\.bin\prisma generate }
+    Invoke-Step "prisma migrate"  { node_modules\.bin\prisma migrate deploy }
+
+    # Compile into a fresh directory: noEmitOnError leaves it empty on type errors,
+    # and dist/ is only replaced once the whole build succeeded.
+    Invoke-Step "build" {
+        if (Test-Path $DistNext) { Remove-Item $DistNext -Recurse -Force }
+        node_modules\.bin\tsc --outDir $DistNext
+    }
+    Invoke-Step "swap dist" {
+        if (-not (Test-Path (Join-Path $DistNext 'index.js'))) { throw "build produced no dist.next\index.js" }
+        if (Test-Path $DistPrev) { Remove-Item $DistPrev -Recurse -Force }
+        if (Test-Path $Dist)     { Rename-Item $Dist $DistPrev }
+        Rename-Item $DistNext $Dist
+        $script:Swapped = $true
+        $global:LASTEXITCODE = 0
+    }
+
+    Invoke-Step "pm2 start" { Start-App }
+    Invoke-Step "health" {
+        if (-not (Wait-Health 30)) { throw "backend did not answer $HealthUrl within 30s" }
+        $global:LASTEXITCODE = 0
+    }
+    Invoke-Step "pm2 save" { pm2 save }
+
+    Write-Host "[OK] Backend deployed and running"
+    exit 0
 }
+catch {
+    $failedStep = $script:Step
+    Write-Host "[FAILED] step: $failedStep - $_"
 
-Invoke-Step "pm2 save" { pm2 save }
+    # Once swapped, dist/ holds the build that just failed to come up: put the
+    # previous one back before restarting.
+    if ($script:Swapped -and (Test-Path $DistPrev)) {
+        if (Test-Path $Dist) { Remove-Item $Dist -Recurse -Force }
+        Rename-Item $DistPrev $Dist
+        Write-Host "[ROLLBACK] restored dist from dist.prev"
+    }
 
-Write-Host "[OK] Backend deployed and running"
+    if ($rollbackReady -and (Test-Path (Join-Path $Dist 'index.js'))) {
+        try {
+            Stop-App
+            Start-App
+            if (Wait-Health 30) {
+                pm2 save 2>&1 | Out-Null
+                Write-Host "[ROLLBACK] previous build is running"
+            } else {
+                Write-Host "[ROLLBACK FAILED] previous build started but $HealthUrl did not answer - backend is DOWN"
+            }
+        } catch {
+            Write-Host "[ROLLBACK FAILED] $_ - backend is DOWN"
+        }
+    } else {
+        Write-Host "[ROLLBACK FAILED] no previous build available - backend is DOWN"
+    }
+    exit 1
+}

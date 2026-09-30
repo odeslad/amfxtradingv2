@@ -7,9 +7,13 @@ Este proyecto es un **monorrepo** dividido en tres capas bien diferenciadas:
 ```
 amfxtradingv2/
 ├── ea/          # Expert Advisor (lógica de trading automatizado)
-├── backend/     # API, lógica de negocio, conexión a BD
-├── db/          # Esquema de base de datos, migraciones (Prisma)
-└── frontend/    # Interfaz de usuario (React + TypeScript)
+├── backend/     # API, lógica de negocio, conexión a BD (incluye prisma/ = capa db)
+├── frontend/    # Interfaz de usuario (React + TypeScript)
+├── infra/       # Scripts del VPS (startup, watchdog); pipelines en .github/
+├── specs/       # Specs ACTIVAS: specs/NNN-<slug>/{en,es}/
+├── archive/     # Specs cerradas, por mes de cierre: archive/YYYY-MM/NNN-<slug>/
+├── epics/       # Ideas exploradas con /epic-explore antes de partirlas en specs
+└── reports/     # Auditorías de código (/amfx-code-audit)
 ```
 
 Cada capa es independiente. **No se mezclan responsabilidades entre capas.**
@@ -54,6 +58,23 @@ El proyecto se construye en fases estrictas. **No se avanza a la siguiente fase 
 - No ampliar el stack más allá del necesario
 - No crear abstracciones prematuras
 - No mezclar código de distintas fases en el mismo commit
+
+---
+
+## Workflow spec-driven (skills en `.claude/skills/`)
+
+Todo cambio no trivial pasa por una spec. Sin sprints ni dailies: el ciclo es spec → implementación → despliegue → validación en producción → cierre.
+
+1. `/epic-explore <idea>` (global) — explorar una idea hasta un `epics/<slug>/concept.md` con specs candidatas.
+2. `/amfx-spec-new` — crear `specs/NNN-<slug>/` (requirements → design → tasks, con aprobación por documento). Cada tarea nombra su capa `[backend]`/`[frontend]`/`[ea]`/`[db]`/`[infra]`, su mecanismo de verificación y su estimación (1 SP = 1 h senior).
+3. `/amfx-implement` — implementar tarea a tarea en `master`: verificar → registrar en `verification.md` → commit atómico con scope de capa (`feat(backend):`) y `Spec: NNN-<slug> (task n)` en el cuerpo → checkpoint con el usuario. Nunca push sin preguntar. La última tarea cierra la spec: Est vs Actual, `Status: closed`, `git mv` a `archive/YYYY-MM/`.
+4. `/amfx-status` — tabla de specs activas (fase, tareas, verificación, capas).
+5. `/amfx-branch-review <rama | rango | NNN>` — revisión de solo lectura contra `master` y contra la spec.
+6. `/amfx-code-audit <backend | frontend | ea>` — auditoría de solo lectura → dos informes en `reports/`.
+
+**Espejo de idiomas**: `en/` (fuente de trabajo) y `es/` contienen siempre los mismos documentos; cualquier cambio en uno actualiza el otro en el mismo commit.
+
+**Gate de cierre = producción**: la penúltima tarea es siempre la validación del usuario en la app desplegada (backend primero; frontend solo cuando el usuario lo pida; EA a mano).
 
 ---
 

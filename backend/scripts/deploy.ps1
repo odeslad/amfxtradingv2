@@ -41,14 +41,18 @@ function Wait-Health([int]$TimeoutSec) {
     return $false
 }
 
+# pm2 goes through cmd.exe: under $ErrorActionPreference = 'Stop', Windows
+# PowerShell 5.1 turns any stderr line of a native command into a terminating
+# error, which aborted the rollback the first time it ran (pm2 delete on a
+# process that was already gone). Only the exit code matters here.
 function Stop-App {
     # Tolerate a missing process: after a crash/BSOD pm2 may have lost the app.
-    pm2 delete $AppName 2>&1 | Out-Null
+    cmd /c "pm2 delete $AppName >nul 2>&1"
     $global:LASTEXITCODE = 0
 }
 
 function Start-App {
-    pm2 start $Ecosystem 2>&1 | Out-Null
+    cmd /c "pm2 start `"$Ecosystem`" >nul 2>&1"
     if ($LASTEXITCODE -ne 0) { throw "pm2 start failed with exit code $LASTEXITCODE" }
 }
 
@@ -141,7 +145,7 @@ catch {
             Stop-App
             Start-App
             if (Wait-Health 30) {
-                pm2 save 2>&1 | Out-Null
+                cmd /c "pm2 save >nul 2>&1"
                 Write-Host "[ROLLBACK] previous build is running"
             } else {
                 Write-Host "[ROLLBACK FAILED] previous build started but $HealthUrl did not answer - backend is DOWN"

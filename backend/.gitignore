@@ -2,3 +2,5 @@ node_modules/
 dist/
 .env
 brokers.json
+dist.prev/
+dist.next/

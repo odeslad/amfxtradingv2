@@ -1,6 +1,6 @@
 # 004 — Frontera de errores y validación de peticiones
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 > Origen: [auditoría del backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 1 (diagnóstico A)
 
 ## Contexto

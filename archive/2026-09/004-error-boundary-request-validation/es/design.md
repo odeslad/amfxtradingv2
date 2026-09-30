@@ -1,6 +1,6 @@
 # 004 — Frontera de errores y validación de peticiones · Diseño
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Enfoque
 

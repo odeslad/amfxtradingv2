@@ -1,6 +1,6 @@
 # 004 — Error boundary and request validation · Design
 
-> Status: **approved**
+> Status: **closed**
 
 ## Approach
 

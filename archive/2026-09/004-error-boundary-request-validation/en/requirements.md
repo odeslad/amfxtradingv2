@@ -1,6 +1,6 @@
 # 004 — Error boundary and request validation
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 1 (diagnosis A)
 
 ## Context

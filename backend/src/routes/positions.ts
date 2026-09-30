@@ -2,10 +2,11 @@ import { Router } from 'express';
 import { getAllPositions } from '../store/positions';
 import { setColor, getAllColors } from '../store/positionColors';
 import { getBid, getAsk } from '../store/ticks';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
-router.get('/live', async (_req, res) => {
+router.get('/live', asyncRoute(async (_req, res) => {
   const colors = await getAllColors();
   const brokers = getAllPositions();
   const enriched = brokers.map(({ broker, positions, ...rest }) => ({
@@ -19,9 +20,9 @@ router.get('/live', async (_req, res) => {
     })),
   }));
   res.json(enriched);
-});
+}));
 
-router.patch('/color', async (req, res) => {
+router.patch('/color', asyncRoute(async (req, res) => {
   const { broker, ticket, color } = req.body as { broker: string; ticket: number; color: string };
   if (!broker || ticket == null) {
     res.status(400).json({ error: 'broker and ticket are required' });
@@ -29,6 +30,6 @@ router.patch('/color', async (req, res) => {
   }
   await setColor(broker, ticket, color ?? '');
   res.json({ ok: true });
-});
+}));
 
 export default router;

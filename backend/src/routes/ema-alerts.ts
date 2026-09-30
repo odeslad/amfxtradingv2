@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/client';
 import type { AuthRequest } from '../middleware/requireAuth';
 import { refreshEmaAlerts } from '../alerts/ema-alert-store';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
@@ -29,15 +30,15 @@ function validate(body: EmaAlertBody): string | null {
   return null;
 }
 
-router.get('/', async (req: AuthRequest, res) => {
+router.get('/', asyncRoute<AuthRequest>(async (req, res) => {
   const alerts = await db.emaCrossAlert.findMany({
     where: { userId: req.userId! },
     orderBy: { createdAt: 'desc' },
   });
   res.json(alerts);
-});
+}));
 
-router.post('/', async (req: AuthRequest, res) => {
+router.post('/', asyncRoute<AuthRequest>(async (req, res) => {
   const body = req.body as EmaAlertBody;
   const error = validate(body);
   if (error) { res.status(400).json({ message: error }); return; }
@@ -57,9 +58,9 @@ router.post('/', async (req: AuthRequest, res) => {
   });
   await refreshEmaAlerts();
   res.status(201).json(alert);
-});
+}));
 
-router.put('/:id', async (req: AuthRequest, res) => {
+router.put('/:id', asyncRoute<AuthRequest>(async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ message: 'invalid id' }); return; }
 
@@ -87,9 +88,9 @@ router.put('/:id', async (req: AuthRequest, res) => {
   });
   await refreshEmaAlerts();
   res.json(alert);
-});
+}));
 
-router.delete('/:id', async (req: AuthRequest, res) => {
+router.delete('/:id', asyncRoute<AuthRequest>(async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id)) { res.status(400).json({ message: 'invalid id' }); return; }
 
@@ -97,6 +98,6 @@ router.delete('/:id', async (req: AuthRequest, res) => {
   if (result.count === 0) { res.status(404).json({ message: 'alert not found' }); return; }
   await refreshEmaAlerts();
   res.status(204).end();
-});
+}));
 
 export default router;

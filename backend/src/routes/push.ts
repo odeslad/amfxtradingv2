@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/client';
 import { config } from '../config';
 import type { AuthRequest } from '../middleware/requireAuth';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ router.get('/vapid', (_req, res) => {
   res.json({ publicKey: config.vapidPublicKey });
 });
 
-router.post('/subscribe', async (req: AuthRequest, res) => {
+router.post('/subscribe', asyncRoute<AuthRequest>(async (req, res) => {
   const { endpoint, keys } = req.body as SubscribeBody;
   if (!endpoint || !keys?.p256dh || !keys?.auth) {
     res.status(400).json({ message: 'endpoint and keys are required' });
@@ -29,13 +30,13 @@ router.post('/subscribe', async (req: AuthRequest, res) => {
     create: { userId: req.userId!, endpoint, p256dh: keys.p256dh, auth: keys.auth },
   });
   res.status(201).json({ ok: true });
-});
+}));
 
-router.post('/unsubscribe', async (req: AuthRequest, res) => {
+router.post('/unsubscribe', asyncRoute<AuthRequest>(async (req, res) => {
   const { endpoint } = req.body as SubscribeBody;
   if (!endpoint) { res.status(400).json({ message: 'endpoint is required' }); return; }
   await db.pushSubscription.deleteMany({ where: { endpoint, userId: req.userId! } });
   res.status(204).end();
-});
+}));
 
 export default router;

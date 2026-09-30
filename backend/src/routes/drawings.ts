@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db/client';
 import type { AuthRequest } from '../middleware/requireAuth';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
@@ -13,7 +14,7 @@ function getContext(req: AuthRequest): { broker: string; symbol: string; timefra
   return { broker, symbol, timeframe };
 }
 
-router.get('/', async (req: AuthRequest, res) => {
+router.get('/', asyncRoute<AuthRequest>(async (req, res) => {
   const ctx = getContext(req);
   if (!ctx) { res.status(400).json({ message: 'broker, symbol and timeframe are required' }); return; }
 
@@ -21,9 +22,9 @@ router.get('/', async (req: AuthRequest, res) => {
     where: { userId_broker_symbol_timeframe: { userId: req.userId!, ...ctx } },
   });
   res.json({ items: record?.items ?? [] });
-});
+}));
 
-router.put('/', async (req: AuthRequest, res) => {
+router.put('/', asyncRoute<AuthRequest>(async (req, res) => {
   const ctx = getContext(req);
   if (!ctx) { res.status(400).json({ message: 'broker, symbol and timeframe are required' }); return; }
 
@@ -36,6 +37,6 @@ router.put('/', async (req: AuthRequest, res) => {
     create: { userId: req.userId!, ...ctx, items },
   });
   res.json({ items: record.items });
-});
+}));
 
 export default router;

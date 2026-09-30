@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { db } from '../db/client';
 import { config } from '../config';
 import { requireAuth, type AuthRequest } from '../middleware/requireAuth';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
@@ -15,7 +16,7 @@ const COOKIE_OPTIONS = {
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
 
-router.post('/login', async (req: Request, res: Response): Promise<void> => {
+router.post('/login', asyncRoute(async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   if (!email || !password) {
@@ -38,14 +39,14 @@ router.post('/login', async (req: Request, res: Response): Promise<void> => {
   const token = jwt.sign({ sub: user.id }, config.jwtSecret, { expiresIn: '7d' });
   res.cookie('token', token, COOKIE_OPTIONS);
   res.json({ user: { id: user.id, email: user.email } });
-});
+}));
 
 router.post('/logout', (_req: Request, res: Response): void => {
   res.clearCookie('token');
   res.json({ ok: true });
 });
 
-router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<void> => {
+router.get('/me', requireAuth, asyncRoute<AuthRequest>(async (req, res) => {
   const user = await db.user.findUnique({
     where: { id: req.userId },
     select: { id: true, email: true },
@@ -55,6 +56,6 @@ router.get('/me', requireAuth, async (req: AuthRequest, res: Response): Promise<
     return;
   }
   res.json(user);
-});
+}));
 
 export default router;

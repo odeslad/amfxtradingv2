@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import { db } from '../db/client';
 import { calculateEma } from '../indicators/ema';
+import { asyncRoute } from '../middleware/asyncRoute';
+import { singleQuery } from '../middleware/parse';
 
 const router = Router();
 
@@ -8,8 +10,14 @@ const router = Router();
 // match the scanner exactly. Returns only the points inside [from, to]; the
 // warmup before `from` is computed but not sent. This replaces the frontend's
 // own EMA calc, which drifted from the backend's for slow periods.
-router.get('/emas', async (req, res) => {
-  const { broker, symbol, tf, emaFast, emaSlow, from, to } = req.query as Record<string, string>;
+router.get('/emas', asyncRoute(async (req, res) => {
+  const broker = singleQuery(req.query, 'broker');
+  const symbol = singleQuery(req.query, 'symbol');
+  const tf = singleQuery(req.query, 'tf');
+  const emaFast = singleQuery(req.query, 'emaFast');
+  const emaSlow = singleQuery(req.query, 'emaSlow');
+  const from = singleQuery(req.query, 'from');
+  const to = singleQuery(req.query, 'to');
 
   if (!broker || !symbol || !tf || !emaFast || !emaSlow) {
     res.status(400).json({ error: 'broker, symbol, tf, emaFast and emaSlow are required' });
@@ -42,10 +50,15 @@ router.get('/emas', async (req, res) => {
   }
 
   res.json(out);
-});
+}));
 
-router.get('/', async (req, res) => {
-  const { broker, symbol, tf, limit, before, after } = req.query as Record<string, string>;
+router.get('/', asyncRoute(async (req, res) => {
+  const broker = singleQuery(req.query, 'broker');
+  const symbol = singleQuery(req.query, 'symbol');
+  const tf = singleQuery(req.query, 'tf');
+  const limit = singleQuery(req.query, 'limit');
+  const before = singleQuery(req.query, 'before');
+  const after = singleQuery(req.query, 'after');
 
   if (!broker || !symbol || !tf) {
     res.status(400).json({ error: 'broker, symbol and tf are required' });
@@ -91,6 +104,6 @@ router.get('/', async (req, res) => {
     low: c.low,
     close: c.close,
   })));
-});
+}));
 
 export default router;

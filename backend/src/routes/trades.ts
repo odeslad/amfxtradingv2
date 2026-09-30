@@ -1,11 +1,17 @@
-import { Router, type Response } from 'express';
+import { Router } from 'express';
 import { db } from '../db/client';
-import type { AuthRequest } from '../middleware/requireAuth';
+import { asyncRoute } from '../middleware/asyncRoute';
+import { singleQuery } from '../middleware/parse';
 
 const router = Router();
 
-router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
-  const { broker, symbol, from, to, limit = '200', offset = '0' } = req.query as Record<string, string>;
+router.get('/', asyncRoute(async (req, res) => {
+  const broker = singleQuery(req.query, 'broker');
+  const symbol = singleQuery(req.query, 'symbol');
+  const from = singleQuery(req.query, 'from');
+  const to = singleQuery(req.query, 'to');
+  const limit = singleQuery(req.query, 'limit') ?? '200';
+  const offset = singleQuery(req.query, 'offset') ?? '0';
 
   const [trades, balances] = await Promise.all([
     db.trade.findMany({
@@ -34,6 +40,6 @@ router.get('/', async (req: AuthRequest, res: Response): Promise<void> => {
   const enriched = trades.map(t => ({ ...t, currency: currencyByBroker.get(t.broker) ?? '' }));
 
   res.json(enriched);
-});
+}));
 
 export default router;

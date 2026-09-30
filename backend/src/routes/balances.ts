@@ -1,22 +1,23 @@
-import { Router, type Response } from 'express';
+import { Router } from 'express';
 import { db } from '../db/client';
 import type { AuthRequest } from '../middleware/requireAuth';
 import { getAllPositions } from '../store/positions';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
-router.get('/', async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/', asyncRoute<AuthRequest>(async (_req, res) => {
   const brokers = await db.balance.findMany({
     distinct: ['broker'],
     orderBy: { timestamp: 'desc' },
   });
 
   res.json(brokers);
-});
+}));
 
 // Day P&L per broker: net P&L of trades closed today (broker time) plus the live
 // floating P&L of currently open positions.
-router.get('/daily-pnl', async (_req: AuthRequest, res: Response): Promise<void> => {
+router.get('/daily-pnl', asyncRoute<AuthRequest>(async (_req, res) => {
   const liveByBroker = getAllPositions();
   const result: Record<string, number> = {};
 
@@ -40,6 +41,6 @@ router.get('/daily-pnl', async (_req: AuthRequest, res: Response): Promise<void>
   }
 
   res.json(result);
-});
+}));
 
 export default router;

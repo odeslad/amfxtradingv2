@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import { db } from '../db/client';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
 
-router.get('/', async (_req, res) => {
+router.get('/', asyncRoute(async (_req, res) => {
   const [mirror, display] = await Promise.all([
     db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
     db.settingsDisplay.findFirst({ where: { key: 'global' } }),
@@ -17,9 +18,9 @@ router.get('/', async (_req, res) => {
       trendlineWidth: display?.trendlineWidth ?? 1,
     },
   });
-});
+}));
 
-router.put('/', async (req, res) => {
+router.put('/', asyncRoute(async (req, res) => {
   const { mirror, display } = req.body as {
     mirror?: { broker: string; enabled: boolean; lotsMode: string; lots: number }[];
     display?: { pnlMode: string; trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number };
@@ -78,6 +79,6 @@ router.put('/', async (req, res) => {
       trendlineWidth: updatedDisplay?.trendlineWidth ?? 1,
     },
   });
-});
+}));
 
 export default router;

@@ -3,6 +3,8 @@ import { db } from '../db/client';
 import { detectEmaCrossSetups } from '../indicators/ema-cross';
 import { getPipSize } from '../indicators/pip-size';
 import type { Candle } from '../indicators/ema';
+import { asyncRoute } from '../middleware/asyncRoute';
+import { singleQuery } from '../middleware/parse';
 
 const router = Router();
 
@@ -11,8 +13,12 @@ const MAX_CANDLES = 1000;
 // Levels (ECC/EMA/EVL/MHL) of the latest EMA-cross setup for a symbol/timeframe,
 // computed live from recent candles. Used by the New Trade panel to show the
 // current setup's levels and their distance to the live price for precise SLs.
-router.get('/', async (req, res) => {
-  const { broker, symbol, tf, emaFast, emaSlow } = req.query as Record<string, string>;
+router.get('/', asyncRoute(async (req, res) => {
+  const broker = singleQuery(req.query, 'broker');
+  const symbol = singleQuery(req.query, 'symbol');
+  const tf = singleQuery(req.query, 'tf');
+  const emaFast = singleQuery(req.query, 'emaFast');
+  const emaSlow = singleQuery(req.query, 'emaSlow');
 
   if (!broker || !symbol || !tf || !emaFast || !emaSlow) {
     res.status(400).json({ message: 'broker, symbol, tf, emaFast and emaSlow are required' });
@@ -52,6 +58,6 @@ router.get('/', async (req, res) => {
       pipSize: pip,
     },
   });
-});
+}));
 
 export default router;

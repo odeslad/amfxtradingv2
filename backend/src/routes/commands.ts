@@ -5,6 +5,7 @@ import { config } from '../config';
 import { getBid, getAllBids } from '../store/ticks';
 import { getAccount } from '../store/accounts';
 import { calculateLots } from '../services/sizing';
+import { asyncRoute } from '../middleware/asyncRoute';
 
 type Broadcaster = (id: string, status: string, ticket?: number, error?: string) => void;
 
@@ -59,7 +60,7 @@ function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Prom
   });
 }
 
-router.post('/', (req, res) => {
+router.post('/', asyncRoute(async (req, res) => {
   const body = req.body as Record<string, unknown>;
   const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price, ticket } = body as {
     action: string; id: string; broker: string; symbol: string;
@@ -135,6 +136,6 @@ router.post('/', (req, res) => {
         console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
       });
   });
-});
+}));
 
 export default router;

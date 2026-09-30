@@ -64,7 +64,7 @@ function validRequests({ broker, symbol }) {
   const s = encodeURIComponent(symbol);
   return [
     { path: '/auth/me' },
-    { path: '/balances' },
+    { path: '/balances', volatile: true }, // equity/profit rewritten every 30 s by the sync
     { path: '/balances/daily-pnl', volatile: true },
     { path: '/positions/live', volatile: true },
     { path: '/settings' },

@@ -6,6 +6,56 @@ import { getBid, getAllBids } from '../store/ticks';
 import { getAccount } from '../store/accounts';
 import { calculateLots } from '../services/sizing';
 import { asyncRoute } from '../middleware/asyncRoute';
+import { BadRequest } from '../middleware/errors';
+import {
+  bodyRecord, nonEmptyString, oneOf, optionalOneOf, finiteNumber, optionalFiniteNumber, optionalInteger,
+} from '../middleware/parse';
+
+export const ACTIONS = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop', 'close', 'modify'] as const;
+const LOTS_MODES = ['fixed', 'risk_pct'] as const;
+const TICKET_ACTIONS: ReadonlySet<string> = new Set(['close', 'modify']);
+const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;
+
+interface CommandInput {
+  action: (typeof ACTIONS)[number];
+  id: string;
+  broker: string;
+  symbol: string;
+  lotsMode?: (typeof LOTS_MODES)[number];
+  lots?: number;
+  sl?: number;
+  tp?: number;
+  price?: number;
+  ticket?: number;
+}
+
+// Everything is checked before the 202 and before anything reaches command.json:
+// the EA silently drops what it cannot execute, which showed up as 10 s timeouts.
+function parseCommand(raw: unknown): CommandInput {
+  const body = bodyRecord(raw);
+  const action = oneOf(body.action, 'action', ACTIONS);
+  const id = nonEmptyString(body.id, 'id');
+  if (!ID_RE.test(id)) throw new BadRequest('id must match ^[A-Za-z0-9_-]{1,64}$');
+  const lotsMode = optionalOneOf(body.lotsMode, 'lotsMode', LOTS_MODES);
+  const needsLots = !TICKET_ACTIONS.has(action);
+  const lots = needsLots
+    ? finiteNumber(body.lots, lotsMode === 'risk_pct' ? 'lots (risk %)' : 'lots', { positive: true })
+    : optionalFiniteNumber(body.lots, 'lots', { positive: true });
+  const ticket = optionalInteger(body.ticket, 'ticket', { min: 1 });
+  if (TICKET_ACTIONS.has(action) && ticket === undefined) throw new BadRequest(`ticket is required for ${action}`);
+  return {
+    action,
+    id,
+    broker: nonEmptyString(body.broker, 'broker'),
+    symbol: nonEmptyString(body.symbol, 'symbol'),
+    lotsMode,
+    lots,
+    sl: optionalFiniteNumber(body.sl, 'sl', { min: 0 }),
+    tp: optionalFiniteNumber(body.tp, 'tp', { min: 0 }),
+    price: optionalFiniteNumber(body.price, 'price', { min: 0 }),
+    ticket,
+  };
+}
 
 type Broadcaster = (id: string, status: string, ticket?: number, error?: string) => void;
 
@@ -61,16 +111,7 @@ function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Prom
 }
 
 router.post('/', asyncRoute(async (req, res) => {
-  const body = req.body as Record<string, unknown>;
-  const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price, ticket } = body as {
-    action: string; id: string; broker: string; symbol: string;
-    lotsMode?: string; lots: number; sl?: number; tp?: number; price?: number; ticket?: number;
-  };
-
-  if (!action || !id || !broker || !symbol) {
-    res.status(400).json({ error: 'action, id, broker and symbol are required' });
-    return;
-  }
+  const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price, ticket } = parseCommand(req.body);
 
   const brokerConfig = config.brokers.find((b) => b.name === broker);
   if (!brokerConfig) {
@@ -81,6 +122,7 @@ router.post('/', asyncRoute(async (req, res) => {
   let lots = rawLots;
 
   if (lotsMode === 'risk_pct') {
+    if (rawLots === undefined) throw new BadRequest('lots (risk %) is required for risk % sizing');
     if (!sl) {
       res.status(400).json({ error: 'SL is required for risk % sizing' });
       return;
@@ -92,14 +134,14 @@ router.post('/', asyncRoute(async (req, res) => {
       return;
     }
 
-    const bid = getBid(broker, symbol as string);
+    const bid = getBid(broker, symbol);
     if (!bid) {
       res.status(503).json({ error: 'Tick data not available yet for this symbol' });
       return;
     }
 
     const allBids = getAllBids(broker);
-    lots = calculateLots(account.balance, rawLots, sl, bid, symbol as string, account.currency, allBids);
+    lots = calculateLots(account.balance, rawLots, sl, bid, symbol, account.currency, allBids);
   }
 
   const commandPath = path.join(brokerConfig.bridgePath, 'command.json');
@@ -119,20 +161,20 @@ router.post('/', asyncRoute(async (req, res) => {
       fs.writeFileSync(commandPath, JSON.stringify(command));
     } catch (err) {
       console.error(`[CMD:${broker}] Failed to write command.json`, err);
-      broadcaster?.(id as string, 'error', undefined, 'Failed to write command');
+      broadcaster?.(id, 'error', undefined, 'Failed to write command');
       return;
     }
 
-    await waitForResult(resultPath, id as string)
+    await waitForResult(resultPath, id)
       .then((result) => {
         const status = String(result['status'] ?? 'unknown');
         const ticket = typeof result['ticket'] === 'number' ? result['ticket'] : undefined;
         const code = result['code'] !== undefined ? ` (code ${result['code']})` : '';
-        broadcaster?.(id as string, status, ticket, status !== 'ok' ? `EA error${code}` : undefined);
+        broadcaster?.(id, status, ticket, status !== 'ok' ? `EA error${code}` : undefined);
         console.log(`[CMD:${broker}] result id=${id} status=${status} ticket=${ticket ?? '-'}`);
       })
       .catch(() => {
-        broadcaster?.(id as string, 'timeout', undefined, 'No response from EA');
+        broadcaster?.(id, 'timeout', undefined, 'No response from EA');
         console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
       });
   });

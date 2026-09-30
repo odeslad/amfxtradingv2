@@ -116,6 +116,18 @@ async function main() {
   });
 }
 
+// A rejection nobody awaited is logged and the process goes on: exiting here
+// would drop every broker feed for one stray promise. A synchronous throw
+// outside any handler leaves unknown state, so that one still exits (pm2
+// restarts it).
+process.on('unhandledRejection', (reason) => {
+  console.error('[UNHANDLED] rejection', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[UNCAUGHT] exception', err);
+  process.exit(1);
+});
+
 main().catch((err) => {
   console.error('[FATAL]', err);
   process.exit(1);

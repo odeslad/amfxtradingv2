@@ -5,6 +5,7 @@ import { IconJournal, IconChart, IconScanner, IconStats, IconSettings, IconSignO
 import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
+import { useBuildInfo } from '../../lib/useBuildInfo';
 import styles from './AppLayout.module.css';
 
 const NAV = [
@@ -17,6 +18,7 @@ const NAV = [
 
 export function AppLayout() {
   const { user, logout } = useAuth();
+  const build = useBuildInfo();
 
   useEffect(() => subscribe((data) => {
     if (typeof data !== 'object' || data === null) return;
@@ -65,7 +67,8 @@ export function AppLayout() {
       </div>
 
       <footer className={styles.footer}>
-        AMFX Trading Terminal v2.0 &nbsp;·&nbsp; © {new Date().getFullYear()}
+        AMFX Trading Terminal v2.0 &nbsp;·&nbsp; © {new Date().getFullYear()} &nbsp;·&nbsp;
+        <span className={styles.build}>build: {build.frontend}.{build.backend ?? '?'}.{build.ea ?? '?'}</span>
       </footer>
 
       <Toaster />

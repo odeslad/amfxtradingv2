@@ -162,6 +162,10 @@
   font-family: var(--font-sans);
 }
 
+.build {
+  font-family: var(--font-mono);
+}
+
 /* ── Mobile ─────────────────────────────────────── */
 
 .bottomNav {

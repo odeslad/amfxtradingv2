@@ -19,6 +19,7 @@ import pushRouter from './routes/push';
 import statsRouter from './routes/stats';
 import { requireAuth } from './middleware/requireAuth';
 import { errorHandler } from './middleware/errors';
+import { version } from './version';
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/version', (_req, res) => res.json(version));
 app.use('/auth', authRouter);
 app.use('/commands', requireAuth, commandsRouter);
 app.use('/trades', requireAuth, tradesRouter);

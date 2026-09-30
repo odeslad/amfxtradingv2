@@ -9,7 +9,36 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Compile gate on the runner: the VPS cannot type-check with a regenerated
+  # Prisma client before stopping the app (query-engine DLL lock on Windows).
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Prisma generate
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
   deploy:
+    needs: check
     runs-on: ubuntu-latest
 
     steps:

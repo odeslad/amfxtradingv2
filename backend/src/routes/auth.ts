@@ -21,6 +21,10 @@ const COOKIE_OPTIONS = {
 // clearing must repeat the attributes used at login (maxAge excluded).
 const { maxAge: _maxAge, ...CLEAR_COOKIE_OPTIONS } = COOKIE_OPTIONS;
 
+// bcrypt (cost 12) of a random throwaway string. Compared against when the email
+// is unknown so both branches cost the same and timing cannot enumerate accounts.
+const DUMMY_HASH = '$2b$12$HRb0eTf.GBX4F.AonR3IA.xMjLbPXaR7Wo/i6y6sjNtD9.Tvt2KkC';
+
 router.post('/login', asyncRoute(async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
 
@@ -30,13 +34,8 @@ router.post('/login', asyncRoute(async (req, res) => {
   }
 
   const user = await db.user.findUnique({ where: { email } });
-  if (!user) {
-    res.status(401).json({ message: 'Invalid credentials' });
-    return;
-  }
-
-  const valid = await bcrypt.compare(password, user.passwordHash);
-  if (!valid) {
+  const valid = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
+  if (!user || !valid) {
     res.status(401).json({ message: 'Invalid credentials' });
     return;
   }

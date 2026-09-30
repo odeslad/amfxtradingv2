@@ -1,6 +1,6 @@
 # 006 — Números de build en el footer · Diseño
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Enfoque
 

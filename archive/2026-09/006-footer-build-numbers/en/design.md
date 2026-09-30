@@ -1,6 +1,6 @@
 # 006 — Footer build numbers · Design
 
-> Status: **approved**
+> Status: **closed**
 
 ## Approach
 

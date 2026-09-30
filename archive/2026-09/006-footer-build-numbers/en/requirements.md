@@ -1,6 +1,6 @@
 # 006 — Footer build numbers
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

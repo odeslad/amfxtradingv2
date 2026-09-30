@@ -2,11 +2,13 @@
 //
 //   EMAIL=... PASSWORD=... node smoke.mjs capture [baseUrl]   # save baseline.json
 //   EMAIL=... PASSWORD=... node smoke.mjs diff    [baseUrl]   # replay valid requests, compare
-//   EMAIL=... PASSWORD=... node smoke.mjs invalid [baseUrl]   # fire invalid requests, expect 400
+//   EMAIL=... PASSWORD=... node smoke.mjs invalid [baseUrl] <filter|all>   # fire invalid requests, expect 400
 //
-// baseUrl defaults to http://localhost:3001. Never writes through the API:
-// valid requests are GET only; invalid requests must be rejected before any
-// write, which is exactly what the spec asserts.
+// baseUrl defaults to http://localhost:3001. Valid requests are GET only.
+// Invalid requests are only harmless once their validation exists: a case
+// that is not yet rejected WRITES its bad value (it happened to settings and
+// an EMA alert during task 5). So `invalid` needs a path filter naming the
+// routes already validated (e.g. `trades`, `settings,commands`) or `all`.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -14,9 +16,10 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const baselinePath = join(here, 'baseline.json');
-const [mode = 'diff', baseUrl = 'http://localhost:3001'] = process.argv.slice(2);
+const [mode = 'diff', baseUrl = 'http://localhost:3001', filter] = process.argv.slice(2);
 const { EMAIL, PASSWORD } = process.env;
 if (!EMAIL || !PASSWORD) fail('EMAIL and PASSWORD env vars are required');
+if (mode === 'invalid' && !filter) fail('invalid mode needs a route filter (comma-separated path fragments) or "all"');
 
 const FROM = '2026-06-01T00:00:00Z';
 const TO = '2026-06-30T23:59:59Z';
@@ -194,8 +197,11 @@ if (mode === 'diff') {
 }
 
 if (mode === 'invalid') {
+  const wanted = filter === 'all' ? null : filter.split(',');
+  const selected = invalidRequests(ctx).filter(([, path]) => !wanted || wanted.some((w) => path.includes(w)));
+  console.log(`${selected.length} invalid request(s) selected by "${filter}"\n`);
   let wrong = 0;
-  for (const [method, path, body] of invalidRequests(ctx)) {
+  for (const [method, path, body] of selected) {
     const r = await call(cookie, method, path, body);
     const ok = r.status === 400;
     if (!ok) wrong++;

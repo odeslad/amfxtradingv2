@@ -1,17 +1,19 @@
 import { Router } from 'express';
 import { db } from '../db/client';
 import { asyncRoute } from '../middleware/asyncRoute';
-import { singleQuery } from '../middleware/parse';
+import { singleQuery, intParam, dateParam } from '../middleware/parse';
 
 const router = Router();
+
+const MAX_LIMIT = 1000;
 
 router.get('/', asyncRoute(async (req, res) => {
   const broker = singleQuery(req.query, 'broker');
   const symbol = singleQuery(req.query, 'symbol');
-  const from = singleQuery(req.query, 'from');
-  const to = singleQuery(req.query, 'to');
-  const limit = singleQuery(req.query, 'limit') ?? '200';
-  const offset = singleQuery(req.query, 'offset') ?? '0';
+  const from = dateParam(singleQuery(req.query, 'from'), 'from');
+  const to = dateParam(singleQuery(req.query, 'to'), 'to');
+  const take = intParam(singleQuery(req.query, 'limit'), 'limit', { min: 0, max: MAX_LIMIT, default: 200, clamp: true });
+  const skip = intParam(singleQuery(req.query, 'offset'), 'offset', { min: 0, default: 0 });
 
   const [trades, balances] = await Promise.all([
     db.trade.findMany({
@@ -20,14 +22,14 @@ router.get('/', asyncRoute(async (req, res) => {
         ...(symbol ? { symbol } : {}),
         ...(from || to ? {
           closeTime: {
-            ...(from ? { gte: new Date(from) } : {}),
-            ...(to ? { lte: new Date(to) } : {}),
+            ...(from ? { gte: from } : {}),
+            ...(to ? { lte: to } : {}),
           },
         } : {}),
       },
       orderBy: { closeTime: 'desc' },
-      take: Math.min(parseInt(limit), 1000),
-      skip: parseInt(offset),
+      take,
+      skip,
     }),
     db.balance.findMany({
       distinct: ['broker'],

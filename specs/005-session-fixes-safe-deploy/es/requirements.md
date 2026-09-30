@@ -1,6 +1,6 @@
 # 005 — Arreglos de sesión y deploy seguro
 
-> Estado: **borrador**
+> Estado: **aprobada**
 > Origen: [auditoría del backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejoras 2 y 3 (diagnósticos C y D)
 
 ## Contexto

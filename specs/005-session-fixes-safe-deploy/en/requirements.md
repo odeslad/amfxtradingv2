@@ -1,6 +1,6 @@
 # 005 — Session fixes and safe deploy
 
-> Status: **draft**
+> Status: **approved**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvements 2 and 3 (diagnoses C and D)
 
 ## Context

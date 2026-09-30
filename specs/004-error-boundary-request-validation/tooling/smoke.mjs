@@ -152,6 +152,13 @@ function invalidRequests({ broker, symbol, alertId, emaAlertId }) {
   return list;
 }
 
+// `updatedAt` moves whenever a manual UI check saves; it carries no behaviour.
+const stripUpdatedAt = (v) => {
+  if (Array.isArray(v)) return v.map(stripUpdatedAt);
+  if (v && typeof v === 'object') return Object.fromEntries(Object.entries(v).filter(([k]) => k !== 'updatedAt').map(([k, x]) => [k, stripUpdatedAt(x)]));
+  return v;
+};
+
 const shape = (v) => {
   if (Array.isArray(v)) return `array(${v.length > 0 ? shape(v[0]) : ''})`;
   if (v && typeof v === 'object') return `{${Object.keys(v).sort().map((k) => `${k}:${typeof v[k]}`).join(',')}}`;
@@ -183,8 +190,9 @@ if (mode === 'diff') {
   let diffs = 0;
   for (const [path, expected] of Object.entries(results)) {
     const r = await call(cookie, 'GET', path);
-    const actual = expected.volatile ? shape(r.body) : r.body;
-    const same = r.status === expected.status && JSON.stringify(actual) === JSON.stringify(expected.body);
+    const actual = expected.volatile ? shape(r.body) : stripUpdatedAt(r.body);
+    const wanted = expected.volatile ? expected.body : stripUpdatedAt(expected.body);
+    const same = r.status === expected.status && JSON.stringify(actual) === JSON.stringify(wanted);
     if (!same) diffs++;
     console.log(`${same ? 'ok  ' : 'DIFF'}  ${r.status}  ${path}`);
     if (!same && !expected.volatile) {

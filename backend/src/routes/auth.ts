@@ -13,8 +13,13 @@ const COOKIE_OPTIONS = {
   secure: true,
   sameSite: 'none' as const,
   domain: config.cookieDomain,
+  path: '/',
   maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
 };
+
+// A browser only deletes a cookie whose name, domain and path all match, so
+// clearing must repeat the attributes used at login (maxAge excluded).
+const { maxAge: _maxAge, ...CLEAR_COOKIE_OPTIONS } = COOKIE_OPTIONS;
 
 router.post('/login', asyncRoute(async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
@@ -42,7 +47,7 @@ router.post('/login', asyncRoute(async (req, res) => {
 }));
 
 router.post('/logout', (_req: Request, res: Response): void => {
-  res.clearCookie('token');
+  res.clearCookie('token', CLEAR_COOKIE_OPTIONS);
   res.json({ ok: true });
 });
 

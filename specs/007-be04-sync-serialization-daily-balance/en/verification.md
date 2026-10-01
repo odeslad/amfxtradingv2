@@ -1,0 +1,5 @@
+# 007 · BE-04 — Sync serialization and daily balance uniqueness · Verification
+
+| Task | Mechanism | Commands | Outcome | Evidence | Est | Actual | Note |
+|---|---|---|---|---|---|---|---|
+| 1 | build + measurement harness | `npm run build`; `PRISMA_LOG=query FEATURE_WATCHER=true FEATURE_PIPE=false BROKERS_FILE=<scratch>/brokers.json` backend on 3001 for 100 s (3 polls) against production over the tunnel; harness = copy of `solidary`'s `account.json`, `history.json` (8 entries: 5 trades, 3 balance ops) and the 5 `candles_AUDCAD_*.json` (~8 KB, ~100 bars each), registered as broker `zz-spec007` so writes land on a throwaway broker (trades are keyed by ticket → no-op) | ✅ | **Before: 177 statements / 3 polls ≈ 59 per poll** — 15 candle `INSERT` (5 per poll, ~100 rows each, all `ON CONFLICT DO NOTHING`), 82 `SELECT` (≈ 3 per `upsert` × 8 history rows per poll + balance `findFirst`), 2 `UPDATE` + 1 `INSERT` on `balances`. Per real broker (15 symbols, 50 history rows) this extrapolates to ~75 candle inserts + ~150 selects per 30 s. `zz-spec007` rows (candles, balances) to be deleted in task 6. | 1 | 0.75 | — |

@@ -1,0 +1,5 @@
+# 007 · BE-04 — Serialización del sync y unicidad del balance diario · Verificación
+
+| Tarea | Mecanismo | Comandos | Resultado | Evidencia | Est | Real | Nota |
+|---|---|---|---|---|---|---|---|
+| 1 | build + banco de medición | `npm run build`; backend en 3001 con `PRISMA_LOG=query FEATURE_WATCHER=true FEATURE_PIPE=false BROKERS_FILE=<scratch>/brokers.json` durante 100 s (3 polls) contra producción por el túnel; banco = copia del `account.json`, `history.json` (8 entradas: 5 trades, 3 operaciones) y los 5 `candles_AUDCAD_*.json` (~8 KB, ~100 barras cada uno) de `solidary`, registrados como broker `zz-spec007` para que las escrituras caigan en un broker desechable (los trades van por ticket → no-op) | ✅ | **Antes: 177 sentencias / 3 polls ≈ 59 por poll** — 15 `INSERT` de velas (5 por poll, ~100 filas cada uno, todos `ON CONFLICT DO NOTHING`), 82 `SELECT` (≈ 3 por `upsert` × 8 filas de histórico por poll + `findFirst` de balance), 2 `UPDATE` + 1 `INSERT` en `balances`. Por broker real (15 símbolos, 50 filas de histórico) extrapola a ~75 inserts de velas + ~150 selects cada 30 s. Filas de `zz-spec007` (velas, balances) a borrar en la tarea 6. | 1 | 0,75 | — |

@@ -10,6 +10,11 @@ router.get('/', asyncRoute<AuthRequest>(async (_req, res) => {
   const brokers = await db.balance.findMany({
     distinct: ['broker'],
     orderBy: { timestamp: 'desc' },
+    // `day` is an internal key; the response keeps today's shape.
+    select: {
+      id: true, broker: true, balance: true, equity: true, profit: true, margin: true,
+      freeMargin: true, leverage: true, currency: true, name: true, number: true, timestamp: true,
+    },
   });
 
   res.json(brokers);

@@ -54,25 +54,20 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     if (features.wsBroadcast) wss.broadcastAccount(brokerName, account);
   });
 
-  watcher?.onCandles(async ({ symbol, timeframe, ...data }) => {
-    try { await upsertCandles(brokerName, symbol, timeframe, data); }
-    catch (err) { console.error(`[DB:${brokerName}] candles upsert failed ${symbol} ${timeframe}`, err); }
-  });
+  // The watcher awaits each handler and logs failures with its own prefix.
+  watcher?.onCandles(({ symbol, timeframe, ...data }) => upsertCandles(brokerName, symbol, timeframe, data));
 
-  watcher?.on('history', async (entries: BridgeTrade[]) => {
+  watcher?.onHistory(async (entries: BridgeTrade[]) => {
     const trades = entries.filter(e => e.type === 0 || e.type === 1);
     const operations = entries.filter(e => BALANCE_OPERATION_TYPES.has(e.type));
-    try { await syncTrades(brokerName, trades); }
-    catch (err) { console.error(`[DB:${brokerName}] trades sync failed`, err); }
-    try { await syncBalanceOperations(brokerName, operations); }
-    catch (err) { console.error(`[DB:${brokerName}] balance operations sync failed`, err); }
+    await syncTrades(brokerName, trades);
+    await syncBalanceOperations(brokerName, operations);
   });
 
-  watcher?.on('account', async (account) => {
+  watcher?.onAccount(async (account) => {
     currency = account.currency ?? currency;
     if (features.wsBroadcast) wss.broadcastAccount(brokerName, account);
-    try { await saveDailyBalances(brokerName, account); }
-    catch (err) { console.error(`[DB:${brokerName}] account snapshot failed`, err); }
+    await saveDailyBalances(brokerName, account);
   });
 
   pipe?.start();

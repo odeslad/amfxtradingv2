@@ -1,6 +1,6 @@
 # 009 · BE-05 — WebSocket hardening
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 5 (diagnosis D)
 
 ## Context

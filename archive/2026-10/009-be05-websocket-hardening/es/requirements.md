@@ -1,6 +1,6 @@
 # 009 · BE-05 — Endurecimiento del WebSocket
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [auditoría backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 5 (diagnóstico D)
 
 ## Contexto

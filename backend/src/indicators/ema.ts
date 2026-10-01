@@ -12,7 +12,7 @@ export function calculateEma(candles: Candle[], period: number): (number | null)
   const k = 2 / (period + 1);
   const result: (number | null)[] = new Array(candles.length).fill(null);
 
-  let seedIndex = period - 1;
+  const seedIndex = period - 1;
   if (seedIndex >= candles.length) return result;
 
   const seed = candles.slice(0, period).reduce((sum, c) => sum + c.close, 0) / period;

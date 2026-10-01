@@ -75,8 +75,6 @@ async function evaluateSymbolBothSides(
   const converging = convergencePips > 0;
 
   const setups = detectEmaCrossSetups(candles, { emaFast, emaSlow, direction: 'both' }, pip);
-  const lastSetup = setups.length > 0 ? setups[setups.length - 1] : null;
-  const candlesSinceCross = lastSetup !== null ? ((n - 1) - lastSetup.activationIndex) + 1 : null;
 
   const dirSetups = (dir: 'buy' | 'sell') => setups.filter(s => s.direction === dir);
 

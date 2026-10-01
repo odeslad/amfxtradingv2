@@ -98,7 +98,7 @@ function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Prom
           return;
         }
         clearInterval(timer);
-        try { fs.unlinkSync(resultPath); } catch {}
+        try { fs.unlinkSync(resultPath); } catch { /* best effort: a stale result.json is overwritten by the next command */ }
         resolve(result);
       } catch {
         if (Date.now() - start > timeoutMs) {

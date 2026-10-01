@@ -21,7 +21,7 @@ function loadBrokers(): BrokerConfig[] {
     }
     return brokers;
   } catch (err) {
-    throw new Error(`Failed to load brokers from ${file}: ${err}`);
+    throw new Error(`Failed to load brokers from ${file}: ${err}`, { cause: err });
   }
 }
 

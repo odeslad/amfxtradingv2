@@ -105,9 +105,10 @@ async function main() {
   });
 
   process.on('SIGTERM', async () => {
+    wss.close();
     watchers.forEach(({ pipe, watcher }) => { pipe?.stop(); watcher?.stop(); });
-    await db.$disconnect();
     server.close();
+    await db.$disconnect();
   });
 }
 

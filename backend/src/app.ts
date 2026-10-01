@@ -20,14 +20,13 @@ import statsRouter from './routes/stats';
 import { requireAuth } from './middleware/requireAuth';
 import { errorHandler } from './middleware/errors';
 import { version } from './version';
+import { ALLOWED_ORIGINS } from './ws/policy';
 
 const app = express();
 
 // One hop (nginx) in front of us, itself behind Cloudflare: lets req.ip read the
 // client address from X-Forwarded-For instead of nginx's.
 app.set('trust proxy', 1);
-
-const ALLOWED_ORIGINS = [/\.amfxtrading\.com(:\d+)?$/];
 
 app.use(cors({
   origin: (origin, cb) => {

@@ -1,6 +1,6 @@
 # 008 · BE-11 — Base de herramientas del backend
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 > Origen: [auditoría del backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 11 (diagnóstico G)
 
 ## Contexto

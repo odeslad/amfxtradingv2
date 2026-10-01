@@ -1,6 +1,6 @@
 # 008 · BE-11 — Backend tooling baseline · Design
 
-> Status: **approved**
+> Status: **closed**
 
 ## Approach
 

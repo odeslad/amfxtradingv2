@@ -1,6 +1,6 @@
 # 008 · BE-11 — Backend tooling baseline
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 11 (diagnosis G)
 
 ## Context

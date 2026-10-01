@@ -8,7 +8,7 @@ Cada tarea es un commit convencional. El proyecto debe compilar tras cada tarea.
 - [x] 4. [backend] Extraer `services/stats-core.ts` (`computeStats` puro), dejar `computeBrokerStats` como adaptador de BD; test con el fixture de 3 meses/1 depósito (AC 4, 7). · **Verificar:** `npm test` en verde; `npm run build`; backend local + `smoke.mjs diff` en `/stats?…from…to` idéntico al baseline (recapturar el baseline sobre el `master` actual primero si hace falta — es del 2026-09-30) · **Est:** 1 SP
 - [x] 5. [infra] Job `check` de CI: `npm run lint`, `npm run typecheck`, `npm test` tras `prisma generate` (AC 6). · **Verificar:** comprobación de estructura del YAML; primera ejecución real en la tarea 6 · **Est:** 0,25 SP
 - [x] 6. [infra] Push `master` → `check` (lint + typecheck + test) y luego `deploy`; VPS: pm2 online, `/health` 200, `/version` incrementado; versión de Node del VPS registrada (`node -v`) frente a `engines`. **Validar en producción**: la página Stats de un broker con un rango de fechas coincide con los números previos al deploy (usuario) · **Verificar:** manual (validación del usuario + comprobaciones del operador) · **Est:** 0,5 SP
-- [ ] 7. [specs] Registrar Est vs Actual en `verification.md` (ambos idiomas), poner `Status: closed`, archivar en `archive/2026-10/`; rellenar la columna `Spec` de BE-11 en el informe de auditoría. · **Verificar:** manual · **Est:** 0,25 SP
+- [x] 7. [specs] Registrar Est vs Actual en `verification.md` (ambos idiomas), poner `Status: closed`, archivar en `archive/2026-10/`; rellenar la columna `Spec` de BE-11 en el informe de auditoría. · **Verificar:** manual · **Est:** 0,25 SP
 
 **Estimación total**: 5,5 SP
 

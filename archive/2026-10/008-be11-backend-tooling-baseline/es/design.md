@@ -1,6 +1,6 @@
 # 008 · BE-11 — Base de herramientas del backend · Diseño
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Enfoque
 

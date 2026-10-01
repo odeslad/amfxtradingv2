@@ -12,12 +12,13 @@ For each spec folder, determine:
 - **Phase**: which of `en/requirements.md` / `en/design.md` / `en/tasks.md` exist (missing tasks.md → still in planning); `> Status:` line of `requirements.md` (draft / approved / implementing / closed).
 - **Progress**: checked vs total tasks in `en/tasks.md` (flag any en/es mismatch — the mirrors must be in sync).
 - **Layers**: from "Affected layers" and the `[layer]` task prefixes.
+- **Origin**: the audit code(s) in the H1 (`BE-04`, `BE-02 + BE-03`) or `—` for user features.
 - **Verification**: from `en/verification.md` — count ✅/❌/🕐; flag checked tasks with no verification entry (pre-`verification.md` specs record effort in an `Outcome`/`Actual effort` section of `tasks.md` — accept that for archived specs).
 
 Output a compact table:
 
-| Spec | Phase | Tasks | Verification | Layers |
-|---|---|---|---|---|
-| 004-example | implementing | 3/7 | 3 ✅ · 1 🕐 | backend, frontend |
+| Spec | Origin | Phase | Tasks | Verification | Layers |
+|---|---|---|---|---|---|
+| 007-be04-sync-serialization-daily-balance | BE-04 | implementing | 3/7 | 3 ✅ · 1 🕐 | db, backend |
 
 End with a one-line "next step" (the spec closest to completion, specs stuck in planning, specs whose only open task is the production validation / close). Active specs with every task checked should be closed and archived (see amfx-implement).

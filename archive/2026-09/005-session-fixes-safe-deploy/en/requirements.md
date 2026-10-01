@@ -1,4 +1,4 @@
-# 005 — Session fixes and safe deploy
+# 005 · BE-02 + BE-03 — Session fixes and safe deploy
 
 > Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvements 2 and 3 (diagnoses C and D)

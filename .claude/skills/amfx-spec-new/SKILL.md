@@ -7,6 +7,8 @@ description: Create a new AMFX spec (requirements + design + tasks) under specs/
 
 Create a spec under `specs/NNN-<kebab-slug>/` in this repo. `NNN` is the next sequential number across `specs/` **and** `archive/` (zero-padded, 3 digits). A follow-up of a closed spec is a new spec with its own number that links to the archived parent — closed specs are never reopened.
 
+**Audit code.** A spec that implements an improvement from a `reports/` audit carries that improvement's code so the user can map spec ↔ audit at a glance: `BE-NN` (backend audit), `FE-NN` (frontend), `EA-NN` (EA), where `NN` is the improvement number in the audit's plan table. The code goes (1) lowercase in the folder slug right after the number — `007-be04-sync-serialization-daily-balance` — (2) in the `requirements.md` H1 — `# 007 · BE-04 — <Feature name>` — and (3) in a `> Origin:` line linking the report. A spec covering several improvements lists them: `# 005 · BE-02 + BE-03 — …`. When a spec is opened, fill the `Spec` column of that improvement's row in the audit report's plan table (`docs(reports):` commit). Specs without an audit origin (user features) carry no code.
+
 Work in three phases. **Approval gates are strict**: after drafting each document (requirements, design, tasks), present it to the user and explicitly ask for approval or discussion. Do NOT start drafting the next document until the current one is approved.
 
 **Language mirror**: documents live in `<spec>/en/` (English, working source) with a Spanish mirror in `<spec>/es/` (same filenames). Any edit to one language must immediately update the other.
@@ -24,9 +26,10 @@ Work in three phases. **Approval gates are strict**: after drafting each documen
 ## 1. requirements.md
 
 ```markdown
-# NNN — <Feature name>
+# NNN · BE-NN — <Feature name>      (audit code only when there is one)
 
 > Status: **draft**
+> Origin: [<audit report>](../../../reports/<file>.md), improvement NN   (only with an audit code)
 
 ## Context
 <one paragraph: why this spec exists, what exists today>

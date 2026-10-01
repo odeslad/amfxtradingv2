@@ -1,4 +1,4 @@
-# 005 — Arreglos de sesión y deploy seguro
+# 005 · BE-02 + BE-03 — Arreglos de sesión y deploy seguro
 
 > Estado: **cerrada**
 > Origen: [auditoría del backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejoras 2 y 3 (diagnósticos C y D)

@@ -42,7 +42,7 @@ Spanish, single document, same structure as the APS reference:
 ## Parte I — Cómo funciona hoy      (descriptive; mermaid flowcharts of data flow, lifecycle, state; the riskiest mechanism explained)
 ## Parte II — Diagnóstico           (A..G, most important first, one paragraph each with the number that backs it)
 ## Parte III — Qué proponemos
-### Mejoras, en orden de valor por hora   (table # · mejora · qué resuelve · SP; recommended block with total)
+### Mejoras, en orden de valor por hora   (table Código · mejora · qué resuelve · SP · Spec; código = `BE-NN`/`FE-NN`/`EA-NN` by layer; `Spec` starts as `—` and is filled by /amfx-spec-new when the spec opens; recommended block with total)
 ### Refactors clave                 (design sketch, steps without breaking anything)
 ### Qué no proponemos ahora, y qué lo haría entrar
 ### Cómo sabremos que ha servido

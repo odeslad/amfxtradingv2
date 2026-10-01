@@ -21,9 +21,11 @@ function verifyToken(token: string | null): number | null {
   }
 }
 
+// End, don't destroy: a destroy right after the write can drop the buffered
+// answer and nginx then reports the upstream as prematurely closed (502).
 function reject(socket: Duplex, status: number, text: string): void {
-  socket.write(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\n\r\n`);
-  socket.destroy();
+  socket.once('finish', () => socket.destroy());
+  socket.end(`HTTP/1.1 ${status} ${text}\r\nConnection: close\r\nContent-Length: 0\r\n\r\n`);
 }
 
 export function createWss(server: Server) {

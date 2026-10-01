@@ -173,6 +173,8 @@ model ChartIndicators {
 model Balance {
   id         Int      @id @default(autoincrement())
   broker     String
+  // UTC calendar day of the snapshot; one row per broker and day.
+  day        DateTime @default(dbgenerated("CURRENT_DATE")) @db.Date
   balance    Float
   equity     Float
   profit     Float
@@ -184,6 +186,7 @@ model Balance {
   number     Int
   timestamp  DateTime @default(now())
 
+  @@unique([broker, day])
   @@index([broker, timestamp])
   @@map("balances")
 }

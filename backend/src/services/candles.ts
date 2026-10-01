@@ -1,7 +1,6 @@
 import { db } from '../db/client';
 import type { BridgeCandles } from '../bridge/file-watcher';
-
-const CHUNK_SIZE = 5_000;
+import { chunks } from './chunk';
 
 export async function upsertCandles(
   broker: string,
@@ -9,20 +8,22 @@ export async function upsertCandles(
   timeframe: string,
   data: BridgeCandles,
 ) {
+  // The last bar is still forming; only closed bars are stored.
   const closed = data.candles.slice(0, -1);
 
-  // Insert in chunks so Prisma never serializes the full history in one query.
-  for (let i = 0; i < closed.length; i += CHUNK_SIZE) {
-    const records = closed.slice(i, i + CHUNK_SIZE).map((c) => ({
-      broker,
-      symbol,
-      timeframe,
-      time: new Date(c.time * 1000),
-      open: c.open,
-      high: c.high,
-      low: c.low,
-      close: c.close,
-    }));
-    await db.candle.createMany({ data: records, skipDuplicates: true });
+  for (const batch of chunks(closed)) {
+    await db.candle.createMany({
+      data: batch.map((c) => ({
+        broker,
+        symbol,
+        timeframe,
+        time: new Date(c.time * 1000),
+        open: c.open,
+        high: c.high,
+        low: c.low,
+        close: c.close,
+      })),
+      skipDuplicates: true,
+    });
   }
 }

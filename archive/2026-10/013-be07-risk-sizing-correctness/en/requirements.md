@@ -1,6 +1,6 @@
 # 013 · BE-07 — Risk % sizing correctness
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 7 (diagnosis F)
 
 ## Context

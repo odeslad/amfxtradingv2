@@ -1,6 +1,6 @@
 # 013 · BE-07 — Corrección del sizing por % de riesgo
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [auditoría backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 7 (diagnóstico F)
 
 ## Contexto

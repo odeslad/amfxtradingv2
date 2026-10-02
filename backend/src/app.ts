@@ -21,7 +21,9 @@ import { requireAuth } from './middleware/requireAuth';
 import { errorHandler } from './middleware/errors';
 import { version } from './version';
 import { ALLOWED_ORIGINS } from './ws/policy';
+import { healthReport, snapshot } from './store/liveness';
 
+const startedAt = new Date();
 const app = express();
 
 // One hop (nginx) in front of us, itself behind Cloudflare: lets req.ip read the
@@ -40,7 +42,7 @@ app.use(cors({
 app.use(express.json());
 app.use(cookieParser());
 
-app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/health', (_req, res) => res.json(healthReport(new Date(), startedAt, snapshot())));
 app.get('/version', (_req, res) => res.json(version));
 app.use('/auth', authRouter);
 app.use('/commands', requireAuth, commandsRouter);

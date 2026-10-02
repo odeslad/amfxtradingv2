@@ -1,0 +1,5 @@
+# 010 · BE-08 — Vitalidad por broker · Verificación
+
+| Tarea | Mecanismo | Comandos | Resultado | Evidencia | Est | Real | Nota |
+|---|---|---|---|---|---|---|---|
+| 1 | lint + typecheck + vitest + build + curl local | `npm run lint`; `npm run typecheck`; `npx vitest run`; `npm run build`; backend en 3001 con `FEATURE_PIPE=false FEATURE_WATCHER=false`; `curl /health` | ✅ | `store/liveness.ts` (`register`/`setPipeState`/`touchTick`/`touchSync`/`snapshot` + `healthReport` pura, `STALE_TICK_MS` 5 min); `app.ts` sirve `healthReport(now, startedAt, snapshot())`; `index.ts` registra cada broker según las feature flags. `liveness.test.ts` 7 tests (ok/degraded por estado del pipe, obsoleto > 300 s, sin tick nunca → `tickAgeS: null`, disabled ignorado, sin edades negativas, uptime, copias del store). **58/58** en verde; lint 0; typecheck 0; build ok. Local: `200 {"status":"ok","uptimeS":3,"brokers":[{"name":"solidary","pipe":"disabled",…},{"name":"ftmo","pipe":"disabled",…}]}` (AC 1, 2, 7). | 1 | 0,5 | — |

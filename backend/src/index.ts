@@ -15,6 +15,7 @@ import { setPositions } from './store/positions';
 import { setTick } from './store/ticks';
 import { setAccount } from './store/accounts';
 import { syncColors } from './store/positionColors';
+import { register } from './store/liveness';
 import { setBroadcaster } from './routes/commands';
 import { evaluateAlerts, setAlertBroadcaster } from './alerts/alert-evaluator';
 import { refreshAlerts } from './alerts/alert-store';
@@ -25,6 +26,7 @@ type Wss = ReturnType<typeof createWss>;
 
 function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
   const { features } = config;
+  register(brokerName, { pipe: features.pipe, watcher: features.watcher });
   const pipe = features.pipe ? new PipeReader(brokerName) : null;
   const watcher = features.watcher ? new FileWatcher(brokerName, bridgePath) : null;
 

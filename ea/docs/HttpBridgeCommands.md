@@ -141,7 +141,7 @@ Los códigos de error son los estándar de MT4 (130 = invalid stops, 138 = requo
 ## Formato de estado intermedio (`pending.json`)
 
 Se escribe **antes** de ejecutar la orden y se borra en cuanto se escribe `result.json`.  
-Permite al backend detectar si un comando está siendo procesado. Desde la spec 012 el backend lo respeta: espera `result.json` 10 s, y mientras `pending.json` lleve el mismo `id` alarga la espera hasta 30 s; si aun así expira, sigue vigilando 60 s más y un resultado tardío se notifica a la web con `late: true`. El backend también escribe `command.json` de forma atómica (`command.tmp` + rename), así que el EA nunca lee un fichero parcial.
+Permite al backend detectar si un comando está siendo procesado. Desde la spec 012 el backend lo respeta: espera `result.json` 10 s, y mientras `pending.json` lleve el mismo `id` alarga la espera hasta 30 s; si aun así expira y el EA no llegó a leer `command.json`, el backend lo borra (orden cancelada); si el EA ya lo había recogido, sigue vigilando 60 s más y un resultado tardío se notifica a la web con `late: true`. El backend también escribe `command.json` de forma atómica (`command.tmp` + rename), así que el EA nunca lee un fichero parcial.
 
 ```json
 {

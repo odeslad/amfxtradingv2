@@ -570,11 +570,6 @@ Constante fija del engine. Solo gestiona posiciones abiertas por él (filtradas 
 | Filtros de entry (`maxDistToEma`, `maxDistToEvl`, `maxDistToShl`) | ⏳ pendiente | No implementados en entry-evaluator |
 | Modo realtime del evaluador | ⏳ pendiente | A definir en detalle |
 
-### Backend general
-
-| Item | Estado | Notas |
-|------|--------|-------|
-| Duplicate balance records | ⏳ pendiente | Race condition entre dos brokers al escribir simultáneamente |
 
 ---
 

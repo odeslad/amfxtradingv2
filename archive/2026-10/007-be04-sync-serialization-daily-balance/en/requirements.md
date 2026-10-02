@@ -1,6 +1,6 @@
 # 007 · BE-04 — Sync serialization and daily balance uniqueness
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 4 (diagnosis E)
 
 ## Context

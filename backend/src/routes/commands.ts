@@ -106,8 +106,16 @@ router.post('/', asyncRoute(async (req, res) => {
       return;
     }
 
-    const allBids = getAllBids(broker);
-    lots = calculateLots(account.balance, rawLots, sl, bid, symbol, account.currency, allBids);
+    // A pending order is sized from its own price; a market order from the bid.
+    const sized = calculateLots({
+      balance: account.balance, riskPct: rawLots, entryPrice: price || bid, slPrice: sl,
+      symbol, accountCurrency: account.currency, bids: getAllBids(broker),
+    });
+    if (!sized.ok) {
+      res.status(sized.reason === 'no_conversion' ? 503 : 400).json({ error: sized.error });
+      return;
+    }
+    lots = sized.lots;
   }
 
   const resultPath = path.join(brokerConfig.bridgePath, 'result.json');

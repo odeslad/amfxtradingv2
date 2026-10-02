@@ -29,6 +29,8 @@ const PIP_SIZES: Record<string, number> = {
   CHFJPY: 0.01,
 };
 
+// Unlisted symbols: a JPY quote (letters 4–6) still trades on a 0.01 pip.
 export function getPipSize(symbol: string): number {
-  return PIP_SIZES[symbol.toUpperCase()] ?? 0.0001;
+  const sym = symbol.toUpperCase();
+  return PIP_SIZES[sym] ?? (sym.slice(3, 6) === 'JPY' ? 0.01 : 0.0001);
 }

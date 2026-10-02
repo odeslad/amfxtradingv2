@@ -65,6 +65,15 @@ describe.skipIf(process.platform !== 'win32')('PipeReader on a real named pipe',
     expect(await ticks).toEqual([{ symbol: 'EURUSD', bid: 1.1, ask: 1.1002 }]);
     expect(snapshot().get(broker)?.lastTickAt).toBeInstanceOf(Date);
 
+    // A second EA socket (re-attach, two charts): closing one keeps the pipe connected.
+    const second = net.connect(pipePath);
+    cleanup.push(() => second.destroy());
+    await new Promise<void>(resolve => second.once('connect', resolve));
+    await settle();
+    second.end();
+    await settle();
+    expect(pipeState(broker)).toBe('connected');
+
     client.end();
     await settle();
     expect(pipeState(broker)).toBe('listening');

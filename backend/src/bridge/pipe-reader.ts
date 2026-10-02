@@ -28,6 +28,7 @@ export class PipeReader extends EventEmitter {
   private server: net.Server | null = null;
   private retryTimer: NodeJS.Timeout | null = null;
   private attempt = 0;
+  private sockets = 0;
   private stopped = false;
 
   constructor(brokerName: string) {
@@ -68,9 +69,12 @@ export class PipeReader extends EventEmitter {
     this.server?.listen(this.pipePath);
   }
 
+  // The EA may hold more than one socket for a moment (re-attach, two charts):
+  // the pipe counts as connected while any of them is open.
   private handleConnection(socket: net.Socket) {
+    this.sockets += 1;
     setPipeState(this.brokerName, 'connected');
-    console.log(`[PIPE-READER:${this.brokerName}] EA connected`);
+    console.log(`[PIPE-READER:${this.brokerName}] EA connected (sockets: ${this.sockets})`);
     let buffer = '';
 
     socket.on('data', (chunk) => {
@@ -98,8 +102,9 @@ export class PipeReader extends EventEmitter {
     });
 
     socket.on('close', () => {
-      setPipeState(this.brokerName, 'listening');
-      console.log(`[PIPE-READER:${this.brokerName}] EA disconnected`);
+      this.sockets = Math.max(0, this.sockets - 1);
+      if (this.sockets === 0) setPipeState(this.brokerName, 'listening');
+      console.log(`[PIPE-READER:${this.brokerName}] EA disconnected (sockets: ${this.sockets})`);
     });
 
     socket.on('error', (err) => {

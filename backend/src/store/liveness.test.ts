@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { healthReport, register, setPipeState, touchTick, touchSync, snapshot, type BrokerLiveness } from './liveness';
+import { healthReport, register, setPipeState, touchTick, touchSync, snapshot, pipeStateOf, isPipeLive, type BrokerLiveness } from './liveness';
 
 const now = new Date('2026-10-02T10:00:00Z');
 const startedAt = new Date('2026-10-02T08:33:20Z');
@@ -59,6 +59,16 @@ describe('store', () => {
     touchTick('x', now);
     touchSync('x', now);
     expect(snapshot().get('x')).toEqual({ pipe: 'connected', lastTickAt: now, lastSyncAt: now, watcher: true });
+  });
+
+  it('tells live pipes apart: connected or disabled, never listening or error', () => {
+    expect(isPipeLive('connected')).toBe(true);
+    expect(isPipeLive('disabled')).toBe(true);
+    expect(isPipeLive('listening')).toBe(false);
+    expect(isPipeLive('error')).toBe(false);
+    expect(pipeStateOf('x')).toBe('connected');
+    expect(pipeStateOf('y')).toBe('disabled');
+    expect(pipeStateOf('nobody')).toBeNull();
   });
 
   it('ignores unknown brokers and hands out copies', () => {

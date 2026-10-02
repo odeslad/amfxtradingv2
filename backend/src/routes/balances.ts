@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db/client';
 import type { AuthRequest } from '../middleware/requireAuth';
 import { getAllPositions } from '../store/positions';
+import { isPipeLive, pipeStateOf } from '../store/liveness';
 import { asyncRoute } from '../middleware/asyncRoute';
 
 const router = Router();
@@ -27,6 +28,9 @@ router.get('/daily-pnl', asyncRoute<AuthRequest>(async (_req, res) => {
   const result: Record<string, number> = {};
 
   for (const { broker, positions, brokerOffset } of liveByBroker) {
+    // The positions store keeps the last entry forever; a broker whose EA is
+    // gone is left out so the Accounts row turns inactive.
+    if (!isPipeLive(pipeStateOf(broker) ?? 'connected')) continue;
     // start of today in broker time, expressed as a UTC instant
     const nowBrokerMs = Date.now() + brokerOffset * 1000;
     const brokerMidnight = new Date(nowBrokerMs);

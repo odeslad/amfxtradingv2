@@ -50,6 +50,13 @@ export function touchSync(broker: string, at = new Date()): void {
   if (entry) entry.lastSyncAt = at;
 }
 
+export function pipeStateOf(broker: string): PipeState | null {
+  return state.get(broker)?.pipe ?? null;
+}
+
+// A disabled pipe (local development) counts as live: nothing is expected from it.
+export const isPipeLive = (pipe: PipeState): boolean => pipe === 'connected' || pipe === 'disabled';
+
 export function snapshot(): Map<string, BrokerLiveness> {
   return new Map([...state].map(([name, entry]) => [name, { ...entry }]));
 }

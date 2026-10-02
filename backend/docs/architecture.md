@@ -73,7 +73,22 @@ Copy `.env.example` to `.env` and fill in the values before starting.
 ## HTTP API
 
 ### `GET /health`
-Returns `{ "status": "ok" }`. Used to verify the server is running.
+Unauthenticated, always `200` (the deploy and startup scripts only check the status code). Lists every configured broker with its liveness:
+
+```json
+{
+  "status": "ok" | "degraded",
+  "uptimeS": 5121,
+  "brokers": [
+    { "name": "darwinex", "pipe": "connected", "lastTickAt": "2026-10-02T08:14:03.120Z",
+      "lastSyncAt": "2026-10-02T08:13:50.002Z", "tickAgeS": 1, "syncAgeS": 14 }
+  ]
+}
+```
+
+- `pipe`: `listening` (pipe open, EA not connected) · `connected` · `error` (listen failed, retried with backoff 1 s → 30 s) · `disabled` (`FEATURE_PIPE=false`).
+- `lastTickAt` / `tickAgeS`: last message of any kind on the pipe. `lastSyncAt` / `syncAgeS`: last completed poll of the file watcher.
+- `status` is `degraded` when any enabled broker is not `connected` or has no tick in the last 5 minutes (so it reads `degraded` over the weekend).
 
 ### `POST /commands`
 Sends a trading command to the EA by writing `command.json` to the bridge folder.

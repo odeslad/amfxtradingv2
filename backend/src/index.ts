@@ -47,7 +47,9 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     setPositions(brokerName, positions, currency, brokerOffset);
     if (features.wsBroadcast) wss.broadcastPositions(brokerName, positions, currency, brokerOffset);
     const tickets = (positions as { ticket: number }[]).map(p => p.ticket);
-    syncColors(brokerName, tickets).catch(() => {});
+    syncColors(brokerName, tickets).catch((err: unknown) => {
+      console.error(`[COLORS:${brokerName}]`, err instanceof Error ? err.message : String(err));
+    });
   });
 
   pipe?.on('account', (account) => {

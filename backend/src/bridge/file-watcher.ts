@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import { touchSync } from '../store/liveness';
 
 export interface BridgeAccount {
   balance: number; equity: number; profit: number;
@@ -25,6 +26,7 @@ export interface BridgeCandles {
 }
 
 const TIMEFRAME_RE = /^candles_(.+)_(M5|M15|H1|H4|D1)\.json$/;
+const LIST_ERROR_EVERY_MS = 60_000;
 
 export type AccountHandler = (account: BridgeAccount) => Promise<void>;
 export type HistoryHandler = (entries: BridgeTrade[]) => Promise<void>;
@@ -50,6 +52,7 @@ export class FileWatcher {
   private polling = false;
   // Candle files already persisted, by name: skipped while mtime and size hold.
   private readonly seen = new Map<string, FileStamp>();
+  private lastListErrorAt = 0;
 
   constructor(brokerName: string, bridgePath: string, intervalMs = 30_000) {
     this.brokerName = brokerName;
@@ -80,6 +83,7 @@ export class FileWatcher {
       await this.readCandles();
     } finally {
       this.polling = false;
+      touchSync(this.brokerName);
     }
   }
 
@@ -124,7 +128,13 @@ export class FileWatcher {
     try {
       files = fs.readdirSync(this.bridgePath);
     } catch (err) {
-      console.error(`[FILE-WATCHER: ${this.brokerName}] cannot list ${this.bridgePath}`, err);
+      // A broken bridge path would otherwise print the same line every poll.
+      const now = Date.now();
+      if (now - this.lastListErrorAt >= LIST_ERROR_EVERY_MS) {
+        this.lastListErrorAt = now;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.error(`[FILE-WATCHER: ${this.brokerName}] cannot list ${this.bridgePath} | ${msg}`);
+      }
       return;
     }
     // One file at a time: parse, persist, release before touching the next,

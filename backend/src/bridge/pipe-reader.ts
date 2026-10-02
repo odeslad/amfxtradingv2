@@ -1,5 +1,6 @@
 import net from 'net';
 import { EventEmitter } from 'events';
+import { setPipeState, touchTick } from '../store/liveness';
 
 export type TickBatch = TickData[];
 
@@ -16,10 +17,18 @@ export interface TickData {
   d1_time: number; d1_open: number; d1_high: number; d1_low: number;
 }
 
+export const RETRY_BASE_MS = 1_000;
+export const RETRY_MAX_MS = 30_000;
+
+export const retryDelay = (attempt: number): number => Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
+
 export class PipeReader extends EventEmitter {
   private readonly pipePath: string;
   private readonly brokerName: string;
   private server: net.Server | null = null;
+  private retryTimer: NodeJS.Timeout | null = null;
+  private attempt = 0;
+  private stopped = false;
 
   constructor(brokerName: string) {
     super();
@@ -28,52 +37,73 @@ export class PipeReader extends EventEmitter {
   }
 
   start() {
-    this.server = net.createServer((socket) => {
-      console.log(`[PIPE-READER:${this.brokerName}] EA connected`);
-      let buffer = '';
-
-      socket.on('data', (chunk) => {
-        buffer += chunk.toString();
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? '';
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed) continue;
-          try {
-            const parsed = JSON.parse(trimmed);
-            if (Array.isArray(parsed)) {
-              this.emit('ticks', parsed as TickBatch);
-            } else if (parsed?.type === 'positions') {
-              this.emit('positions', parsed.positions);
-            } else if (parsed?.type === 'account') {
-              const { type: _, ...account } = parsed;
-              this.emit('account', account);
-            }
-          } catch {
-            console.warn(`[PIPE-READER:${this.brokerName}] Failed to parse pipe message`);
-          }
-        }
-      });
-
-      socket.on('close', () => {
-        console.log(`[PIPE-READER:${this.brokerName}] EA disconnected`);
-      });
-
-      socket.on('error', (err) => {
-        console.error(`[PIPE-READER:${this.brokerName}] Socket error:`, err.message);
-      });
-    });
-
-    this.server.listen(this.pipePath, () => {
+    this.stopped = false;
+    this.server = net.createServer((socket) => this.handleConnection(socket));
+    this.server.on('listening', () => {
+      this.attempt = 0;
+      setPipeState(this.brokerName, 'listening');
       console.log(`[PIPE-READER:${this.brokerName}] Listening on ${this.pipePath}`);
     });
-
+    // Covers both a failed listen and a later server error: the pipe is
+    // re-opened with growing delays instead of staying dead until a restart.
     this.server.on('error', (err) => {
-      console.error(`[PIPE-READER:${this.brokerName}] Server error:`, err.message);
+      if (this.stopped) return;
+      const delay = retryDelay(this.attempt);
+      setPipeState(this.brokerName, 'error');
+      console.error(`[PIPE-READER:${this.brokerName}] listen failed (attempt ${this.attempt + 1}, retry in ${delay / 1000}s): ${err.message}`);
+      this.attempt += 1;
+      this.retryTimer = setTimeout(() => this.listen(), delay);
     });
+    this.listen();
   }
 
   stop() {
+    this.stopped = true;
+    if (this.retryTimer) clearTimeout(this.retryTimer);
     this.server?.close();
+  }
+
+  private listen() {
+    this.retryTimer = null;
+    this.server?.listen(this.pipePath);
+  }
+
+  private handleConnection(socket: net.Socket) {
+    setPipeState(this.brokerName, 'connected');
+    console.log(`[PIPE-READER:${this.brokerName}] EA connected`);
+    let buffer = '';
+
+    socket.on('data', (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split('\n');
+      buffer = lines.pop() ?? '';
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const parsed = JSON.parse(trimmed);
+          touchTick(this.brokerName);
+          if (Array.isArray(parsed)) {
+            this.emit('ticks', parsed as TickBatch);
+          } else if (parsed?.type === 'positions') {
+            this.emit('positions', parsed.positions);
+          } else if (parsed?.type === 'account') {
+            const { type: _, ...account } = parsed;
+            this.emit('account', account);
+          }
+        } catch {
+          console.warn(`[PIPE-READER:${this.brokerName}] Failed to parse pipe message`);
+        }
+      }
+    });
+
+    socket.on('close', () => {
+      setPipeState(this.brokerName, 'listening');
+      console.log(`[PIPE-READER:${this.brokerName}] EA disconnected`);
+    });
+
+    socket.on('error', (err) => {
+      console.error(`[PIPE-READER:${this.brokerName}] Socket error:`, err.message);
+    });
   }
 }

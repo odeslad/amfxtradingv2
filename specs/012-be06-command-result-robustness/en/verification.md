@@ -1,0 +1,5 @@
+# 012 · BE-06 — Command result robustness · Verification
+
+| Task | Mechanism | Commands | Outcome | Evidence | Est | Actual | Note |
+|---|---|---|---|---|---|---|---|
+| 1 | lint + typecheck + vitest + build | `npm run lint`; `npm run typecheck`; `npx vitest run`; `npm run build` | ✅ | `bridge/command-io.ts`: `writeCommand` (tmp + rename), `readResult` (null on missing/partial/id-less), `errorText`, `discardStaleResult`, `waitForResult` (one interval: base 10 s → extended to 30 s while `pending.json` carries the id → after the timeout a 60 s late watch from the moment of the timeout). `command-io.test.ts` 10 tests on a temp dir with fake timers: atomic write replaces an existing file, partial JSON → null, the five error wordings, stale discard + log, result at 2 s, timeout at 10 s + late null at 70 s, pending extends to 20 s / caps at 30 s, foreign pending ignored, late result at 25 s collected and unlinked, foreign result left alone. **71/71** green; lint 0; typecheck 0; build ok. | 1.5 | 1 | — |

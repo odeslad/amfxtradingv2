@@ -1,0 +1,5 @@
+# 012 · BE-06 — Robustez del resultado de comandos · Verificación
+
+| Tarea | Mecanismo | Comandos | Resultado | Evidencia | Est | Real | Nota |
+|---|---|---|---|---|---|---|---|
+| 1 | lint + typecheck + vitest + build | `npm run lint`; `npm run typecheck`; `npx vitest run`; `npm run build` | ✅ | `bridge/command-io.ts`: `writeCommand` (tmp + rename), `readResult` (null si falta/parcial/sin id), `errorText`, `discardStaleResult`, `waitForResult` (un solo intervalo: base 10 s → extendido a 30 s mientras `pending.json` lleve el id → tras el timeout una vigilancia tardía de 60 s desde el momento del timeout). `command-io.test.ts` 10 tests sobre un directorio temporal con timers falsos: escritura atómica reemplaza un fichero existente, JSON parcial → null, las cinco redacciones de error, descarte de obsoleto + log, resultado a los 2 s, timeout a los 10 s + tardío null a los 70 s, pending extiende a 20 s / tope 30 s, pending ajeno ignorado, resultado tardío a los 25 s recogido y borrado, resultado ajeno intacto. **71/71** en verde; lint 0; typecheck 0; build ok. | 1,5 | 1 | — |

@@ -1,6 +1,6 @@
 # 012 · BE-06 — Robustez del resultado de comandos
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [auditoría backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 6 (diagnóstico F)
 
 ## Contexto

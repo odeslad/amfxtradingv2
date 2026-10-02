@@ -1,6 +1,6 @@
 # 012 · BE-06 — Command result robustness
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 6 (diagnosis F)
 
 ## Context

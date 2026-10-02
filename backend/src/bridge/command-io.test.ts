@@ -3,7 +3,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import {
-  writeCommand, readResult, errorText, discardStaleResult, waitForResult,
+  writeCommand, readResult, errorText, discardStaleResult, waitForResult, withdrawCommand,
   WAIT_BASE_MS, WAIT_PENDING_MS, WAIT_LATE_MS, type CommandResult,
 } from './command-io';
 
@@ -21,6 +21,15 @@ describe('writeCommand', () => {
     writeCommand(dir, { action: 'buy', id: 'a1' });
     expect(exists('command.tmp')).toBe(false);
     expect(JSON.parse(fs.readFileSync(file('command.json'), 'utf8'))).toEqual({ action: 'buy', id: 'a1' });
+  });
+});
+
+describe('withdrawCommand', () => {
+  it('removes a pending command and tells whether there was one', () => {
+    expect(withdrawCommand(dir)).toBe(false);
+    put('command.json', '{}');
+    expect(withdrawCommand(dir)).toBe(true);
+    expect(exists('command.json')).toBe(false);
   });
 });
 
@@ -60,7 +69,7 @@ describe('discardStaleResult', () => {
 });
 
 describe('waitForResult', () => {
-  const opts = () => ({ resultPath: file('result.json'), pendingPath: file('pending.json'), id: 'c1' });
+  const opts = () => ({ bridgePath: dir, id: 'c1' });
   const ok = '{"status":"ok","ticket":42,"id":"c1"}';
 
   // Polling happens inside a faked setInterval; the flush lets the promise chain settle.
@@ -88,7 +97,7 @@ describe('waitForResult', () => {
     expect(w.value()).toBeUndefined();
     await advance(800);
     expect(w.value()?.kind).toBe('timeout');
-    const late = settled((w.value() as { kind: 'timeout'; late: Promise<CommandResult | null> }).late);
+    const late = settled((w.value() as { kind: 'timeout'; cancelled: boolean; late: Promise<CommandResult | null> }).late);
     await advance(WAIT_LATE_MS - 1_000);
     expect(late.value()).toBeUndefined();
     await advance(2_000);
@@ -122,12 +131,26 @@ describe('waitForResult', () => {
   it('hands a late result to the background watch and removes the file', async () => {
     const w = settled(waitForResult(opts()));
     await advance(WAIT_BASE_MS + 400);
-    const late = settled((w.value() as { kind: 'timeout'; late: Promise<CommandResult | null> }).late);
+    const late = settled((w.value() as { kind: 'timeout'; cancelled: boolean; late: Promise<CommandResult | null> }).late);
     await advance(14_000);
     put('result.json', ok);
     await advance(400);
     expect(late.value()).toMatchObject({ id: 'c1', status: 'ok', ticket: 42 });
     expect(exists('result.json')).toBe(false);
+  });
+
+  it('withdraws a command the EA never picked up and reports it as cancelled', async () => {
+    put('command.json', '{"action":"buy","id":"c1"}');
+    const w = settled(waitForResult(opts()));
+    await advance(WAIT_BASE_MS + 400);
+    expect(w.value()).toMatchObject({ kind: 'timeout', cancelled: true });
+    expect(exists('command.json')).toBe(false);
+  });
+
+  it('does not cancel when the EA already consumed the command', async () => {
+    const w = settled(waitForResult(opts()));
+    await advance(WAIT_BASE_MS + 400);
+    expect(w.value()).toMatchObject({ kind: 'timeout', cancelled: false });
   });
 
   it('leaves a result of another id untouched', async () => {

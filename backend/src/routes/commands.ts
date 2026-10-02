@@ -111,7 +111,6 @@ router.post('/', asyncRoute(async (req, res) => {
   }
 
   const resultPath = path.join(brokerConfig.bridgePath, 'result.json');
-  const pendingPath = path.join(brokerConfig.bridgePath, 'pending.json');
 
   const command = {
     action, id, broker, symbol, lots,
@@ -137,11 +136,17 @@ router.post('/', asyncRoute(async (req, res) => {
       console.log(`[CMD:${broker}] ${late ? 'late result' : 'result'} id=${id} status=${result.status} ticket=${result.ticket ?? '-'}`);
     };
 
-    const outcome = await waitForResult({ resultPath, pendingPath, id });
+    const outcome = await waitForResult({ bridgePath: brokerConfig.bridgePath, id });
     if (outcome.kind === 'result') { report(outcome.result); return; }
 
-    broadcaster?.(id, 'timeout', undefined, 'No response from EA');
-    console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
+    // Never picked up by the EA: withdrawn, so it cannot execute later at another price.
+    if (outcome.cancelled) {
+      broadcaster?.(id, 'cancelled', undefined, 'EA not running — order cancelled');
+      console.warn(`[CMD:${broker}] EA did not pick up the command, cancelled id=${id}`);
+    } else {
+      broadcaster?.(id, 'timeout', undefined, 'No response from EA');
+      console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
+    }
     // The queue moves on; a result that still shows up is reported as late.
     void outcome.late.then(result => { if (result) report(result, true); });
   });

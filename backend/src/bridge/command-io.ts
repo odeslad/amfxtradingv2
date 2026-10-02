@@ -14,9 +14,21 @@ export const WAIT_PENDING_MS = 30_000;
 export const WAIT_LATE_MS = 60_000;
 export const POLL_MS = 300;
 
+// `cancelled`: the EA never picked the command up, so it was withdrawn at the
+// timeout instead of being left to execute whenever the EA comes back.
 export type WaitOutcome =
   | { kind: 'result'; result: CommandResult }
-  | { kind: 'timeout'; late: Promise<CommandResult | null> };
+  | { kind: 'timeout'; cancelled: boolean; late: Promise<CommandResult | null> };
+
+// True when command.json was still there and has been removed.
+export function withdrawCommand(bridgePath: string): boolean {
+  try {
+    fs.unlinkSync(path.join(bridgePath, 'command.json'));
+    return true;
+  } catch {
+    return false;   // already consumed by the EA (or never written)
+  }
+}
 
 // Temp file + rename, so the EA (polling every second) never reads a partial command.
 export function writeCommand(bridgePath: string, command: object): void {
@@ -68,14 +80,15 @@ export function discardStaleResult(resultPath: string, log: (msg: string) => voi
 }
 
 interface WaitOptions {
-  resultPath: string;
-  pendingPath: string;
+  bridgePath: string;
   id: string;
 }
 
 // Base wait as before; extended while the EA signals it is working on this very
 // command; after the timeout a background watch still collects a late result.
-export function waitForResult({ resultPath, pendingPath, id }: WaitOptions): Promise<WaitOutcome> {
+export function waitForResult({ bridgePath, id }: WaitOptions): Promise<WaitOutcome> {
+  const resultPath = path.join(bridgePath, 'result.json');
+  const pendingPath = path.join(bridgePath, 'pending.json');
   const start = Date.now();
 
   const take = (): CommandResult | null => {
@@ -105,7 +118,9 @@ export function waitForResult({ resultPath, pendingPath, id }: WaitOptions): Pro
       if (elapsed >= WAIT_BASE_MS && !stillWorking) {
         lateUntil = elapsed + WAIT_LATE_MS;
         const late = new Promise<CommandResult | null>(r => { resolveLate = r; });
-        resolveOutcome({ kind: 'timeout', late });
+        // The late watch stays on even after a withdrawal: the EA may have read
+        // the file in the instant before it was removed.
+        resolveOutcome({ kind: 'timeout', cancelled: withdrawCommand(bridgePath), late });
       }
     }, POLL_MS);
   });

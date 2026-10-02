@@ -33,6 +33,7 @@ No frontend change: `command_result` keeps `{ id, status, ticket?, error? }`; a 
 - AC 6. WHEN `result.json` carries `message` THEN the broadcast `error` is `EA error: <message>` (with `(code N)` appended when `code` is present); WHEN it carries only `code` THEN `EA error (code N)` as today.
 - AC 7. WHEN the next command in the same broker queue starts THEN a stale `result.json` with a different `id` is removed and logged once (`[CMD:<broker>] discarding stale result id=…`) instead of being silently polled over.
 - AC 8. The 202 response, the per-broker queue (one command at a time per broker) and all existing 400/404/503 answers are unchanged.
+- AC 9. WHEN the wait expires and `command.json` is still in the bridge folder (the EA never picked it up) THEN the backend removes it and broadcasts `{ status: "cancelled", error: "EA not running — order cancelled" }` instead of `timeout`, so the order cannot execute later when the EA comes back; the late watch of AC 4–5 stays active in both cases. *(Added during production validation: an order sent with the EA stopped executed two minutes later, after the late window.)*
 
 ## Out of scope
 

@@ -1,6 +1,6 @@
 # 011 — La fila de Cuentas se pone gris cuando el EA está desconectado
 
-> Status: **draft**
+> Status: **closed**
 > Seguimiento de [010 · BE-08 — Vitalidad por broker](../../../archive/2026-10/010-be08-broker-liveness/es/requirements.md) (sin código de auditoría: detectado durante su validación en producción).
 
 ## Contexto

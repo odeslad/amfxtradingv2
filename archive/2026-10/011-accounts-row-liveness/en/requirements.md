@@ -1,6 +1,6 @@
 # 011 — Accounts row greys out when the EA is disconnected
 
-> Status: **draft**
+> Status: **closed**
 > Follow-up of [010 · BE-08 — Broker liveness](../../../archive/2026-10/010-be08-broker-liveness/en/requirements.md) (no audit code: found during its production validation).
 
 ## Context

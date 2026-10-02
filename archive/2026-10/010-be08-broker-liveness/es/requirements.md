@@ -1,6 +1,6 @@
 # 010 · BE-08 — Vitalidad por broker
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [auditoría backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 8 (diagnósticos A, E)
 
 ## Contexto

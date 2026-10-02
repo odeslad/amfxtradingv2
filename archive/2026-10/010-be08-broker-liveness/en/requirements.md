@@ -1,6 +1,6 @@
 # 010 · BE-08 — Broker liveness
 
-> Status: **draft**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 8 (diagnoses A, E)
 
 ## Context

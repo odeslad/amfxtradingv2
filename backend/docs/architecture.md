@@ -91,7 +91,12 @@ Unauthenticated, always `200` (the deploy and startup scripts only check the sta
 - `status` is `degraded` when any enabled broker is not `connected` or has no tick in the last 5 minutes (so it reads `degraded` over the weekend).
 
 ### `POST /commands`
-Sends a trading command to the EA by writing `command.json` to the bridge folder.
+Sends a trading command to the EA by writing `command.json` to the bridge folder (written as `command.tmp` and renamed, so the EA never reads a partial file). Answers `202 { status: "pending", id }`; the outcome arrives over the WebSocket as `command_result`:
+
+- The backend polls `result.json` for 10 s; while the EA's `pending.json` carries the same `id` the wait extends up to 30 s.
+- On expiry it broadcasts `{ id, status: "timeout", error: "No response from EA" }` and keeps watching 60 s more; a result that still arrives is broadcast with its real `status`/`ticket`/`error` plus `late: true` and logged as `[CMD:<broker>] late result id=…`.
+- `error` carries the EA's `message` when present: `EA error: ticket not found (code 130)`.
+- A `result.json` left over from an earlier command is removed and logged before the next command is written.
 
 **Request body:**
 ```json

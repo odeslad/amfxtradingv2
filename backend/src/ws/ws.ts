@@ -100,8 +100,8 @@ export function createWss(server: Server) {
     broadcastAccount(broker: string, account: unknown) {
       broadcast('account', { broker, account });
     },
-    broadcastCommandResult(id: string, status: string, ticket?: number, error?: string) {
-      broadcast('command_result', { id, status, ticket, error });
+    broadcastCommandResult(id: string, status: string, ticket?: number, error?: string, late?: boolean) {
+      broadcast('command_result', { id, status, ticket, error, ...(late ? { late: true } : {}) });
     },
     broadcastAlert(userId: number, broker: string, symbol: string, price: number, direction: string) {
       sendToUser(userId, 'alert', { userId, broker, symbol, price, direction });

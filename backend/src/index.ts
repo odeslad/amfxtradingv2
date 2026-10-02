@@ -95,7 +95,7 @@ async function main() {
 
   const server = http.createServer(app);
   const wss = createWss(server);
-  setBroadcaster((id, status, ticket, error) => wss.broadcastCommandResult(id, status, ticket, error));
+  setBroadcaster((id, status, ticket, error, late) => wss.broadcastCommandResult(id, status, ticket, error, late));
   setAlertBroadcaster((userId, broker, symbol, price, direction) => wss.broadcastAlert(userId, broker, symbol, price, direction));
   setEmaAlertBroadcaster((userId, broker, symbol, timeframe, direction) => wss.broadcastEmaAlert(userId, broker, symbol, timeframe, direction));
 

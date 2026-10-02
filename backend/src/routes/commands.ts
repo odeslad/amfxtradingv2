@@ -1,5 +1,4 @@
 import { Router } from 'express';
-import fs from 'fs';
 import path from 'path';
 import { config } from '../config';
 import { getBid, getAllBids } from '../store/ticks';
@@ -7,6 +6,7 @@ import { getAccount } from '../store/accounts';
 import { calculateLots } from '../services/sizing';
 import { asyncRoute } from '../middleware/asyncRoute';
 import { BadRequest } from '../middleware/errors';
+import { writeCommand, waitForResult, discardStaleResult, errorText, type CommandResult } from '../bridge/command-io';
 import {
   bodyRecord, nonEmptyString, oneOf, optionalOneOf, finiteNumber, optionalFiniteNumber, optionalInteger,
 } from '../middleware/parse';
@@ -57,7 +57,7 @@ function parseCommand(raw: unknown): CommandInput {
   };
 }
 
-type Broadcaster = (id: string, status: string, ticket?: number, error?: string) => void;
+type Broadcaster = (id: string, status: string, ticket?: number, error?: string, late?: boolean) => void;
 
 let broadcaster: Broadcaster | null = null;
 
@@ -75,40 +75,6 @@ function enqueue(broker: string, task: QueueTask): void {
 }
 
 const router = Router();
-
-function waitForResult(resultPath: string, id: string, timeoutMs = 10_000): Promise<Record<string, unknown>> {
-  return new Promise((resolve, reject) => {
-    const start = Date.now();
-    const timer = setInterval(() => {
-      try {
-        if (!fs.existsSync(resultPath)) {
-          if (Date.now() - start > timeoutMs) {
-            clearInterval(timer);
-            reject(new Error('timeout'));
-          }
-          return;
-        }
-        const raw = fs.readFileSync(resultPath, 'utf8');
-        const result = JSON.parse(raw) as Record<string, unknown>;
-        if (result['id'] !== id) {
-          if (Date.now() - start > timeoutMs) {
-            clearInterval(timer);
-            reject(new Error('timeout'));
-          }
-          return;
-        }
-        clearInterval(timer);
-        try { fs.unlinkSync(resultPath); } catch { /* best effort: a stale result.json is overwritten by the next command */ }
-        resolve(result);
-      } catch {
-        if (Date.now() - start > timeoutMs) {
-          clearInterval(timer);
-          reject(new Error('timeout'));
-        }
-      }
-    }, 300);
-  });
-}
 
 router.post('/', asyncRoute(async (req, res) => {
   const { action, id, broker, symbol, lotsMode, lots: rawLots, sl, tp, price, ticket } = parseCommand(req.body);
@@ -144,8 +110,8 @@ router.post('/', asyncRoute(async (req, res) => {
     lots = calculateLots(account.balance, rawLots, sl, bid, symbol, account.currency, allBids);
   }
 
-  const commandPath = path.join(brokerConfig.bridgePath, 'command.json');
   const resultPath = path.join(brokerConfig.bridgePath, 'result.json');
+  const pendingPath = path.join(brokerConfig.bridgePath, 'pending.json');
 
   const command = {
     action, id, broker, symbol, lots,
@@ -157,26 +123,27 @@ router.post('/', asyncRoute(async (req, res) => {
   res.status(202).json({ status: 'pending', id });
 
   enqueue(broker, async () => {
+    discardStaleResult(resultPath, msg => console.warn(`[CMD:${broker}] ${msg}`));
     try {
-      fs.writeFileSync(commandPath, JSON.stringify(command));
+      writeCommand(brokerConfig.bridgePath, command);
     } catch (err) {
       console.error(`[CMD:${broker}] Failed to write command.json`, err);
       broadcaster?.(id, 'error', undefined, 'Failed to write command');
       return;
     }
 
-    await waitForResult(resultPath, id)
-      .then((result) => {
-        const status = String(result['status'] ?? 'unknown');
-        const ticket = typeof result['ticket'] === 'number' ? result['ticket'] : undefined;
-        const code = result['code'] !== undefined ? ` (code ${result['code']})` : '';
-        broadcaster?.(id, status, ticket, status !== 'ok' ? `EA error${code}` : undefined);
-        console.log(`[CMD:${broker}] result id=${id} status=${status} ticket=${ticket ?? '-'}`);
-      })
-      .catch(() => {
-        broadcaster?.(id, 'timeout', undefined, 'No response from EA');
-        console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
-      });
+    const report = (result: CommandResult, late = false) => {
+      broadcaster?.(id, result.status, result.ticket, errorText(result), late);
+      console.log(`[CMD:${broker}] ${late ? 'late result' : 'result'} id=${id} status=${result.status} ticket=${result.ticket ?? '-'}`);
+    };
+
+    const outcome = await waitForResult({ resultPath, pendingPath, id });
+    if (outcome.kind === 'result') { report(outcome.result); return; }
+
+    broadcaster?.(id, 'timeout', undefined, 'No response from EA');
+    console.warn(`[CMD:${broker}] timeout waiting for result id=${id}`);
+    // The queue moves on; a result that still shows up is reported as late.
+    void outcome.late.then(result => { if (result) report(result, true); });
   });
 }));
 

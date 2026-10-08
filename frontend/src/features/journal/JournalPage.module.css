@@ -638,6 +638,14 @@
   color: var(--text);
 }
 
+.pendingCardRow .label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
 .pendingCardActions {
   display: flex;
   gap: 8px;

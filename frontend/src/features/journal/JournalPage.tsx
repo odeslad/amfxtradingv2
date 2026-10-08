@@ -140,10 +140,10 @@ export function JournalPage() {
           {tab === 'open' && bulk && (
             <>
               <button type="button" className={styles.bulkEditBtn} onClick={() => setBulkEditOpen(true)}>
-                <span className={styles.btnDesktop}>Edit</span>
+                <span>Edit</span>
               </button>
               <button type="button" className={styles.bulkCloseBtn} onClick={() => setBulkConfirmClose(true)}>
-                <span className={styles.btnDesktop}>Close</span>
+                <span>Close</span>
               </button>
             </>
           )}
@@ -153,7 +153,7 @@ export function JournalPage() {
               className={`${styles.filtersBtn} ${hasActiveFilters ? styles.filtersBtnActive : ''}`}
               onClick={() => setFiltersOpen(true)}
             >
-              <span className={styles.filtersBtnDesktop}>Filters</span>
+              <span>Filters</span>
               <span className={styles.filtersBtnMobile}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M2 4h12M4 8h8M6 12h4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="square"/>
@@ -163,7 +163,7 @@ export function JournalPage() {
             </button>
           )}
           <button type="button" className={styles.newTradeBtn} onClick={() => setPanelOpen(true)}>
-            <span className={styles.newTradeBtnDesktop}>+ New Trade</span>
+            <span>+ New Trade</span>
             <span className={styles.newTradeBtnMobile}>+</span>
           </button>
         </div>

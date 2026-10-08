@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiUrl } from './api';
+import { apiUrl, errorFrom } from './api';
 
 export interface PriceAlert {
   id: number;
@@ -38,28 +38,40 @@ export function useAlerts() {
   }, []);
 
   const create = useCallback(async (alert: NewAlert) => {
-    await fetch(apiUrl('/alerts'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(alert),
-    });
-    await refresh();
+    try {
+      const res = await fetch(apiUrl('/alerts'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(alert),
+      });
+      if (!res.ok) throw new Error(await errorFrom(res));
+    } finally {
+      await refresh();
+    }
   }, [refresh]);
 
   const toggle = useCallback(async (a: PriceAlert) => {
-    await fetch(apiUrl(`/alerts/${a.id}`), {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ enabled: !a.enabled }),
-    });
-    await refresh();
+    try {
+      const res = await fetch(apiUrl(`/alerts/${a.id}`), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: !a.enabled }),
+      });
+      if (!res.ok) throw new Error(await errorFrom(res));
+    } finally {
+      await refresh();
+    }
   }, [refresh]);
 
   const remove = useCallback(async (id: number) => {
-    await fetch(apiUrl(`/alerts/${id}`), { method: 'DELETE', credentials: 'include' });
-    await refresh();
+    try {
+      const res = await fetch(apiUrl(`/alerts/${id}`), { method: 'DELETE', credentials: 'include' });
+      if (!res.ok) throw new Error(await errorFrom(res));
+    } finally {
+      await refresh();
+    }
   }, [refresh]);
 
   return { alerts, refresh, create, toggle, remove };

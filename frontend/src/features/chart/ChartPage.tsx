@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom } from '../../lib/api';
+import { addToast } from '../../lib/toast';
 import { useWs } from '../../lib/useWs';
 import { useAuth } from '../auth/useAuth';
 import { playAlertBeep } from '../../lib/beep';
@@ -174,12 +175,17 @@ export function ChartPage() {
   }, []);
 
   const saveEmas = useCallback(async () => {
-    await fetch(apiUrl('/chart-indicators'), {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emas: emasRef.current }),
-    });
+    try {
+      const res = await fetch(apiUrl('/chart-indicators'), {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ emas: emasRef.current }),
+      });
+      if (!res.ok) addToast(await errorFrom(res), 'error');
+    } catch {
+      addToast('Network error saving indicators', 'error');
+    }
   }, []);
 
   const [balances, setBalances] = useState<Record<string, number>>({});
@@ -444,7 +450,9 @@ export function ChartPage() {
         sl,
         tp,
       }),
-    }).catch(() => {});
+    })
+      .then(async res => { if (!res.ok) addToast(await errorFrom(res), 'error'); })
+      .catch(() => addToast('Network error sending modify', 'error'));
   }, [positions]);
 
   return (

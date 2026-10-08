@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { addToast } from '../../lib/toast';
 import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL, isPending, isBuySide } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useBalances } from '../../lib/useBalances';
@@ -128,7 +129,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
     if (!confirmClose) return;
     setClosing(true);
     try {
-      await fetch(apiUrl('/commands'), {
+      const res = await fetch(apiUrl('/commands'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -143,6 +144,9 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
           tp: 0,
         }),
       });
+      if (!res.ok) throw new Error(await errorFrom(res));
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to send close command'), 'error');
     } finally {
       setClosing(false);
       setConfirmClose(null);

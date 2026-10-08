@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { usePush } from '../../lib/usePush';
+import { errorMessage } from '../../lib/api';
+import { addToast } from '../../lib/toast';
 import type { PriceAlert } from '../../lib/useAlerts';
 import type { EmaCrossAlert, NewEmaAlert, EmaAlertDirection } from '../../lib/useEmaAlerts';
 import styles from './AlertsPanel.module.css';
@@ -58,6 +60,8 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
     try {
       await onCreate({ broker: formBroker, symbol: formSymbol, price: value, direction });
       setPrice('');
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to create alert'), 'error');
     } finally {
       setSaving(false);
     }
@@ -76,13 +80,18 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
       for (const sym of targets) {
         await onCreateEma({ broker: formBroker, symbol: sym, timeframe: emaTf, emaFast: fast, emaSlow: slow, direction: emaDir, thresholdPips: threshold });
       }
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to create EMA alert'), 'error');
     } finally {
       setEmaSaving(false);
     }
   };
 
-  const handleToggle = (a: PriceAlert) => onToggle(a);
-  const handleDelete = (id: number) => onDelete(id);
+  const reportFailure = (fallback: string) => (err: unknown) => addToast(errorMessage(err, fallback), 'error');
+  const handleToggle = (a: PriceAlert) => onToggle(a).catch(reportFailure('Failed to update alert'));
+  const handleDelete = (id: number) => onDelete(id).catch(reportFailure('Failed to delete alert'));
+  const handleToggleEma = (a: EmaCrossAlert) => onToggleEma(a).catch(reportFailure('Failed to update EMA alert'));
+  const handleDeleteEma = (id: number) => onDeleteEma(id).catch(reportFailure('Failed to delete EMA alert'));
 
   return (
     <>
@@ -269,10 +278,10 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
                 {a.triggeredAt && <span className={styles.triggered}>triggered</span>}
               </div>
               <div className={styles.itemActions}>
-                <button type="button" className={styles.toggleBtn} onClick={() => onToggleEma(a)}>
+                <button type="button" className={styles.toggleBtn} onClick={() => handleToggleEma(a)}>
                   {a.enabled ? 'Off' : 'On'}
                 </button>
-                <button type="button" className={styles.deleteBtn} onClick={() => onDeleteEma(a.id)}>✕</button>
+                <button type="button" className={styles.deleteBtn} onClick={() => handleDeleteEma(a.id)}>✕</button>
               </div>
             </div>
           ))}

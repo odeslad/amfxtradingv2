@@ -72,10 +72,10 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
       if (!pendingIds.current.has(msg.id)) return;
       pendingIds.current.delete(msg.id);
       if (pendingIds.current.size === 0) setSubmitting(false);
+      // AppLayout toasts every command_result; here only the panel state changes.
       if (msg.status === 'ok') {
         setTimeout(() => onCloseRef.current(), 300);
       } else {
-        addToast(msg.error ?? `EA error: ${msg.status}`, 'error');
         setSubmitting(false);
       }
     });

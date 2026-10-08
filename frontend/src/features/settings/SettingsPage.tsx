@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom } from '../../lib/api';
+import { addToast } from '../../lib/toast';
 import type { PnlMode } from '../journal/utils/position';
 import type { TrendlineStyle } from '../chart/DrawingTools';
 import styles from './SettingsPage.module.css';
@@ -56,13 +57,16 @@ export function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch(apiUrl('/settings'), {
+      const res = await fetch(apiUrl('/settings'), {
         method: 'PUT',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mirror, display: { pnlMode, trendlineColor, trendlineStyle, trendlineWidth } }),
       });
+      if (!res.ok) { addToast(await errorFrom(res), 'error'); return; }
       setSaved(true);
+    } catch {
+      addToast('Network error saving settings', 'error');
     } finally {
       setSaving(false);
     }

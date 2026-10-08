@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import styles from './BulkEditPanel.module.css';
 
@@ -31,7 +31,7 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
     if (!sl && !tp) return;
     setSubmitting(true);
     try {
-      await Promise.all(positions.map(p =>
+      const results = await Promise.all(positions.map(p =>
         fetch(apiUrl('/commands'), {
           method: 'POST',
           credentials: 'include',
@@ -48,10 +48,14 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
           }),
         })
       ));
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${results.length} commands rejected: ${await errorFrom(failed[0])}`);
+      }
       addToast(`Modify sent for ${positions.length} position${positions.length > 1 ? 's' : ''}`, 'info');
       onClose();
-    } catch {
-      addToast('Failed to send modify commands', 'error');
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to send modify commands'), 'error');
     } finally {
       setSubmitting(false);
     }

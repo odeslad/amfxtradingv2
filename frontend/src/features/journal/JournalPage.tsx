@@ -7,7 +7,7 @@ import { FiltersPanel, type FilterValues, type FilterOptions } from './FiltersPa
 import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
 import { TYPE_LABEL, fmt } from './utils/position';
@@ -79,7 +79,7 @@ export function JournalPage() {
     if (!bulk) return;
     setBulkClosing(true);
     try {
-      await Promise.all(bulk.positions.map(p =>
+      const results = await Promise.all(bulk.positions.map(p =>
         fetch(apiUrl('/commands'), {
           method: 'POST',
           credentials: 'include',
@@ -96,9 +96,13 @@ export function JournalPage() {
           }),
         })
       ));
+      const failed = results.filter(r => !r.ok);
+      if (failed.length > 0) {
+        throw new Error(`${failed.length} of ${results.length} commands rejected: ${await errorFrom(failed[0])}`);
+      }
       addToast(`Close sent for ${bulk.positions.length} positions`, 'info');
-    } catch {
-      addToast('Failed to send close commands', 'error');
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to send close commands'), 'error');
     } finally {
       setBulkClosing(false);
       setBulkConfirmClose(false);

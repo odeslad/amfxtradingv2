@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import styles from './BulkEditPanel.module.css';
 
@@ -29,7 +29,7 @@ export function ClosePositionPanel({ open, position, onClose }: ClosePositionPan
     if (!position) return;
     setSubmitting(true);
     try {
-      await fetch(apiUrl('/commands'), {
+      const res = await fetch(apiUrl('/commands'), {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -42,10 +42,11 @@ export function ClosePositionPanel({ open, position, onClose }: ClosePositionPan
           lots: position.lots,
         }),
       });
+      if (!res.ok) throw new Error(await errorFrom(res));
       addToast(`Close sent for ${label}`, 'info');
       onClose();
-    } catch {
-      addToast('Failed to send close command', 'error');
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to send close command'), 'error');
     } finally {
       setSubmitting(false);
     }

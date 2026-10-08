@@ -1,6 +1,6 @@
 # 014 · BE-09 — Query indexes and legacy names
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 9 (diagnosis E)
 
 ## Context

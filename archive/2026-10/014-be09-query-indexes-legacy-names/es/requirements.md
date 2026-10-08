@@ -1,6 +1,6 @@
 # 014 · BE-09 — Índices de consulta y nombres heredados
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [auditoría de backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 9 (diagnóstico E)
 
 ## Contexto

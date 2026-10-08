@@ -41,6 +41,7 @@ model Trade {
   closeTime  DateTime
 
   @@index([broker, symbol])
+  @@index([broker, closeTime])
   @@index([closeTime])
   @@map("trades")
 }
@@ -157,7 +158,6 @@ model Drawing {
   updatedAt DateTime @updatedAt
 
   @@unique([userId, broker, symbol, timeframe])
-  @@index([userId, broker, symbol, timeframe])
   @@map("drawings")
 }
 

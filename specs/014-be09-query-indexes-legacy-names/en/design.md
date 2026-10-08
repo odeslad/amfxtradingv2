@@ -64,6 +64,11 @@ ALTER INDEX IF EXISTS "account_snapshots_broker_timestamp_idx" RENAME TO "balanc
 ALTER SEQUENCE IF EXISTS "account_snapshots_id_seq" RENAME TO "balances_id_seq";
 ALTER SEQUENCE IF EXISTS "trendlines_id_seq" RENAME TO "drawings_id_seq";
 
+-- Drift found by `prisma migrate diff` on 2026-10-07 (design amendment, see below)
+ALTER TABLE "settings_mirror" ALTER COLUMN "updatedAt" DROP DEFAULT;
+ALTER TABLE "settings_display" ALTER COLUMN "updatedAt" DROP DEFAULT;
+ALTER TABLE "users" ALTER COLUMN "createdAt" SET DATA TYPE TIMESTAMP(3);
+
 DO $$
 BEGIN
   IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'account_snapshots_pkey') THEN
@@ -85,6 +90,8 @@ Notes:
 - The expected legacy names come from the migration history: `20260617171733_init` created `account_snapshots_pkey` and `account_snapshots_broker_timestamp_idx`, `20260623000000_add_trendlines` created `trendlines_pkey` and `trendlines_userId_fkey`, and the two table renames only renamed the table (plus the two `trendlines_*` unique/non-unique indexes). **Task 2 confirms the real names on production over the DB tunnel before the migration is committed**; if production turns out to hold a name this list misses, the migration gets one more guarded statement.
 - `CREATE INDEX` without `CONCURRENTLY` (Prisma wraps the migration in a transaction) takes a `SHARE` lock on `trades` for the build. The table holds a few thousand rows, so the lock lasts milliseconds; the watcher's 30 s `createMany` either precedes or follows it (AC 6). The renames take an `ACCESS EXCLUSIVE` lock for a catalogue update — instantaneous.
 - No `UPDATE`/`DELETE` anywhere (AC 8).
+
+**Amendment (2026-10-07, task 2).** The production names matched the list above exactly, but the `migrate diff` also revealed three drifts outside the audit item, left by hand-written migrations: `settings_mirror.updatedAt` and `settings_display.updatedAt` carry a `DEFAULT CURRENT_TIMESTAMP` the schema does not declare (Prisma fills `@updatedAt` on every write, in the old and the new backend alike, so the default is unused), and `users.createdAt` is `TIMESTAMPTZ(6)` where the schema says `TIMESTAMP(3)` (1 row; the VPS runs in UTC, so the stored instant is unchanged). The user chose to align them in the same migration so AC 7 holds literally. The three statements are also no-ops on an already aligned database. `prisma/migrations/migration_lock.toml` (standard Prisma file, missing from the repo) is added so `migrate diff --from-migrations` can replay the history on a shadow database.
 
 ### Verification of the schema state
 
@@ -112,6 +119,7 @@ The plan must show `Index Scan Backward using trades_broker_closeTime_idx`.
 | `backend/src/routes/candles.ts` | remove `/emas`, its comment, `calculateEma` import |
 | `backend/prisma/schema.prisma` | `Trade` index added, `Drawing` index removed |
 | `backend/prisma/migrations/20261006000000_query_indexes_legacy_names/migration.sql` | new |
+| `backend/prisma/migrations/migration_lock.toml` | new (amendment) |
 | `reports/2026-09-30-backend.md` | `Spec` column of BE-09 → `014` (on spec creation), `014 ✅` on close |
 
 ## Risks

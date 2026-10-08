@@ -19,10 +19,6 @@ export interface PushPayload {
   data?: Record<string, unknown>;
 }
 
-export function isPushEnabled(): boolean {
-  return enabled;
-}
-
 // Send a notification to every subscription of a user. Subscriptions that the
 // push service rejects as gone (404/410) are pruned automatically.
 export async function sendToUser(userId: number, payload: PushPayload): Promise<void> {

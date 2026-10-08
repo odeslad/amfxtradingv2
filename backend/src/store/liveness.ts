@@ -22,7 +22,7 @@ export interface HealthReport {
   brokers: BrokerHealth[];
 }
 
-export const STALE_TICK_MS = 5 * 60_000;
+const STALE_TICK_MS = 5 * 60_000;
 
 const state = new Map<string, BrokerLiveness>();
 

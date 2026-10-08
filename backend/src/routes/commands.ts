@@ -11,7 +11,7 @@ import {
   bodyRecord, nonEmptyString, oneOf, optionalOneOf, finiteNumber, optionalFiniteNumber, optionalInteger,
 } from '../middleware/parse';
 
-export const ACTIONS = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop', 'close', 'modify'] as const;
+const ACTIONS = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop', 'close', 'modify'] as const;
 const LOTS_MODES = ['fixed', 'risk_pct'] as const;
 const TICKET_ACTIONS: ReadonlySet<string> = new Set(['close', 'modify']);
 const ID_RE = /^[A-Za-z0-9_-]{1,64}$/;

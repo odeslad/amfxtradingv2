@@ -12,7 +12,7 @@ export interface CommandResult {
 export const WAIT_BASE_MS = 10_000;
 export const WAIT_PENDING_MS = 30_000;
 export const WAIT_LATE_MS = 60_000;
-export const POLL_MS = 300;
+const POLL_MS = 300;
 
 // `cancelled`: the EA never picked the command up, so it was withdrawn at the
 // timeout instead of being left to execute whenever the EA comes back.

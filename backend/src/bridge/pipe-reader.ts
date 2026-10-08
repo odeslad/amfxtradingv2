@@ -17,8 +17,8 @@ export interface TickData {
   d1_time: number; d1_open: number; d1_high: number; d1_low: number;
 }
 
-export const RETRY_BASE_MS = 1_000;
-export const RETRY_MAX_MS = 30_000;
+const RETRY_BASE_MS = 1_000;
+const RETRY_MAX_MS = 30_000;
 
 export const retryDelay = (attempt: number): number => Math.min(RETRY_BASE_MS * 2 ** attempt, RETRY_MAX_MS);
 

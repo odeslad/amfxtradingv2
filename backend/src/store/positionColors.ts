@@ -28,11 +28,6 @@ export async function setColor(broker: string, ticket: number, color: string) {
   }
 }
 
-export async function getColorsByBroker(broker: string): Promise<Map<number, string>> {
-  const rows = await db.positionColor.findMany({ where: { broker } });
-  return new Map(rows.map(r => [r.ticket, r.color]));
-}
-
 export async function getAllColors(): Promise<Map<string, string>> {
   const rows = await db.positionColor.findMany();
   return new Map(rows.map(r => [`${r.broker}:${r.ticket}`, r.color]));

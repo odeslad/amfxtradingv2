@@ -1,6 +1,6 @@
 # 015 · BE-10 — Backend docs and dead code
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [backend audit 2026-09-30](../../../reports/2026-09-30-backend.md), improvement 10 (diagnosis G)
 
 ## Context

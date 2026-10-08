@@ -1,6 +1,6 @@
 # 015 · BE-10 — Documentación del backend y código muerto
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [auditoría de backend 2026-09-30](../../../reports/2026-09-30-backend.md), mejora 10 (diagnóstico G)
 
 ## Contexto

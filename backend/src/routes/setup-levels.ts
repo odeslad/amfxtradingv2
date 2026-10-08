@@ -44,7 +44,7 @@ router.get('/', asyncRoute(async (req, res) => {
   const candles = rows.reverse() as Candle[];
   const pip = getPipSize(symbol);
 
-  const setups = detectEmaCrossSetups(candles, { emaFast: fast, emaSlow: slow, direction: 'both' }, pip);
+  const setups = detectEmaCrossSetups(candles, { emaFast: fast, emaSlow: slow, direction: 'both' });
   if (setups.length === 0) {
     res.json({ setup: null });
     return;

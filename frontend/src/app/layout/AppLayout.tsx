@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
-import { useAuth } from '../../features/auth/AuthContext';
+import { useAuth } from '../../features/auth/useAuth';
 import { IconJournal, IconChart, IconScanner, IconStats, IconSettings, IconSignOut } from '../../shared/ui/icons';
 import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';

@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
-import { useAuth } from '../auth/AuthContext';
+import { useAuth } from '../auth/useAuth';
 import { playAlertBeep } from '../../lib/beep';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';

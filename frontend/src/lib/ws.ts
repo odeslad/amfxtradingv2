@@ -20,7 +20,9 @@ function connect() {
     try {
       const data = JSON.parse(e.data as string);
       listeners.forEach(fn => fn(data));
-    } catch {}
+    } catch {
+      // Malformed frame: ignore it, the next one is independent.
+    }
   };
 
   socket.onclose = () => {

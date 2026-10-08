@@ -71,7 +71,7 @@ function fmtPrice(price: number, precision: number): string {
 // as UTC and subtract the broker offset to get the real UTC instant — same basis
 // as the candle `time` values. Mirrors fmtLocalTime in journal/utils/position.
 function openTimeToUtcSec(raw: string, brokerOffsetSec: number): number {
-  const m = raw.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
+  const m = raw.match(/(\d{4})[.-](\d{2})[.-](\d{2})[ T](\d{2}):(\d{2})(?::(\d{2}))?/);
   if (!m) return 0;
   const [, y, mo, d, h, mi, s] = m.map(Number);
   const utcMs = Date.UTC(y, mo - 1, d, h, mi, s || 0) - brokerOffsetSec * 1000;
@@ -224,6 +224,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const candlesRef = useRef<Candle[]>([]);
   const emasRef = useRef<Ema[]>(emas);
   const timeframeRef = useRef<string>(timeframe);
+  const symbolRef = useRef<string>(symbol);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const isLoadingMoreRef = useRef(false);
@@ -515,6 +516,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
   useEffect(() => {
     if (!containerRef.current || !overlayRef.current) return;
+    const emaSeries = emaSeriesRef.current;
 
     const chart = createChart(containerRef.current, {
       layout: {
@@ -641,9 +643,14 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
-      emaSeriesRef.current.clear();
+      emaSeries.clear();
     };
   }, [drawRollovers]);
+
+  useEffect(() => {
+    symbolRef.current = symbol;
+    timeframeRef.current = timeframe;
+  }, [symbol, timeframe]);
 
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current || candles.length === 0) return;
@@ -670,9 +677,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     }
 
     candlesRef.current = candles;
-    timeframeRef.current = timeframe;
 
-    const precision = getPricePrecision(symbol);
+    const precision = getPricePrecision(symbolRef.current);
     precisionRef.current = precision;
     seriesRef.current.applyOptions({
       priceFormat: { type: 'price', precision, minMove: Math.pow(10, -precision) },
@@ -997,6 +1003,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     };
   }, []);
 
+  const legendPrecision = getPricePrecision(symbol);
+
   return (
     <div ref={containerRef} className={styles.chart}>
       <canvas ref={overlayRef} className={styles.overlay} />
@@ -1025,10 +1033,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           {hoverOhlc && (
             <span className={styles.legendOhlc}>
               <span className={styles.legendSep}>{' · '}</span>
-              O <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.open, precisionRef.current)}</span>{' '}
-              H <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.high, precisionRef.current)}</span>{' '}
-              L <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.low, precisionRef.current)}</span>{' '}
-              C <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.close, precisionRef.current)}</span>
+              O <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.open, legendPrecision)}</span>{' '}
+              H <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.high, legendPrecision)}</span>{' '}
+              L <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.low, legendPrecision)}</span>{' '}
+              C <span className={styles.legendOhlcValue}>{fmtPrice(hoverOhlc.close, legendPrecision)}</span>
             </span>
           )}
         </div>

@@ -57,6 +57,12 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   const [setup, setSetup] = useState<SetupLevels | null>(null);
   const [bid, setBid] = useState<number | null>(null);
   const pendingIds = useRef<Set<string>>(new Set());
+  const onCloseRef = useRef(onClose);
+  const initialSymbolRef = useRef(initialSymbol);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+    initialSymbolRef.current = initialSymbol;
+  });
 
   useEffect(() => {
     return subscribe((data) => {
@@ -67,7 +73,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
       pendingIds.current.delete(msg.id);
       if (pendingIds.current.size === 0) setSubmitting(false);
       if (msg.status === 'ok') {
-        setTimeout(onClose, 300);
+        setTimeout(() => onCloseRef.current(), 300);
       } else {
         addToast(msg.error ?? `EA error: ${msg.status}`, 'error');
         setSubmitting(false);
@@ -94,6 +100,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   }, [open, initialBroker, initialTimeframe]);
 
   const activeMirrorBrokers = mirrorBrokers.filter(m => m.enabled);
+  const activeMirrorKey = activeMirrorBrokers.map(m => m.broker).join('|');
 
   // Load symbols when broker changes (manual) or when mirror brokers change
   useEffect(() => {
@@ -106,16 +113,18 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
           // Keep the current symbol if still available, else use the chart's.
           setSymbol(prev => {
             if (prev && list.includes(prev)) return prev;
-            if (initialSymbol && list.includes(initialSymbol)) return initialSymbol;
+            const wanted = initialSymbolRef.current;
+            if (wanted && list.includes(wanted)) return wanted;
             return '';
           });
         })
         .catch(() => {});
     } else {
-      if (activeMirrorBrokers.length === 0) { setSymbols([]); return; }
+      const mirrorNames = activeMirrorKey ? activeMirrorKey.split('|') : [];
+      if (mirrorNames.length === 0) { setSymbols([]); return; }
       Promise.all(
-        activeMirrorBrokers.map(m =>
-          fetch(apiUrl(`/symbols?broker=${encodeURIComponent(m.broker)}`), { credentials: 'include' })
+        mirrorNames.map(name =>
+          fetch(apiUrl(`/symbols?broker=${encodeURIComponent(name)}`), { credentials: 'include' })
             .then(r => r.json() as Promise<string[]>)
         )
       ).then(results => {
@@ -125,7 +134,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
         setSymbol('');
       }).catch(() => {});
     }
-  }, [broker, mode, activeMirrorBrokers.length]);
+  }, [broker, mode, activeMirrorKey]);
   const mirrorDisabled = activeMirrorBrokers.length === 0;
   const isPending = ['buylimit', 'selllimit', 'buystop', 'sellstop'].includes(action);
 

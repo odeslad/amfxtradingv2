@@ -153,7 +153,7 @@ export function fmtDate(raw: string): string {
 const pad = (n: number): string => String(n).padStart(2, '0');
 
 export function fmtLocalTime(raw: string, brokerOffsetSec = 0): string {
-  const m = raw.match(/(\d{4})[.\-](\d{2})[.\-](\d{2})[ T](\d{2}):(\d{2})/);
+  const m = raw.match(/(\d{4})[.-](\d{2})[.-](\d{2})[ T](\d{2}):(\d{2})/);
   if (!m) return fmtDate(raw);
   const [, y, mo, d, h, mi] = m.map(Number);
   const utcMs = Date.UTC(y, mo - 1, d, h, mi) - brokerOffsetSec * 1000;

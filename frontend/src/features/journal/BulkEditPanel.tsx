@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
 import { apiUrl } from '../../lib/api';
 import { addToast } from '../../lib/toast';
@@ -17,9 +17,12 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
   const [tp, setTp] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
+  // Reset the form during render when the panel closes.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
     if (!open) { setSl(''); setTp(''); setSubmitting(false); }
-  }, [open]);
+  }
 
   const first = positions[0];
   const label = first ? `${TYPE_LABEL[first.type]} ${first.symbol}` : '';

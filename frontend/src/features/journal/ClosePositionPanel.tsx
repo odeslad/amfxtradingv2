@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
 import { apiUrl } from '../../lib/api';
 import { addToast } from '../../lib/toast';
@@ -17,7 +17,11 @@ function generateId() { return `${Date.now()}-${Math.random().toString(36).slice
 export function ClosePositionPanel({ open, position, onClose }: ClosePositionPanelProps) {
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => { if (!open) setSubmitting(false); }, [open]);
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (!open) setSubmitting(false);
+  }
 
   const label = position ? `${TYPE_LABEL[position.type]} ${position.symbol}` : '';
 

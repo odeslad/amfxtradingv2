@@ -19,21 +19,23 @@ export interface NewAlert {
   direction: 'above' | 'below';
 }
 
+// A failed load reads as an empty list, as before.
+function loadAlerts(): Promise<PriceAlert[]> {
+  return fetch(apiUrl('/alerts'), { credentials: 'include' })
+    .then(res => (res.ok ? (res.json() as Promise<PriceAlert[]>) : []))
+    .catch((): PriceAlert[] => []);
+}
+
 // Single source of truth for the user's price alerts, shared by the alerts panel
 // and the chart overlay. Mutations refresh the list so both stay in sync.
 export function useAlerts() {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(apiUrl('/alerts'), { credentials: 'include' });
-      setAlerts(res.ok ? await res.json() as PriceAlert[] : []);
-    } catch {
-      setAlerts([]);
-    }
-  }, []);
+  const refresh = useCallback(() => loadAlerts().then(setAlerts), []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    loadAlerts().then(setAlerts);
+  }, []);
 
   const create = useCallback(async (alert: NewAlert) => {
     await fetch(apiUrl('/alerts'), {

@@ -29,12 +29,15 @@ function isSupported(): boolean {
 }
 
 export function usePush() {
-  const [status, setStatus] = useState<PushStatus>('default');
+  const [status, setStatus] = useState<PushStatus>(() => {
+    if (!isSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    return 'default';
+  });
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    if (!isSupported()) { setStatus('unsupported'); return; }
-    if (Notification.permission === 'denied') { setStatus('denied'); return; }
+    if (!isSupported() || Notification.permission === 'denied') return;
 
     navigator.serviceWorker.ready
       .then(reg => reg.pushManager.getSubscription())

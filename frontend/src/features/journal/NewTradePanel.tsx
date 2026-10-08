@@ -93,19 +93,46 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   }, [open]);
 
   // Preselect broker/symbol/timeframe from the chart when the panel opens.
-  useEffect(() => {
-    if (!open) return;
-    if (initialBroker) setBroker(initialBroker);
-    if (initialTimeframe) setTimeframe(initialTimeframe);
-  }, [open, initialBroker, initialTimeframe]);
+  // Opening preselects the chart's broker/timeframe; closing resets the form.
+  // Both adjust state during render on the open/close transition.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      if (initialBroker) setBroker(initialBroker);
+      if (initialTimeframe) setTimeframe(initialTimeframe);
+    } else {
+      setMode('manual');
+      setAction('buy');
+      setBroker('');
+      setSymbol('');
+      setLots('');
+      setLotsMode('fixed');
+      setPrice('');
+      setSl('');
+      setTp('');
+      setSetup(null);
+      setBid(null);
+      setSubmitting(false);
+    }
+  }
 
   const activeMirrorBrokers = mirrorBrokers.filter(m => m.enabled);
   const activeMirrorKey = activeMirrorBrokers.map(m => m.broker).join('|');
 
   // Load symbols when broker changes (manual) or when mirror brokers change
+  // No source of symbols (no broker in manual mode, no enabled mirror broker):
+  // clear the list during render; the effect only fetches.
+  const symbolsKey = `${mode}|${broker}|${activeMirrorKey}`;
+  const [prevSymbolsKey, setPrevSymbolsKey] = useState(symbolsKey);
+  if (symbolsKey !== prevSymbolsKey) {
+    setPrevSymbolsKey(symbolsKey);
+    if (mode === 'manual' ? !broker : !activeMirrorKey) { setSymbols([]); setSymbol(''); }
+  }
+
   useEffect(() => {
     if (mode === 'manual') {
-      if (!broker) { setSymbols([]); setSymbol(''); return; }
+      if (!broker) return;
       fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
         .then(r => r.json() as Promise<string[]>)
         .then(list => {
@@ -121,7 +148,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
         .catch(() => {});
     } else {
       const mirrorNames = activeMirrorKey ? activeMirrorKey.split('|') : [];
-      if (mirrorNames.length === 0) { setSymbols([]); return; }
+      if (mirrorNames.length === 0) return;
       Promise.all(
         mirrorNames.map(name =>
           fetch(apiUrl(`/symbols?broker=${encodeURIComponent(name)}`), { credentials: 'include' })
@@ -139,8 +166,18 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   const isPending = ['buylimit', 'selllimit', 'buystop', 'sellstop'].includes(action);
 
   // Fetch the current setup levels for the chosen broker/symbol/timeframe.
+  // Levels and live bid are only meaningful for an open panel with a symbol:
+  // clear them during render otherwise.
+  const levelsKey = `${open}|${mode}|${broker}|${symbol}|${timeframe}`;
+  const [prevLevelsKey, setPrevLevelsKey] = useState(levelsKey);
+  if (levelsKey !== prevLevelsKey) {
+    setPrevLevelsKey(levelsKey);
+    if (!open || mode !== 'manual' || !broker || !symbol) setSetup(null);
+    if (!open || !broker || !symbol) setBid(null);
+  }
+
   useEffect(() => {
-    if (!open || mode !== 'manual' || !broker || !symbol) { setSetup(null); return; }
+    if (!open || mode !== 'manual' || !broker || !symbol) return;
     let cancelled = false;
     const url = apiUrl(
       `/setup-levels?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}` +
@@ -155,7 +192,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
 
   // Live bid for the chosen broker/symbol, to show distances to the levels.
   useEffect(() => {
-    if (!open || !broker || !symbol) { setBid(null); return; }
+    if (!open || !broker || !symbol) return;
     return subscribe((data) => {
       const m = data as { type?: string; broker?: string; ticks?: { symbol: string; bid: number }[] };
       if (m.type !== 'ticks' || m.broker !== broker || !m.ticks) return;
@@ -167,21 +204,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   const resetFeedback = () => {};
 
   useEffect(() => {
-    if (!open) {
-      setMode('manual');
-      setAction('buy');
-      setBroker('');
-      setSymbol('');
-      setLots('');
-      setLotsMode('fixed');
-      setPrice('');
-      setSl('');
-      setTp('');
-      setSetup(null);
-      setBid(null);
-      setSubmitting(false);
-      pendingIds.current.clear();
-    }
+    if (!open) pendingIds.current.clear();
   }, [open]);
 
   const sendCommand = async (payload: Record<string, unknown>) => {

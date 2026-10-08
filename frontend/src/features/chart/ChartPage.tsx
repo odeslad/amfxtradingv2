@@ -101,7 +101,7 @@ export function ChartPage() {
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
-  const [chartLoading, setChartLoading] = useState(false);
+  const [chartLoading, setChartLoading] = useState(() => Boolean(broker && symbol));
   const isLoadingMoreRef = useRef(false);
   const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
@@ -199,8 +199,15 @@ export function ChartPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Broker changed to none: clear the symbol list during render.
+  const [prevBroker, setPrevBroker] = useState(broker);
+  if (broker !== prevBroker) {
+    setPrevBroker(broker);
+    if (!broker) { setSymbols([]); setSymbol(''); }
+  }
+
   useEffect(() => {
-    if (!broker) { setSymbols([]); setSymbol(''); return; }
+    if (!broker) return;
     fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
       .then(r => r.json() as Promise<string[]>)
       .then(list => {
@@ -296,12 +303,28 @@ export function ChartPage() {
     });
   }, [broker, symbol, timeframe, user, refreshAlerts]));
 
-  useEffect(() => {
+  // Selection changed: reset everything bound to it during render, before the
+  // loading effects below start their requests.
+  const selectionKey = `${broker}|${symbol}|${timeframe}`;
+  const [prevSelectionKey, setPrevSelectionKey] = useState(selectionKey);
+  if (selectionKey !== prevSelectionKey) {
+    setPrevSelectionKey(selectionKey);
     setLiveCandle(null);
-  }, [broker, symbol, timeframe]);
+    setCandles([]);
+    setDrawings(null);
+    setHasMore(true);
+    setChartLoading(Boolean(broker && symbol));
+  }
+
+  const positionsKey = `${positionsMode}|${broker}`;
+  const [prevPositionsKey, setPrevPositionsKey] = useState(positionsKey);
+  if (positionsKey !== prevPositionsKey) {
+    setPrevPositionsKey(positionsKey);
+    if (positionsMode === 'none' || !broker) setPositions([]);
+  }
 
   useEffect(() => {
-    if (positionsMode === 'none' || !broker) { setPositions([]); return; }
+    if (positionsMode === 'none' || !broker) return;
     fetch(apiUrl('/positions/live'), { credentials: 'include' })
       .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]> : Promise.resolve([]))
       .then(brokers => {
@@ -317,10 +340,7 @@ export function ChartPage() {
   }, [positionsMode, broker]);
 
   useEffect(() => {
-    if (!broker || !symbol) { setCandles([]); return; }
-    setCandles([]);
-    setHasMore(true);
-    setChartLoading(true);
+    if (!broker || !symbol) return;
     hasMoreRef.current = true;
     fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include' })
       .then(r => r.json() as Promise<RawCandle[]>)
@@ -342,7 +362,6 @@ export function ChartPage() {
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
-    setDrawings(null);
     if (!broker || !symbol) return;
     const params = new URLSearchParams({ broker, symbol, timeframe });
     fetch(apiUrl(`/drawings?${params.toString()}`), { credentials: 'include' })

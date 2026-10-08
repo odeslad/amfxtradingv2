@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { usePush } from '../../lib/usePush';
 import type { PriceAlert } from '../../lib/useAlerts';
 import type { EmaCrossAlert, NewEmaAlert, EmaAlertDirection } from '../../lib/useEmaAlerts';
@@ -42,7 +42,14 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
   const [emaAllSymbols, setEmaAllSymbols] = useState(false);
   const [emaSaving, setEmaSaving] = useState(false);
 
-  useEffect(() => { setFormBroker(broker); setFormSymbol(symbol); }, [broker, symbol]);
+  // Follow the chart selection: adjust the form during render when it changes.
+  const selectionKey = `${broker}|${symbol}`;
+  const [prevSelectionKey, setPrevSelectionKey] = useState(selectionKey);
+  if (selectionKey !== prevSelectionKey) {
+    setPrevSelectionKey(selectionKey);
+    setFormBroker(broker);
+    setFormSymbol(symbol);
+  }
 
   const handleCreate = async () => {
     const value = parseFloat(price);

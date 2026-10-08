@@ -20,9 +20,16 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
   // be applied server-side to reach older trades.
   const { from, to } = dateRangeBounds(filters);
 
-  useEffect(() => {
+  // A new range starts a new load: flag it during render, fetch in the effect.
+  const rangeKey = `${from ?? ''}|${to ?? ''}`;
+  const [prevRangeKey, setPrevRangeKey] = useState(rangeKey);
+  if (rangeKey !== prevRangeKey) {
+    setPrevRangeKey(rangeKey);
     setLoading(true);
     setError('');
+  }
+
+  useEffect(() => {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
     if (to) params.set('to', to);

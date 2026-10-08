@@ -25,7 +25,8 @@ function generateId() { return `${Date.now()}-${Math.random().toString(36).slice
 
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const [tab, setTab] = useState<Tab>('accounts');
+  // A deep link (?broker=…) lands on the open positions tab.
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get('broker') ? 'open' : 'accounts'));
   const [storedFilters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
   // Stored filters may predate the date fields; merge so every key exists.
   // Memoised: a fresh object every render retriggers the bulkGroup effect in
@@ -40,7 +41,6 @@ export function JournalPage() {
     const symbol = searchParams.get('symbol');
     if (broker) {
       setFilters(f => ({ ...f, broker, ...(symbol ? { symbol } : {}) }));
-      setTab('open');
       setSearchParams({}, { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps

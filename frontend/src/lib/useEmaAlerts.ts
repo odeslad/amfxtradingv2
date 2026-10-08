@@ -27,21 +27,23 @@ export interface NewEmaAlert {
   thresholdPips: number;
 }
 
+// A failed load reads as an empty list, as before.
+function loadEmaAlerts(): Promise<EmaCrossAlert[]> {
+  return fetch(apiUrl('/ema-alerts'), { credentials: 'include' })
+    .then(res => (res.ok ? (res.json() as Promise<EmaCrossAlert[]>) : []))
+    .catch((): EmaCrossAlert[] => []);
+}
+
 // Source of truth for the user's EMA-cross alerts, mirroring useAlerts. Mutations
 // refresh the list so the panel stays in sync.
 export function useEmaAlerts() {
   const [alerts, setAlerts] = useState<EmaCrossAlert[]>([]);
 
-  const refresh = useCallback(async () => {
-    try {
-      const res = await fetch(apiUrl('/ema-alerts'), { credentials: 'include' });
-      setAlerts(res.ok ? await res.json() as EmaCrossAlert[] : []);
-    } catch {
-      setAlerts([]);
-    }
-  }, []);
+  const refresh = useCallback(() => loadEmaAlerts().then(setAlerts), []);
 
-  useEffect(() => { refresh(); }, [refresh]);
+  useEffect(() => {
+    loadEmaAlerts().then(setAlerts);
+  }, []);
 
   const create = useCallback(async (alert: NewEmaAlert) => {
     await fetch(apiUrl('/ema-alerts'), {

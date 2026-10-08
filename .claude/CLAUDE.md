@@ -12,7 +12,7 @@ amfxtradingv2/
 ├── infra/       # Scripts del VPS (startup, watchdog); pipelines en .github/
 ├── specs/       # Specs ACTIVAS: specs/NNN-<slug>/{en,es}/
 ├── archive/     # Specs cerradas, por mes de cierre: archive/YYYY-MM/NNN-<slug>/
-├── epics/       # Ideas exploradas con /epic-explore antes de partirlas en specs
+├── epics/       # Ideas exploradas con /epic-explore antes de partirlas en specs (trading-engine/ = diseño del engine, no implementado)
 └── reports/     # Auditorías de código (/amfx-code-audit)
 ```
 
@@ -272,304 +272,47 @@ pending → dot 8px --gold, animación pulse 0.7s infinite
 
 ## Arquitectura del backend (Fase 2 — implementada)
 
+Resumen; el detalle vive en `backend/docs/architecture.md` y los dos documentos no deben contradecirse.
+
 ### Comunicación EA → Backend
+
+Un `PipeReader` + un `FileWatcher` **por broker**, configurados en `brokers.json` (excluido de git, nunca commitear).
 
 | Canal | Uso | Formato |
 |-------|-----|---------|
-| Named Pipe `\\.\pipe\mt4tick_<broker>` | Ticks (100ms) + posiciones en vivo (1s) | JSON por línea, una por mensaje |
-| Archivo `bridge/command.json` | Órdenes backend → EA | JSON con campos: `action`, `symbol`, `lots`, `sl`, `tp`, `price`, `magic`, `id` |
-| Archivos `bridge/*.json` | Estado periódico (30s) | `account.json`, `positions.json`, `history.json`, `candles_SYMBOL_TF.json` |
+| Named Pipe `\.\pipe\mt4tick_<broker>` | Ticks (100 ms), posiciones abiertas (1 s), cuenta (1 s) | Una línea JSON por mensaje: array `[...]` = batch de ticks · `{"type":"positions",...}` · `{"type":"account",...}` |
+| Archivos `bridge/*.json` (el EA los escribe cada 60 s) | Persistencia; el watcher los lee cada 30 s y salta los que no cambian de `mtime`/tamaño | `candles_<SYM>_<TF>.json` → `candles` (solo velas cerradas) · `history.json` → `trades` + `balance_operations` · `account.json` → `balances` (un upsert por broker y día UTC) |
+| Archivo `bridge/command.json` | Órdenes backend → EA | `action`, `symbol`, `lots`, `sl`, `tp`, `price`, `magic`, `id` |
 
-**Backend es SERVER del pipe.** El EA es CLIENT y se conecta al iniciar.
+**El backend es SERVER del pipe**; el EA es CLIENT y se conecta al iniciar. Si el `listen` falla se reintenta con backoff (1 s → 30 s). `positions.json` lo escribe el EA pero nadie lo lee: las posiciones solo viven en memoria (`store/positions`) y se emiten por WS, no se persisten.
 
-**El pipe transporta dos tipos de mensaje**, distinguidos por la forma de la línea JSON:
-- **Array** `[...]` → batch de ticks (cada 100ms).
-- **Objeto** `{"type":"positions","positions":[...]}` → posiciones abiertas en vivo (cada `POSITIONS_EVERY_S` del EA, default 1s).
+### Comandos
 
-`pipe-reader.ts` emite `ticks` o `positions` según el tipo. Las **posiciones por pipe solo se hacen broadcast por WS, NO se escriben en BD** (desacople vista/persistencia). La persistencia de posiciones sigue por el FileWatcher leyendo `positions.json` cada 30s (`syncPositions`). El fichero `positions.json` se escribe a `STATE_EVERY_S` (60s) y ya **no** se usa para broadcast, solo para BD.
+`POST /commands` escribe `command.json` (como `.tmp` + rename) y responde `202 { status: "pending", id }`. Acciones: `buy` · `sell` · `buylimit` · `selllimit` · `buystop` · `sellstop` · `close` · `modify`. El EA responde con `result.json` → `{ "status", "ticket", "id", "message" }`; mientras `pending.json` lleve el mismo `id` la espera se alarga de 10 s a 30 s. Si expira y `command.json` sigue ahí, el backend lo retira y emite `cancelled`; si no, emite `timeout` y un resultado que llegue en los 60 s siguientes se emite con `late: true`. El resultado siempre llega por WS como `command_result`. Con `lotsMode: "risk_pct"` el backend calcula los lotes desde la distancia al SL (`services/sizing.ts`, solo pares forex) y rechaza con 400/503 cuando no puede.
 
-**WebSocket `/ws`** (auth cookie JWT) emite `{ type, broker, ... }`. En `positions`, el `broker` va en el ROOT del mensaje, no por item: el front debe inyectarlo antes de ordenar.
+### WebSocket `/ws`
 
-### Acciones de comando soportadas
+Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
 
-`buy` · `sell` · `buylimit` · `selllimit` · `buystop` · `sellstop` · `close` · `modify`
+### Velas activas y alertas
 
-El EA responde con `bridge/result.json` → `{ "status": "ok", "ticket": 123, "id": "..." }`.
+Las velas activas **no se persisten**: cada tick trae OHLC de todos los TF (`m5_open/high/low`, `h1_time`, …) y el frontend construye la vela en curso; a `candles` solo van las cerradas (`slice(0, -1)`). Las alertas de precio se evalúan en cada tick (cruce del bid con el nivel); las de EMA, al cierre de vela (cambio de `<tf>_time`) cuando las EMAs convergen dentro del umbral. Al dispararse: BD + WS + Web Push.
 
-### Velas activas
+### HTTP y auth
 
-Las velas activas **no se persisten en BD**. El frontend las construye desde los ticks — cada `TickData` ya contiene OHLC de todos los TF (`m5_open/high/low`, etc.) y `bid` como close. Solo velas cerradas van a la tabla `candles` (`slice(0, -1)`).
-
-### Multi-broker
-
-Un `PipeReader` + `FileWatcher` por broker. Config en `brokers.json` (excluido de git, nunca commitear).
+Express con 16 routers (`/auth`, `/commands`, `/trades`, `/positions`, `/balances`, `/settings`, `/symbols`, `/candles`, `/chart-indicators`, `/drawings`, `/alerts`, `/ema-alerts`, `/scanner`, `/setup-levels`, `/push`, `/stats`) más `GET /health` (sin auth, vitalidad por broker). JWT en cookie HttpOnly `token`; `requireAuth` en todo salvo `/auth` y `/health`. Parámetros validados (400), errores no controlados al handler final (500) sin tumbar el proceso.
 
 ### Modelos BD
 
-`Candle` · `Position` · `Trade` · `Balance` (snapshot diario de balance por broker)
+`Candle` · `Trade` · `Balance` (snapshot diario por broker y día UTC) · `BalanceOperation` · `SettingsMirror` · `SettingsDisplay` · `PositionColor` · `User` · `PriceAlert` · `EmaCrossAlert` · `PushSubscription` · `Drawing` · `ChartIndicators`. Migraciones SQL escritas a mano en `backend/prisma/migrations/`; `prisma migrate diff` contra producción debe salir vacío.
+
+### Feature flags y entorno
+
+`FEATURE_PIPE` / `FEATURE_WATCHER` / `FEATURE_ALERTS` / `FEATURE_WS_BROADCAST` se apagan solo con el valor literal `false` (así corre un backend local contra la BD de producción sin tocar los bridges). Variables completas y comentadas en `backend/.env.example`.
 
 ### Deploy backend
 
-Pipeline: push `master` en `backend/**` → GitHub Actions → SCP `deploy.ps1` → SSH VPS → PowerShell.
-El script tolera que el proceso PM2 no exista (`pm2 delete` no falla) y mata cualquier
-huérfano del backend que retenga el puerto 3000 (propio o hijo de pm2 `ProcessContainerFork.js`);
-si el puerto lo ocupa un proceso ajeno, el deploy falla explícitamente.
-
----
-
-## Trading Engine (Fase 2 — en diseño)
-
-Engine que procesa ticks en tiempo real, evalúa estrategias almacenadas en BD y genera órdenes al EA.
-
-### Flujo
-
-```
-tick → candle-tracker → strategy-evaluator → order-executor → bridge/command.json → EA
-```
-
-### Componentes previstos en `backend/src/engine/`
-
-- `candle-tracker.ts` — detecta cierre de vela comparando `m5_time`/`h1_time`/etc. entre ticks
-- `strategy-evaluator.ts` — carga estrategias activas de BD y evalúa su JSON de config
-- `order-executor.ts` — escribe `bridge/command.json` en el bridge path del broker
-- `engine.ts` — orquesta todo
-
-### Modelo BD `Strategy`
-
-Campos: broker, symbol, timeframe, config (JSON), activa/inactiva.
-El campo `config` contiene la estructura completa de la estrategia descrita abajo.
-
----
-
-## Diseño del sistema de estrategias
-
-### Jerarquía
-
-```
-Strategy (config JSON)
-├── forms[]          → Setups (uno o varios)
-│   ├── context      → Parámetros del setup (ej. emaFast, emaSlow, direction)
-│   └── entries[]    → Entries del setup (ECC, EMCC, EMA, EVL, SHL, MHL)
-├── weakConfig       → Condiciones de vela weak
-├── strongConfig     → Condiciones de vela strong
-├── brokerSettings[] → Config por broker (lots, lotsMode, enabled)
-├── engineEnabled    → boolean
-└── engineMode       → "live" | "backtest"
-```
-
----
-
-### Setup — estructura base (`form`)
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `id` | `string` | UUID |
-| `name` | `string` | Nombre descriptivo |
-| `instrument` | `string` | Símbolo (ej. `EURUSD`) |
-| `timeframe` | `string` | TF del setup (ej. `H1`) |
-| `contextType` | `string` | Tipo de setup (ej. `ema_cross`) |
-| `context` | `object` | Parámetros específicos del tipo de setup |
-| `entries` | `Entry[]` | Lista de entries del setup |
-
----
-
-### Setup: EMA Cross (`contextType: "ema_cross"`)
-
-#### Context
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `emaFast` | `number` | Periodo EMA rápida |
-| `emaSlow` | `number` | Periodo EMA lenta |
-| `direction` | `"buy" \| "sell"` | Dirección del cruce |
-| `sequential` | `boolean` | Si requiere setups secuenciales |
-| `minPrevContextCandles` | `number` | Mínimo de velas del setup anterior |
-| `minPrevEmaSpreadPips` | `number \| null` | Spread mínimo de EMAs en setup anterior |
-| `minContextVolPct` | `number \| null` | Filtro de volumen mínimo (%) |
-| `emaFilter` | `object \| null` | Filtro de EMA externo (a definir) |
-
-#### Niveles del setup
-
-| Clave | Nombre completo | Descripción |
-|-------|----------------|-------------|
-| `ECC` | EMA Cross Candle | Precio de cierre de la vela de activación |
-| `EMCC` | (a confirmar) | — |
-| `EMA` | EMA Level | Nivel interpolado del cruce exacto de las EMAs |
-| `EVL` | EMA Valley Level | Mínimo local de la EMA rápida entre el cruce anterior y el actual |
-| `SHL` | Setup High/Low | (a confirmar) |
-| `MHL` | Min/Max Historical Level | Mínimo del setup anterior (alcista) / Máximo (bajista) |
-
-#### Clasificación de velas
-
-| Tipo | Condición (alcista) |
-|------|-------------------|
-| `weak` | Cierra por debajo de las dos EMAs + separación ≥ umbral. Parámetros en `weakConfig` |
-| `strong` | Cierra por encima de las dos EMAs + separación ≥ umbral. Parámetros en `strongConfig` |
-
-**`weakConfig`**
-```json
-{
-  "maxSpreadPips": 10,
-  "useMaxSpread": true,
-  "requireNewLow": true,
-  "enabled": true,
-  "requireContrarySlopes": true,
-  "requireCloseVsSlowEma": true
-}
-```
-
-**`strongConfig`**
-```json
-{
-  "minSpreadPips": 2,
-  "useMinSpread": true,
-  "requireNewHigh": true
-}
-```
-
----
-
-### Entries — estructura común
-
-Todos los tipos de entry comparten estos campos:
-
-| Campo | Tipo | Descripción |
-|-------|------|-------------|
-| `type` | `"ECC"\|"EMCC"\|"EMA"\|"EVL"\|"SHL"\|"MHL"` | Nivel de entrada |
-| `enabled` | `boolean` | Activa/desactiva la entry |
-| `invert` | `boolean` | Invierte la dirección de la operación |
-| `offset` | `number` | Ajuste en pips sobre el nivel |
-| `window` | `number` | Ventana de velas para activación (desde la activación del setup) |
-| `maxDistToEma` | `number \| null` | Filtro: distancia máxima al nivel EMA (pips) |
-| `maxDistToEvl` | `number \| null` | Filtro: distancia máxima al nivel EVL (pips) |
-| `maxDistToShl` | `number \| null` | Filtro: distancia máxima al nivel SHL (pips) |
-| `shlThreshold` | `number` | Umbral para cálculo de SHL |
-| `evlLookback` | `number` | Velas hacia atrás para buscar el EVL |
-| `sl` | `SLConfig` | Config del Stop Loss |
-| `trail` | `TrailConfig` | Config del Trailing |
-| `exit` | `ExitConfig` | Config del Take Profit |
-| `sizing` | `SizingConfig` | Config del tamaño de posición |
-
-#### SL Config
-```json
-{
-  "type": "fixed" | "evl",
-  "pips": number,
-  "minPips": number | null,
-  "maxPips": number | null,
-  "evlOffset": number
-}
-```
-
-#### Trail Config
-```json
-{
-  "type": "none" | "weak" | "riskCut",
-  "offset": number,
-  "distance": number,
-  "weakCount": number,
-  "weakPivotLen": number,
-  "pivotThreshold": number,
-  "toBeEnabled": boolean,
-  "toRR": number | null,
-  "minCandles": number | null,
-  "minProfitPips": number | null,
-  "activateCandles": number | null,
-  "activateRatio": number | null,
-  "activateMode": "and" | "or",
-  "riskReduction": { "enabled": boolean, "pct": number, "candles": number },
-  "updateEvery": number
-}
-```
-
-#### Exit Config
-```json
-{
-  "type": "none" | "fixed" | "rr",
-  "pips": number | null,
-  "rr": number | null,
-  "reverseOffset": number
-}
-```
-
-#### Sizing Config
-```json
-{
-  "sizeMode": "lots" | "risk_pct",
-  "lots": number,
-  "riskPercent": number,
-  "compounding": boolean,
-  "sizingFilter": {
-    "enabled": boolean,
-    "emaFast": number,
-    "emaSlow": number,
-    "timeframe": string,
-    "multiplier": number
-  }
-}
-```
-
----
-
----
-
-### Modos del evaluador de estrategias
-
-#### Modo backtest
-- Recibe un intervalo histórico de velas (de BD)
-- Evalúa la estrategia sobre todo el histórico y genera todas las operaciones encontradas
-- Persiste los resultados en BD bajo un `BacktestRun`
-- **Caché:** si la estrategia no ha cambiado sus parámetros desde el último run, reutiliza los resultados sin reevaluar
-- El frontend consume estos resultados para visualizar setups y trades del backtest
-
-**Jerarquía en BD:**
-```
-Strategy
-└── BacktestRun          — cada evaluación completa de la estrategia
-    └── BacktestSetup    — cada setup detectado en el run (con sus niveles y características)
-        └── BacktestTrade — cada operación encontrada dentro del setup
-```
-
-**`BacktestRun`:** strategyId, broker, symbol, timeframe, fechaInicio, fechaFin, configHash (para detectar cambios de parámetros), createdAt
-
-**`BacktestSetup`:** runId, dirección (buy/sell), vela de activación, precio de activación, vela de cierre, precio de cierre, niveles JSON (ECC, EMA, EVL, MHL...), candleCount
-
-**`BacktestTrade`:** setupId, entryType (ECC/EMA/EVL...), precio entrada, SL, TP, vela de entrada, vela de cierre, resultado (pips, RR), status (win/loss/breakeven/open)
-
-#### Modo realtime
-- A definir en detalle — analiza y toma decisiones en tiempo real al cierre de cada vela
-- Decide si ejecutar una operación o no según las condiciones de la estrategia
-
----
-
-### Broker Settings (por estrategia)
-
-```json
-"brokerSettings": [
-  { "broker": "ftmo", "enabled": boolean, "lotsMode": "fixed" | "auto", "lots": number }
-]
-```
-
-Permite activar/desactivar la estrategia por broker y sobreescribir el sizing.
-
-### Magic number
-
-Constante fija del engine. Solo gestiona posiciones abiertas por él (filtradas por magic number). Las posiciones abiertas manualmente o por el EA autónomo no son gestionadas por el engine (no las cierra ni modifica), pero siguen activas en MT4 y se sincronizan en BD via `positions.json`.
-
----
-
-## Pendiente backend (Fase 2)
-
-### Engine — evaluador
-
-| Item | Estado | Notas |
-|------|--------|-------|
-| Trailing `riskCut` | ⏳ pendiente | A definir con el usuario |
-| Nivel `EMCC` | ⏳ pendiente | Definición "a confirmar" |
-| Nivel `SHL` | ⏳ pendiente | Definición "a confirmar" |
-| Filtros de entry (`maxDistToEma`, `maxDistToEvl`, `maxDistToShl`) | ⏳ pendiente | No implementados en entry-evaluator |
-| Modo realtime del evaluador | ⏳ pendiente | A definir en detalle |
-
+Pipeline: push `master` en `backend/**` → GitHub Actions (checks) → SCP `deploy.ps1` → SSH VPS → PowerShell: `git pull` → `pm2 delete` → liberar el puerto 3000 (mata huérfanos propios; si el puerto lo ocupa un proceso ajeno, falla explícitamente) → `npm install` → `prisma generate` → `prisma migrate deploy` → build en `dist.next` → swap → `pm2 start` → `/health`. Si algo falla tras el build se restaura el `dist` anterior.
 
 ---
 

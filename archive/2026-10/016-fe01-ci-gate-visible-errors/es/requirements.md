@@ -1,6 +1,6 @@
 # 016 · FE-01 — Gate de CI y errores visibles
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [auditoría de frontend 2026-10-08](../../../reports/2026-10-08-frontend.md), mejora 1 (diagnósticos A, B)
 
 ## Contexto

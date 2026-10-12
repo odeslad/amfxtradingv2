@@ -227,7 +227,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const symbolRef = useRef<string>(symbol);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
-  const isLoadingMoreRef = useRef(false);
   const trendlineManagerRef = useRef<DrawingManager | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
@@ -611,11 +610,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       drawRollovers();
-      if (!range || isLoadingMoreRef.current) return;
-      if (range.from <= 30 && onLoadMoreRef.current) {
-        isLoadingMoreRef.current = true;
-        onLoadMoreRef.current();
-      }
+      if (!range) return;
+      if (range.from <= 30) onLoadMoreRef.current?.();
     });
 
     const ro = new ResizeObserver(() => {
@@ -711,7 +707,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
           });
         }
       }
-      isLoadingMoreRef.current = false;
     } else if (chartRef.current && containerRef.current) {
       seriesRef.current.priceScale().applyOptions({ autoScale: true });
       const barSpacing = 6;

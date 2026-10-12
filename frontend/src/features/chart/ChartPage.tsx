@@ -104,6 +104,7 @@ export function ChartPage() {
   const [hasMore, setHasMore] = useState(true);
   const [chartLoading, setChartLoading] = useState(() => Boolean(broker && symbol));
   const isLoadingMoreRef = useRef(false);
+  const loadMoreAcRef = useRef<AbortController | null>(null);
   const hasMoreRef = useRef(true);
   const [emas, setEmas] = useState<Ema[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -369,7 +370,7 @@ export function ChartPage() {
         requestAnimationFrame(() => requestAnimationFrame(() => setChartLoading(false)));
       })
       .catch(err => { if (!isAbortError(err)) setChartLoading(false); });
-    return () => ac.abort();
+    return () => { ac.abort(); loadMoreAcRef.current?.abort(); };
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
@@ -404,7 +405,9 @@ export function ChartPage() {
     const oldest = candlesRef.current[0]?.time;
     if (!oldest) return;
     isLoadingMoreRef.current = true;
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include' })
+    const ac = new AbortController();
+    loadMoreAcRef.current = ac;
+    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include', signal: ac.signal })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
         if (data.length === 0) { hasMoreRef.current = false; setHasMore(false); return; }

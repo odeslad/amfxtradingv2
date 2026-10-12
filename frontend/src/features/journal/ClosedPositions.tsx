@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiUrl, isAbortError } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { dateRangeBounds } from './utils/dateRange';
@@ -34,14 +34,16 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     const query = params.toString();
-    fetch(apiUrl(`/trades${query ? `?${query}` : ''}`), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl(`/trades${query ? `?${query}` : ''}`), { credentials: 'include', signal: ac.signal })
       .then(res => {
         if (!res.ok) throw new Error('Failed to load trades');
         return res.json() as Promise<Trade[]>;
       })
       .then(setTrades)
-      .catch(err => setError(err.message))
-      .finally(() => setLoading(false));
+      .catch((err: Error) => { if (!isAbortError(err)) setError(err.message); })
+      .finally(() => { if (!ac.signal.aborted) setLoading(false); });
+    return () => ac.abort();
   }, [from, to]);
 
   useEffect(() => {

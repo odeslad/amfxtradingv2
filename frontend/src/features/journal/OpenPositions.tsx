@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
 import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
@@ -34,6 +34,9 @@ interface OpenPositionsProps {
 
 function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
+function byBrokerThenTime(a: Position, b: Position) {
+  return (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime);
+}
 
 export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
   const navigate = useNavigate();
@@ -54,26 +57,29 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
     });
   };
 
+  // Brokers already refreshed by the WebSocket; the REST snapshot must not overwrite them.
+  const wsBrokersRef = useRef(new Set<string>());
+
   useEffect(() => {
-    fetch(apiUrl('/positions/live'), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl('/positions/live'), { credentials: 'include', signal: ac.signal })
       .then(res => res.ok ? res.json() as Promise<LiveBrokerPositions[]> : Promise.resolve([]))
       .then((brokers) => {
         const colorMap = new Map<string, string>();
-        const all = brokers.flatMap(({ broker, currency, brokerOffset, positions: ps }) =>
-          ps.map(p => {
-            const pos = { ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset };
-            if (pos.color) colorMap.set(posKey(pos.broker!, pos.ticket), pos.color);
-            return pos;
-          })
-        );
-        if (colorMap.size > 0) setColors(colorMap);
-        if (all.length > 0) {
-          setPositions(all.sort((a, b) =>
-            (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
-          ));
-        }
+        const fresh = brokers
+          .filter(({ broker }) => !wsBrokersRef.current.has(broker))
+          .flatMap(({ broker, currency, brokerOffset, positions: ps }) =>
+            ps.map(p => {
+              const pos = { ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset };
+              if (pos.color) colorMap.set(posKey(pos.broker!, pos.ticket), pos.color);
+              return pos;
+            })
+          );
+        if (colorMap.size > 0) setColors(prev => new Map([...prev, ...colorMap]));
+        if (fresh.length > 0) setPositions(prev => [...prev, ...fresh].sort(byBrokerThenTime));
       })
       .catch(() => {});
+    return () => ac.abort();
   }, []);
 
   useEffect(() => {
@@ -93,11 +99,10 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
       currency: p.currency ?? msg.currency,
       brokerOffset: p.brokerOffset ?? msg.brokerOffset,
     }));
+    wsBrokersRef.current.add(msg.broker);
     setPositions(prev => {
       const withoutBroker = prev.filter(p => p.broker !== msg.broker);
-      return [...withoutBroker, ...incoming].sort((a, b) =>
-        (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime)
-      );
+      return [...withoutBroker, ...incoming].sort(byBrokerThenTime);
     });
     // Clean up colors for closed positions of this broker
     const activeTickets = new Set(incoming.map(p => posKey(p.broker!, p.ticket)));

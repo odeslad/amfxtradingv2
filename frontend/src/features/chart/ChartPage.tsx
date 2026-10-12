@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiUrl, errorFrom } from '../../lib/api';
+import { apiUrl, errorFrom, isAbortError } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import { useWs } from '../../lib/useWs';
 import { useAuth } from '../auth/useAuth';
@@ -214,14 +214,15 @@ export function ChartPage() {
 
   useEffect(() => {
     if (!broker) return;
-    fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include', signal: ac.signal })
       .then(r => r.json() as Promise<string[]>)
       .then(list => {
         setSymbols(list);
-        if (!initSymbol) setSymbol(list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
+        setSymbol(prev => list.includes(prev) ? prev : list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
       })
       .catch(() => {});
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => ac.abort();
   }, [broker]);
 
   // Ctrl + Arrows cycle the chart context in default list order:
@@ -331,7 +332,8 @@ export function ChartPage() {
 
   useEffect(() => {
     if (positionsMode === 'none' || !broker) return;
-    fetch(apiUrl('/positions/live'), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl('/positions/live'), { credentials: 'include', signal: ac.signal })
       .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]> : Promise.resolve([]))
       .then(brokers => {
         const entry = brokers.find(b => b.broker === broker);
@@ -343,12 +345,14 @@ export function ChartPage() {
         })));
       })
       .catch(() => {});
+    return () => ac.abort();
   }, [positionsMode, broker]);
 
   useEffect(() => {
     if (!broker || !symbol) return;
     hasMoreRef.current = true;
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include', signal: ac.signal })
       .then(r => r.json() as Promise<RawCandle[]>)
       .then(data => {
         const parsed = data.map(c => ({
@@ -364,16 +368,19 @@ export function ChartPage() {
         // we reveal it, avoiding the brief flash of stale/flat candles
         requestAnimationFrame(() => requestAnimationFrame(() => setChartLoading(false)));
       })
-      .catch(() => setChartLoading(false));
+      .catch(err => { if (!isAbortError(err)) setChartLoading(false); });
+    return () => ac.abort();
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
     if (!broker || !symbol) return;
     const params = new URLSearchParams({ broker, symbol, timeframe });
-    fetch(apiUrl(`/drawings?${params.toString()}`), { credentials: 'include' })
+    const ac = new AbortController();
+    fetch(apiUrl(`/drawings?${params.toString()}`), { credentials: 'include', signal: ac.signal })
       .then(r => r.ok ? r.json() as Promise<{ items: PersistedDrawing[] }> : Promise.resolve({ items: [] }))
       .then(data => setDrawings(data.items ?? []))
-      .catch(() => setDrawings([]));
+      .catch(err => { if (!isAbortError(err)) setDrawings([]); });
+    return () => ac.abort();
   }, [broker, symbol, timeframe]);
 
   const saveDrawings = useCallback((items: PersistedDrawing[]) => {

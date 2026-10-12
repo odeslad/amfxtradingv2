@@ -13,3 +13,7 @@ export async function errorFrom(res: Response): Promise<string> {
 export function errorMessage(err: unknown, fallback = 'Network error'): string {
   return err instanceof Error && err.message ? err.message : fallback;
 }
+
+export function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError';
+}

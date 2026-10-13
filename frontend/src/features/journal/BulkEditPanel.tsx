@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
-import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { errorMessage } from '../../lib/api';
+import { modifyCommand, sendCommands } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import styles from './BulkEditPanel.module.css';
 
@@ -9,8 +10,6 @@ interface BulkEditPanelProps {
   positions: Position[];
   onClose: () => void;
 }
-
-function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
 export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) {
   const [sl, setSl] = useState('');
@@ -31,27 +30,9 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
     if (!sl && !tp) return;
     setSubmitting(true);
     try {
-      const results = await Promise.all(positions.map(p =>
-        fetch(apiUrl('/commands'), {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: generateId(),
-            action: 'modify',
-            broker: p.broker,
-            symbol: p.symbol,
-            ticket: p.ticket,
-            lots: p.lots,
-            sl: sl ? parseFloat(sl) : p.sl,
-            tp: tp ? parseFloat(tp) : p.tp,
-          }),
-        })
+      await sendCommands(positions.map(p =>
+        modifyCommand(p, sl ? parseFloat(sl) : p.sl, tp ? parseFloat(tp) : p.tp)
       ));
-      const failed = results.filter(r => !r.ok);
-      if (failed.length > 0) {
-        throw new Error(`${failed.length} of ${results.length} commands rejected: ${await errorFrom(failed[0])}`);
-      }
       addToast(`Modify sent for ${positions.length} position${positions.length > 1 ? 's' : ''}`, 'info');
       onClose();
     } catch (err) {

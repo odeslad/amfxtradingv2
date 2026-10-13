@@ -7,7 +7,8 @@ import { FiltersPanel, type FilterValues, type FilterOptions } from './FiltersPa
 import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
-import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { errorMessage } from '../../lib/api';
+import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
 import { TYPE_LABEL, fmt } from './utils/position';
@@ -20,8 +21,6 @@ const DEFAULT_FILTERS: FilterValues = {
   dateRange: '', dateFrom: '', dateTo: '',
 };
 const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [], colors: [] };
-
-function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -79,27 +78,7 @@ export function JournalPage() {
     if (!bulk) return;
     setBulkClosing(true);
     try {
-      const results = await Promise.all(bulk.positions.map(p =>
-        fetch(apiUrl('/commands'), {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id: generateId(),
-            action: 'close',
-            broker: p.broker,
-            symbol: p.symbol,
-            lots: p.lots,
-            ticket: p.ticket,
-            sl: 0,
-            tp: 0,
-          }),
-        })
-      ));
-      const failed = results.filter(r => !r.ok);
-      if (failed.length > 0) {
-        throw new Error(`${failed.length} of ${results.length} commands rejected: ${await errorFrom(failed[0])}`);
-      }
+      await sendCommands(bulk.positions.map(closeCommand));
       addToast(`Close sent for ${bulk.positions.length} positions`, 'info');
     } catch (err) {
       addToast(errorMessage(err, 'Failed to send close commands'), 'error');

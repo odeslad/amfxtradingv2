@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
-import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { errorMessage } from '../../lib/api';
+import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import styles from './BulkEditPanel.module.css';
 
@@ -9,8 +10,6 @@ interface ClosePositionPanelProps {
   position: Position | null;
   onClose: () => void;
 }
-
-function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 
 // Confirmation panel to close a single position from the chart. Reuses the
 // BulkEditPanel styles so it matches the edit-group panel.
@@ -29,20 +28,7 @@ export function ClosePositionPanel({ open, position, onClose }: ClosePositionPan
     if (!position) return;
     setSubmitting(true);
     try {
-      const res = await fetch(apiUrl('/commands'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: generateId(),
-          action: 'close',
-          broker: position.broker,
-          symbol: position.symbol,
-          ticket: position.ticket,
-          lots: position.lots,
-        }),
-      });
-      if (!res.ok) throw new Error(await errorFrom(res));
+      await sendCommand(closeCommand(position));
       addToast(`Close sent for ${label}`, 'info');
       onClose();
     } catch (err) {

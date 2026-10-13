@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { apiUrl } from '../../lib/api';
+import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
 import styles from './NewTradePanel.module.css';
@@ -21,7 +22,7 @@ interface MirrorBroker {
   lots: number;
 }
 
-const ACTION_OPTIONS = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop'];
+const ACTION_OPTIONS: CommandAction[] = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop'];
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DEFAULT_EMA_FAST = 24;
 const DEFAULT_EMA_SLOW = 48;
@@ -35,15 +36,12 @@ interface SetupLevels {
   pipSize: number;
 }
 
-function generateId() {
-  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
-}
 
 export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
   const [mode, setMode] = useState<Mode>('manual');
   const [mirrorBrokers, setMirrorBrokers] = useState<MirrorBroker[]>([]);
   const [brokers, setBrokers] = useState<string[]>([]);
-  const [action, setAction] = useState('buy');
+  const [action, setAction] = useState<CommandAction>('buy');
   const [broker, setBroker] = useState('');
   const [symbol, setSymbol] = useState('');
   const [lots, setLots] = useState('');
@@ -207,19 +205,6 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
     if (!open) pendingIds.current.clear();
   }, [open]);
 
-  const sendCommand = async (payload: Record<string, unknown>) => {
-    const res = await fetch(apiUrl('/commands'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({})) as { error?: string };
-      throw new Error(body.error ?? `Error ${res.status}`);
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     resetFeedback();
@@ -242,21 +227,11 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
     }
 
     try {
-      if (mode === 'manual') {
-        const id = generateId();
-        pendingIds.current.add(id);
-        await sendCommand({ ...base, id, broker, lots: parseFloat(lots), lotsMode });
-      } else {
-        const commands = activeMirrorBrokers.map(m => ({
-          ...base,
-          id: generateId(),
-          broker: m.broker,
-          lots: m.lots,
-          lotsMode: m.lotsMode,
-        }));
-        commands.forEach(c => pendingIds.current.add(c.id));
-        await Promise.all(commands.map(sendCommand));
-      }
+      const commands: Command[] = mode === 'manual'
+        ? [{ ...base, id: newCommandId(), broker, lots: parseFloat(lots), lotsMode }]
+        : activeMirrorBrokers.map(m => ({ ...base, id: newCommandId(), broker: m.broker, lots: m.lots, lotsMode: m.lotsMode }));
+      commands.forEach(c => pendingIds.current.add(c.id));
+      await Promise.all(commands.map(sendCommand));
     } catch (err) {
       setSubmitting(false);
       addToast(err instanceof Error ? err.message : 'Failed to send order', 'error');

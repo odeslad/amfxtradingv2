@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
-import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { apiUrl, errorMessage } from '../../lib/api';
+import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL, isPending, isBuySide } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
@@ -32,7 +33,6 @@ interface OpenPositionsProps {
   onBulkChange: (group: BulkGroup | null) => void;
 }
 
-function generateId() { return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`; }
 function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
 function byBrokerThenTime(a: Position, b: Position) {
   return (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime);
@@ -134,22 +134,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
     if (!confirmClose) return;
     setClosing(true);
     try {
-      const res = await fetch(apiUrl('/commands'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: generateId(),
-          action: 'close',
-          broker: confirmClose.broker,
-          symbol: confirmClose.symbol,
-          lots: confirmClose.lots,
-          ticket: confirmClose.ticket,
-          sl: 0,
-          tp: 0,
-        }),
-      });
-      if (!res.ok) throw new Error(await errorFrom(res));
+      await sendCommand(closeCommand(confirmClose));
     } catch (err) {
       addToast(errorMessage(err, 'Failed to send close command'), 'error');
     } finally {

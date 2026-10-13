@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiUrl, errorFrom, isAbortError } from '../../lib/api';
+import { apiUrl, errorFrom, errorMessage, isAbortError } from '../../lib/api';
+import { modifyCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import { useWs } from '../../lib/useWs';
 import { useAuth } from '../auth/useAuth';
@@ -446,23 +447,8 @@ export function ChartPage() {
   const handleModifyPosition = useCallback((ticket: number, sl: number, tp: number) => {
     const pos = positions.find(p => p.ticket === ticket);
     if (!pos) return;
-    fetch(apiUrl('/commands'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-        action: 'modify',
-        broker: pos.broker,
-        symbol: pos.symbol,
-        ticket: pos.ticket,
-        lots: pos.lots,
-        sl,
-        tp,
-      }),
-    })
-      .then(async res => { if (!res.ok) addToast(await errorFrom(res), 'error'); })
-      .catch(() => addToast('Network error sending modify', 'error'));
+    sendCommand(modifyCommand(pos, sl, tp))
+      .catch(err => addToast(errorMessage(err, 'Network error sending modify'), 'error'));
   }, [positions]);
 
   return (

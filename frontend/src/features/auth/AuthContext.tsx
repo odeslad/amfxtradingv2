@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiFetch, apiSend, setUnauthorizedHandler } from '../../lib/api';
 import { AuthContext, type User } from './context';
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -7,31 +7,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(apiUrl('/auth/me'), { credentials: 'include' })
-      .then(res => (res.ok ? res.json() : null))
+    setUnauthorizedHandler(() => setUser(null));
+    return () => setUnauthorizedHandler(null);
+  }, []);
+
+  useEffect(() => {
+    apiFetch<User | null>('/auth/me')
       .then(data => setUser(data ?? null))
       .catch(() => setUser(null))
       .finally(() => setLoading(false));
   }, []);
 
   const login = async (email: string, password: string) => {
-    const res = await fetch(apiUrl('/auth/login'), {
-      method: 'POST',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
-    });
-    if (!res.ok) {
-      const { message } = await res.json().catch(() => ({ message: 'Login failed' }));
-      throw new Error(message);
-    }
-    const data = await res.json();
+    const data = await apiSend<{ user: User }>('/auth/login', 'POST', { email, password });
     setUser(data.user);
   };
 
   const logout = async () => {
     try {
-      await fetch(apiUrl('/auth/logout'), { method: 'POST', credentials: 'include' });
+      await apiSend('/auth/logout', 'POST');
     } finally {
       setUser(null);
     }

@@ -1,6 +1,6 @@
 # 018 · FE-03 — Shared network layer
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [frontend audit 2026-10-08](../../../reports/2026-10-08-frontend.md), improvement 3 (diagnoses B, E)
 
 ## Context

@@ -1,6 +1,6 @@
 # 018 · FE-03 — Capa de red compartida
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [auditoría frontend 2026-10-08](../../../reports/2026-10-08-frontend.md), mejora 3 (diagnósticos B, E)
 
 ## Contexto

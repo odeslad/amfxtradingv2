@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiUrl } from './api';
+import { apiFetch } from './api';
 
 export interface BuildInfo {
   frontend: number;
@@ -18,8 +18,7 @@ export function useBuildInfo(): BuildInfo {
 
   useEffect(() => {
     let cancelled = false;
-    fetch(apiUrl('/version'))
-      .then(res => (res.ok ? (res.json() as Promise<VersionResponse>) : null))
+    apiFetch<VersionResponse>('/version')
       .then(data => { if (!cancelled && data) setRemote(data); })
       .catch(() => {});
     return () => { cancelled = true; };

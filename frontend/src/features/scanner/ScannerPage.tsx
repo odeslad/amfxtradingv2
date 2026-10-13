@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiUrl } from '../../lib/api';
+import { apiFetch } from '../../lib/api';
 import { subscribe } from '../../lib/ws';
 import { useScanner, type ScannerRow, type ScannerCross } from '../../lib/useScanner';
 import styles from './ScannerPage.module.css';
@@ -193,8 +193,7 @@ export function ScannerPage() {
   };
 
   useEffect(() => {
-    fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ broker: string }[]>)
+    apiFetch<{ broker: string }[]>('/balances')
       .then(data => {
         const list = data.map(b => b.broker);
         setBrokers(list);

@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { apiUrl, isAbortError } from './api';
+import { apiFetch, isAbortError } from './api';
 
 export interface ScannerCross {
   direction: 'buy' | 'sell';
@@ -52,11 +52,10 @@ export function useScanner() {
     acRef.current = ac;
     setLoading(true);
     try {
-      const url = apiUrl(
+      const next = await apiFetch<ScannerResult>(
         `/scanner?broker=${encodeURIComponent(broker)}&tf=${timeframe}&emaFast=${emaFast}&emaSlow=${emaSlow}`,
+        { signal: ac.signal },
       );
-      const res = await fetch(url, { credentials: 'include', signal: ac.signal });
-      const next = res.ok ? await res.json() as ScannerResult : EMPTY_RESULT;
       if (!ac.signal.aborted) setResult(next);
     } catch (err) {
       if (!isAbortError(err)) setResult(EMPTY_RESULT);

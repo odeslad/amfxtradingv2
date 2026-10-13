@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { apiUrl, errorFrom } from '../../lib/api';
+import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import type { PnlMode } from '../journal/utils/position';
 import type { TrendlineStyle } from '../chart/DrawingTools';
@@ -31,8 +31,8 @@ export function SettingsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json()) as Promise<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle; trendlineWidth: number } }>,
-      fetch(apiUrl('/balances'), { credentials: 'include' }).then(r => r.json()) as Promise<Balance[]>,
+      apiFetch<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle; trendlineWidth: number } }>('/settings'),
+      apiFetch<Balance[]>('/balances'),
     ]).then(([settings, balances]) => {
       const existing = new Map(settings.mirror.map(m => [m.broker, m]));
       const merged = balances.map(b => existing.get(b.broker) ?? {
@@ -57,16 +57,10 @@ export function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const res = await fetch(apiUrl('/settings'), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mirror, display: { pnlMode, trendlineColor, trendlineStyle, trendlineWidth } }),
-      });
-      if (!res.ok) { addToast(await errorFrom(res), 'error'); return; }
+      await apiSend('/settings', 'PUT', { mirror, display: { pnlMode, trendlineColor, trendlineStyle, trendlineWidth } });
       setSaved(true);
-    } catch {
-      addToast('Network error saving settings', 'error');
+    } catch (err) {
+      addToast(errorMessage(err, 'Network error saving settings'), 'error');
     } finally {
       setSaving(false);
     }

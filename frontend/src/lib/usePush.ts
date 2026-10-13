@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { apiUrl } from './api';
+import { apiFetch, apiSend } from './api';
 
 // Manages the Web Push subscription lifecycle for the current browser/PWA:
 // registers the service worker, requests notification permission, subscribes
@@ -58,8 +58,7 @@ export function usePush() {
         return false;
       }
 
-      const { publicKey } = await fetch(apiUrl('/push/vapid'), { credentials: 'include' })
-        .then(r => r.json() as Promise<{ publicKey: string }>);
+      const { publicKey } = await apiFetch<{ publicKey: string }>('/push/vapid');
       if (!publicKey) return false;
 
       const sub = await reg.pushManager.subscribe({
@@ -67,12 +66,7 @@ export function usePush() {
         applicationServerKey: urlBase64ToUint8Array(publicKey),
       });
 
-      await fetch(apiUrl('/push/subscribe'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(sub.toJSON()),
-      });
+      await apiSend('/push/subscribe', 'POST', sub.toJSON());
 
       setStatus('subscribed');
       return true;
@@ -89,12 +83,7 @@ export function usePush() {
       const reg = await navigator.serviceWorker.ready;
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
-        await fetch(apiUrl('/push/unsubscribe'), {
-          method: 'POST',
-          credentials: 'include',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ endpoint: sub.endpoint }),
-        }).catch(() => {});
+        await apiSend('/push/unsubscribe', 'POST', { endpoint: sub.endpoint }).catch(() => {});
         await sub.unsubscribe();
       }
       setStatus('default');

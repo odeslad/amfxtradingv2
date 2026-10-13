@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiFetch, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { dateRangeBounds } from '../journal/utils/dateRange';
 import { fmt, fmtPnl } from '../journal/utils/position';
@@ -30,13 +30,9 @@ export function StatsPage() {
   const [result, setResult] = useState<StatsResult | null>(null);
 
   useEffect(() => {
-    fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load brokers');
-        return res.json() as Promise<{ broker: string }[]>;
-      })
+    apiFetch<{ broker: string }[]>('/balances')
       .then(rows => setBrokers([...new Set(rows.map(r => r.broker))].sort()))
-      .catch(err => setBrokersError(err.message));
+      .catch(err => setBrokersError(errorMessage(err, 'Failed to load brokers')));
   }, []);
 
   const broker = brokers.includes(filters.broker) ? filters.broker : (brokers[0] ?? '');
@@ -49,13 +45,9 @@ export function StatsPage() {
     const params = new URLSearchParams({ broker });
     if (from) params.set('from', from);
     if (to) params.set('to', to);
-    fetch(apiUrl(`/stats?${params}`), { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load stats');
-        return res.json() as Promise<BrokerStats>;
-      })
+    apiFetch<BrokerStats>(`/stats?${params}`)
       .then(stats => { if (!cancelled) setResult({ key: requestKey, stats }); })
-      .catch((err: Error) => { if (!cancelled) setResult({ key: requestKey, error: err.message }); });
+      .catch((err: unknown) => { if (!cancelled) setResult({ key: requestKey, error: errorMessage(err, 'Failed to load stats') }); });
     return () => { cancelled = true; };
   }, [broker, from, to, requestKey]);
 

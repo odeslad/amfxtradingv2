@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { apiUrl } from './api';
+import { apiFetch } from './api';
 
 // Latest account balance per broker, keyed by broker name. Used by the '% Net'
 // P&L mode to express P&L as a percentage of the account.
@@ -9,8 +9,7 @@ export function useBalances(): BalancesByBroker {
   const [balances, setBalances] = useState<BalancesByBroker>({});
 
   useEffect(() => {
-    fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(res => res.ok ? res.json() as Promise<{ broker: string; balance: number }[]> : [])
+    apiFetch<{ broker: string; balance: number }[]>('/balances')
       .then(data => setBalances(Object.fromEntries(data.map(b => [b.broker, b.balance]))))
       .catch(() => {});
   }, []);

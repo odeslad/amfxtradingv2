@@ -1,6 +1,6 @@
 # 017 · FE-02 — Cancelación de respuestas obsoletas
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [auditoría frontend 2026-10-08](../../../reports/2026-10-08-frontend.md), mejora 2 (diagnóstico C)
 
 ## Contexto

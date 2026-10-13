@@ -1,6 +1,6 @@
 # 017 · FE-02 — Stale response cancellation
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [frontend audit 2026-10-08](../../../reports/2026-10-08-frontend.md), improvement 2 (diagnosis C)
 
 ## Context

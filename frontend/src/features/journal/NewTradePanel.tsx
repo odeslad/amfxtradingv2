@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { apiUrl } from '../../lib/api';
+import { apiFetch } from '../../lib/api';
 import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
@@ -82,8 +82,8 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   useEffect(() => {
     if (!open) return;
     Promise.all([
-      fetch(apiUrl('/settings'), { credentials: 'include' }).then(r => r.json() as Promise<{ mirror: MirrorBroker[] }>),
-      fetch(apiUrl('/balances'), { credentials: 'include' }).then(r => r.json() as Promise<{ broker: string }[]>),
+      apiFetch<{ mirror: MirrorBroker[] }>('/settings'),
+      apiFetch<{ broker: string }[]>('/balances'),
     ]).then(([settings, balances]) => {
       setMirrorBrokers(settings.mirror ?? []);
       setBrokers(balances.map(b => b.broker));
@@ -131,8 +131,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   useEffect(() => {
     if (mode === 'manual') {
       if (!broker) return;
-      fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include' })
-        .then(r => r.json() as Promise<string[]>)
+      apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(broker)}`)
         .then(list => {
           setSymbols(list);
           // Keep the current symbol if still available, else use the chart's.
@@ -148,10 +147,7 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
       const mirrorNames = activeMirrorKey ? activeMirrorKey.split('|') : [];
       if (mirrorNames.length === 0) return;
       Promise.all(
-        mirrorNames.map(name =>
-          fetch(apiUrl(`/symbols?broker=${encodeURIComponent(name)}`), { credentials: 'include' })
-            .then(r => r.json() as Promise<string[]>)
-        )
+        mirrorNames.map(name => apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(name)}`))
       ).then(results => {
         const [first, ...rest] = results;
         const common = first.filter(s => rest.every(r => r.includes(s)));
@@ -177,12 +173,10 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
   useEffect(() => {
     if (!open || mode !== 'manual' || !broker || !symbol) return;
     let cancelled = false;
-    const url = apiUrl(
+    apiFetch<{ setup: SetupLevels | null }>(
       `/setup-levels?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}` +
       `&tf=${timeframe}&emaFast=${DEFAULT_EMA_FAST}&emaSlow=${DEFAULT_EMA_SLOW}`,
-    );
-    fetch(url, { credentials: 'include' })
-      .then(r => r.json() as Promise<{ setup: SetupLevels | null }>)
+    )
       .then(data => { if (!cancelled) setSetup(data.setup); })
       .catch(() => { if (!cancelled) setSetup(null); });
     return () => { cancelled = true; };

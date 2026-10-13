@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiUrl, isAbortError } from '../../lib/api';
+import { apiFetch, errorMessage, isAbortError } from '../../lib/api';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { dateRangeBounds } from './utils/dateRange';
@@ -35,13 +35,9 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
     if (to) params.set('to', to);
     const query = params.toString();
     const ac = new AbortController();
-    fetch(apiUrl(`/trades${query ? `?${query}` : ''}`), { credentials: 'include', signal: ac.signal })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load trades');
-        return res.json() as Promise<Trade[]>;
-      })
+    apiFetch<Trade[]>(`/trades${query ? `?${query}` : ''}`, { signal: ac.signal })
       .then(setTrades)
-      .catch((err: Error) => { if (!isAbortError(err)) setError(err.message); })
+      .catch((err: unknown) => { if (!isAbortError(err)) setError(errorMessage(err, 'Failed to load trades')); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
   }, [from, to]);

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { apiUrl, errorFrom, errorMessage, isAbortError } from '../../lib/api';
+import { apiFetch, apiSend, errorMessage, isAbortError } from '../../lib/api';
 import { modifyCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import { useWs } from '../../lib/useWs';
@@ -152,15 +152,13 @@ export function ChartPage() {
   }, [isFullscreen, nativeFullscreen]);
 
   useEffect(() => {
-    fetch(apiUrl('/chart-indicators'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ emas: Ema[] }>)
+    apiFetch<{ emas: Ema[] }>('/chart-indicators')
       .then(data => setEmas(data.emas ?? []))
       .catch(() => {});
   }, []);
 
   useEffect(() => {
-    fetch(apiUrl('/settings'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number } }>)
+    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number } }>('/settings')
       .then(data => {
         const color = data.display?.trendlineColor;
         const style = data.display?.trendlineStyle;
@@ -178,15 +176,9 @@ export function ChartPage() {
 
   const saveEmas = useCallback(async () => {
     try {
-      const res = await fetch(apiUrl('/chart-indicators'), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ emas: emasRef.current }),
-      });
-      if (!res.ok) addToast(await errorFrom(res), 'error');
-    } catch {
-      addToast('Network error saving indicators', 'error');
+      await apiSend('/chart-indicators', 'PUT', { emas: emasRef.current });
+    } catch (err) {
+      addToast(errorMessage(err, 'Network error saving indicators'), 'error');
     }
   }, []);
 
@@ -194,8 +186,7 @@ export function ChartPage() {
   const { pnlMode } = useDisplaySettings();
 
   useEffect(() => {
-    fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(r => r.json() as Promise<{ broker: string; balance: number }[]>)
+    apiFetch<{ broker: string; balance: number }[]>('/balances')
       .then(data => {
         const list = data.map(b => b.broker);
         setBrokers(list);
@@ -217,8 +208,7 @@ export function ChartPage() {
   useEffect(() => {
     if (!broker) return;
     const ac = new AbortController();
-    fetch(apiUrl(`/symbols?broker=${encodeURIComponent(broker)}`), { credentials: 'include', signal: ac.signal })
-      .then(r => r.json() as Promise<string[]>)
+    apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(broker)}`, { signal: ac.signal })
       .then(list => {
         setSymbols(list);
         setSymbol(prev => list.includes(prev) ? prev : list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
@@ -335,8 +325,7 @@ export function ChartPage() {
   useEffect(() => {
     if (positionsMode === 'none' || !broker) return;
     const ac = new AbortController();
-    fetch(apiUrl('/positions/live'), { credentials: 'include', signal: ac.signal })
-      .then(res => res.ok ? res.json() as Promise<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]> : Promise.resolve([]))
+    apiFetch<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]>('/positions/live', { signal: ac.signal })
       .then(brokers => {
         const entry = brokers.find(b => b.broker === broker);
         setPositions((entry?.positions ?? []).map(p => ({
@@ -354,8 +343,7 @@ export function ChartPage() {
     if (!broker || !symbol) return;
     hasMoreRef.current = true;
     const ac = new AbortController();
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`), { credentials: 'include', signal: ac.signal })
-      .then(r => r.json() as Promise<RawCandle[]>)
+    apiFetch<RawCandle[]>(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`, { signal: ac.signal })
       .then(data => {
         const parsed = data.map(c => ({
           time: Math.floor(new Date(c.openTime).getTime() / 1000),
@@ -378,8 +366,7 @@ export function ChartPage() {
     if (!broker || !symbol) return;
     const params = new URLSearchParams({ broker, symbol, timeframe });
     const ac = new AbortController();
-    fetch(apiUrl(`/drawings?${params.toString()}`), { credentials: 'include', signal: ac.signal })
-      .then(r => r.ok ? r.json() as Promise<{ items: PersistedDrawing[] }> : Promise.resolve({ items: [] }))
+    apiFetch<{ items: PersistedDrawing[] }>(`/drawings?${params.toString()}`, { signal: ac.signal })
       .then(data => setDrawings(data.items ?? []))
       .catch(err => { if (!isAbortError(err)) setDrawings([]); });
     return () => ac.abort();
@@ -387,12 +374,7 @@ export function ChartPage() {
 
   const saveDrawings = useCallback((items: PersistedDrawing[]) => {
     if (!broker || !symbol) return;
-    fetch(apiUrl('/drawings'), {
-      method: 'PUT',
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ broker, symbol, timeframe, items }),
-    }).catch(() => {});
+    apiSend('/drawings', 'PUT', { broker, symbol, timeframe, items }).catch(() => {});
   }, [broker, symbol, timeframe]);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -408,8 +390,7 @@ export function ChartPage() {
     isLoadingMoreRef.current = true;
     const ac = new AbortController();
     loadMoreAcRef.current = ac;
-    fetch(apiUrl(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`), { credentials: 'include', signal: ac.signal })
-      .then(r => r.json() as Promise<RawCandle[]>)
+    apiFetch<RawCandle[]>(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=500&before=${oldest}`, { signal: ac.signal })
       .then(data => {
         if (data.length === 0) { hasMoreRef.current = false; setHasMore(false); return; }
         const parsed = data.map(c => ({

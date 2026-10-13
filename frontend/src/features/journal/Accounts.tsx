@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { apiUrl } from '../../lib/api';
+import { apiFetch, errorMessage } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { useSort, type SortColumn } from '../../lib/useSort';
 import { fmt, currencySymbol } from './utils/position';
@@ -55,20 +55,15 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    fetch(apiUrl('/balances'), { credentials: 'include' })
-      .then(res => {
-        if (!res.ok) throw new Error('Failed to load balances');
-        return res.json() as Promise<Balance[]>;
-      })
+    apiFetch<Balance[]>('/balances')
       .then(setBalances)
-      .catch(err => setError(err.message))
+      .catch(err => setError(errorMessage(err, 'Failed to load balances')))
       .finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
     const fetchDayPnl = () => {
-      fetch(apiUrl('/balances/daily-pnl'), { credentials: 'include' })
-        .then(res => res.ok ? res.json() as Promise<Record<string, number>> : {})
+      apiFetch<Record<string, number>>('/balances/daily-pnl')
         .then(setDayPnl)
         .catch(() => {});
     };

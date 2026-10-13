@@ -1,5 +1,5 @@
 import { POSITION_COLOR_VALUES, nextColor, type PositionColor } from './utils/position';
-import { apiUrl, errorFrom, errorMessage } from '../../lib/api';
+import { apiSend, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import styles from './ColorBadge.module.css';
 
@@ -17,13 +17,7 @@ export function ColorBadge({ broker, ticket, color, onColorChange }: ColorBadgeP
     e.stopPropagation();
     onColorChange(broker, ticket, next);
     try {
-      const res = await fetch(apiUrl('/positions/color'), {
-        method: 'PATCH',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ broker, ticket, color: next }),
-      });
-      if (!res.ok) throw new Error(await errorFrom(res));
+      await apiSend('/positions/color', 'PATCH', { broker, ticket, color: next });
     } catch (err) {
       onColorChange(broker, ticket, color ?? '');
       addToast(errorMessage(err, 'Failed to save colour'), 'error');

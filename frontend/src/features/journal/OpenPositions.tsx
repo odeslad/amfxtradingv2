@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWs } from '../../lib/useWs';
-import { apiUrl, errorMessage } from '../../lib/api';
+import { apiFetch, errorMessage } from '../../lib/api';
 import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL, isPending, isBuySide } from './utils/position';
@@ -62,8 +62,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
 
   useEffect(() => {
     const ac = new AbortController();
-    fetch(apiUrl('/positions/live'), { credentials: 'include', signal: ac.signal })
-      .then(res => res.ok ? res.json() as Promise<LiveBrokerPositions[]> : Promise.resolve([]))
+    apiFetch<LiveBrokerPositions[]>('/positions/live', { signal: ac.signal })
       .then((brokers) => {
         const colorMap = new Map<string, string>();
         const fresh = brokers

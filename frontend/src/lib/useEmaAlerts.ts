@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { apiUrl, errorFrom } from './api';
+import { useCallback } from 'react';
+import { apiSend } from './api';
+import { useRemoteList } from './useRemoteList';
 
 export type EmaAlertDirection = 'buy' | 'sell' | 'both';
 
@@ -27,60 +28,19 @@ export interface NewEmaAlert {
   thresholdPips: number;
 }
 
-// A failed load reads as an empty list, as before.
-function loadEmaAlerts(): Promise<EmaCrossAlert[]> {
-  return fetch(apiUrl('/ema-alerts'), { credentials: 'include' })
-    .then(res => (res.ok ? (res.json() as Promise<EmaCrossAlert[]>) : []))
-    .catch((): EmaCrossAlert[] => []);
-}
-
 // Source of truth for the user's EMA-cross alerts, mirroring useAlerts. Mutations
 // refresh the list so the panel stays in sync.
 export function useEmaAlerts() {
-  const [alerts, setAlerts] = useState<EmaCrossAlert[]>([]);
+  const { items: alerts, refresh, mutate } = useRemoteList<EmaCrossAlert>('/ema-alerts');
 
-  const refresh = useCallback(() => loadEmaAlerts().then(setAlerts), []);
+  const create = useCallback((alert: NewEmaAlert) =>
+    mutate(() => apiSend('/ema-alerts', 'POST', alert)), [mutate]);
 
-  useEffect(() => {
-    loadEmaAlerts().then(setAlerts);
-  }, []);
+  const toggle = useCallback((a: EmaCrossAlert) =>
+    mutate(() => apiSend(`/ema-alerts/${a.id}`, 'PUT', { enabled: !a.enabled })), [mutate]);
 
-  const create = useCallback(async (alert: NewEmaAlert) => {
-    try {
-      const res = await fetch(apiUrl('/ema-alerts'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(alert),
-      });
-      if (!res.ok) throw new Error(await errorFrom(res));
-    } finally {
-      await refresh();
-    }
-  }, [refresh]);
-
-  const toggle = useCallback(async (a: EmaCrossAlert) => {
-    try {
-      const res = await fetch(apiUrl(`/ema-alerts/${a.id}`), {
-        method: 'PUT',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ enabled: !a.enabled }),
-      });
-      if (!res.ok) throw new Error(await errorFrom(res));
-    } finally {
-      await refresh();
-    }
-  }, [refresh]);
-
-  const remove = useCallback(async (id: number) => {
-    try {
-      const res = await fetch(apiUrl(`/ema-alerts/${id}`), { method: 'DELETE', credentials: 'include' });
-      if (!res.ok) throw new Error(await errorFrom(res));
-    } finally {
-      await refresh();
-    }
-  }, [refresh]);
+  const remove = useCallback((id: number) =>
+    mutate(() => apiSend(`/ema-alerts/${id}`, 'DELETE')), [mutate]);
 
   return { alerts, refresh, create, toggle, remove };
 }

@@ -202,3 +202,44 @@ model BalanceOperation {
   @@index([broker, time])
   @@map("balance_operations")
 }
+
+// ---- Libro de esquemas (spec 020): the operator's hand-kept backtest ----
+
+model BookScheme {
+  id        Int         @id @default(autoincrement())
+  number    Int         @unique
+  start     DateTime    @db.Date
+  end       DateTime?   @db.Date
+  result    String      @default("auto") // "auto" | "T1" | "T2" | "T3" | "RE" | "Pierde" | "Empate"
+  note      String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  trades    BookTrade[]
+
+  @@index([start])
+  @@map("book_schemes")
+}
+
+model BookTrade {
+  id           Int        @id @default(autoincrement())
+  ticket       Int        @unique
+  schemeId     Int
+  scheme       BookScheme @relation(fields: [schemeId], references: [id], onDelete: Cascade)
+  slot         String     // "T1" | "T2" | "T3" | "RE"
+  direction    String     // "buy" | "sell"
+  lots         Float
+  entry        Float
+  sl           Float
+  openTime     DateTime
+  closeTime    DateTime?  // null while the operation is open
+  closePrice   Float?
+  profit       Float?     // computed; null while open
+  r            Float?
+  balanceAfter Float?
+  note         String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([schemeId])
+  @@map("book_trades")
+}

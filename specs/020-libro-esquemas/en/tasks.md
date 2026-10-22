@@ -2,7 +2,7 @@
 
 Each task is one conventional commit. The project must build after every task. Tasks of different layers never share a commit. Deploy order: db + backend first (one push, the pipeline applies the migration), frontend when the user asks for it; no EA change.
 
-- [ ] 1. [db] Migration `20261023000000_book` + Prisma models `BookScheme` / `BookTrade` · **Verify:** `prisma generate` + `npm run build`; `prisma migrate diff --from-url <production> --to-schema-datamodel --script` prints exactly the migration · **Est:** 0.5 SP
+- [x] 1. [db] Migration `20261023000000_book` + Prisma models `BookScheme` / `BookTrade` · **Verify:** `prisma generate` + `npm run build`; `prisma migrate diff --from-url <production> --to-schema-datamodel --script` prints exactly the migration · **Est:** 0.5 SP
 - [ ] 2. [backend] `src/book/calc.ts` (`pips`, `lotsFor`, `figuresFor`, `chain`, `summaryOf`, `deriveResult`, `totalsOf`) + `calc.test.ts` on the document's first operations · **Verify:** `npm test` + `npm run build` · **Est:** 1 SP
 - [ ] 3. [backend] `src/book/repository.ts` (list by year, scheme and trade CRUD, next ticket, `recomputeFrom`) + `scripts/import-book.ts` (regex extraction, upserts, comparison report) · **Verify:** `npm run build`; import of the real document through the tunnel → 454 schemes, 878 trades, zero differences above rounding; second run changes nothing · **Est:** 1.25 SP
 - [ ] 4. [backend] `src/routes/book.ts` (schemes, trades, preview) mounted in `app.ts`; `architecture.md` + `.claude/CLAUDE.md` · **Verify:** `npm run build`; local backend: list 2026, create scheme (409 duplicate), create trade → figures match a hand calculation, edit an old trade → later balances recomputed, delete → chain recomputed, preview · **Est:** 1 SP

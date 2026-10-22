@@ -9,6 +9,7 @@ import { ChartPage } from '../features/chart/ChartPage';
 import { ScannerPage } from '../features/scanner/ScannerPage';
 import { StatsPage } from '../features/stats/StatsPage';
 import { SettingsPage } from '../features/settings/SettingsPage';
+import { BookPage } from '../features/book/BookPage';
 
 export function Router() {
   return (
@@ -29,6 +30,7 @@ export function Router() {
               <Route path="/chart" element={<ChartPage />} />
               <Route path="/scanner" element={<ScannerPage />} />
               <Route path="/stats" element={<StatsPage />} />
+              <Route path="/schemas" element={<BookPage />} />
               <Route path="/settings" element={<SettingsPage />} />
             </Route>
             <Route path="*" element={<Navigate to="/" replace />} />

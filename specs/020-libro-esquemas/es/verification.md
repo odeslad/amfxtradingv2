@@ -7,6 +7,7 @@
 | 3 | `npm run build` + importación del documento real | ✅ | 1,25 | 1,5 |
 | 4 | `npm run build` + backend local | ✅ | 1 | 0,75 |
 | 5 | manual (evidencia del despliegue) | ✅ | 0,5 | 0,25 |
+| 6 | `npm run build` + `npm run lint` + app local (usuario) | ✅ | 1,5 | 1 |
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -37,3 +38,10 @@
 
 - Push de `master` (`cb4dce1` … `cdd4e62`) el 23-10-2026; el pipeline del backend desplegó la build 191 a las 00:27 (`/version` `{ backend: 191 }`, `/health` con los pipes conectados). La migración se había aplicado por el túnel en la tarea 3, así que el `migrate deploy` del pipeline no encontró nada pendiente; `prisma migrate diff --from-url <producción> --to-schema-datamodel` tras el despliegue → "No difference detected". El libro está en producción (454 esquemas, 878 operaciones, importados en la tarea 3 y leídos por las comprobaciones de la tarea 4 contra la misma base de datos: 2026 → 25 esquemas, totales 18 / 1 / 6 / 72 % / 150 740,76 € / +23,26 R; todos → 454, 346 / 7 / 101 / 76 % / 745 026,05 € / +449,12 R, la cabecera del documento).
 - Est vs Real: 0,5 vs 0,25 SP.
+
+## Tarea 6 — Página Schemas: totales, filtro de año, tabla y paginación (frontend)
+
+- `src/lib/book.ts` (tipos, las nueve llamadas API, `fmtEur` / `fmtR` / `fmtR1` / `fmtPrice` / `fmtPips` / `fmtDateTime` / `fmtShort` sobre el reloj sin zona del libro, `resultLabel` / `resultTone`), `features/book/useBook.ts` (estado de año / página / tamaño, una carga bajo `AbortController`, mutaciones que recargan), `BookPage.tsx` + `.module.css` (barra superior con selector de año y **Nuevo esquema**, siete tiles de totales con "n en curso" cuando hay esquemas pendientes, barra de paginación 25 / 50 / 100 con "Esquemas 1–25 de 454"), `SchemesTable.tsx` + `.module.css` (las columnas del documento, insignias de resultado en verde / rojo / dorado / gris, una fila se despliega a su tabla de operaciones con ticket, posición, dirección, lotes, entrada, SL, apertura, cierre o "en curso", precio, pips, €, R, saldo, nota y acciones por fila; tarjetas bajo 768 px). Ruta `/schemas`, entrada **Schemas** con `IconBook`. Los manejadores de alta / edición / borrado muestran un toast hasta los paneles de la tarea 7.
+- `npm run build` y `npm run lint` limpios.
+- App local (backend 3001 contra la base de datos de producción por el túnel, Vite 5174): la página mostró 2026 por defecto con 25 esquemas, totales 18 / 1 / 6 / 72 % / 150 744,60 / +23,26 R y la tabla del 454 hacia abajo con las líneas de trades, tickets, resultados y netos del documento; confirmado por el usuario con una captura. (Los € difieren de la cabecera del documento en 3,84 € porque la escritura de prueba de la tarea 4 realineó sus siete filas retocadas a mano.)
+- Est vs Real: 1,5 vs 1 SP.

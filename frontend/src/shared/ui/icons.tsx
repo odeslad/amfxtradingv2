@@ -13,6 +13,15 @@ export function IconScanner({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconBook({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 3h5a2 2 0 0 1 2 2v9H4a2 2 0 0 1-2-2V3z" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
+      <path d="M14 3H9a2 2 0 0 0-2 2v9h5a2 2 0 0 0 2-2V3z" stroke={color} strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
 export function IconChart({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

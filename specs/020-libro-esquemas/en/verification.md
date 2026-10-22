@@ -7,6 +7,7 @@
 | 3 | `npm run build` + import of the real document | ✅ | 1.25 | 1.5 |
 | 4 | `npm run build` + local backend | ✅ | 1 | 0.75 |
 | 5 | manual (deploy evidence) | ✅ | 0.5 | 0.25 |
+| 6 | `npm run build` + `npm run lint` + local app (user) | ✅ | 1.5 | 1 |
 
 ## Task 1 — Migration and models (db)
 
@@ -37,3 +38,10 @@
 
 - Pushed `master` (`cb4dce1` … `cdd4e62`) on 2026-10-23; the backend pipeline deployed build 191 at 00:27 (`/version` `{ backend: 191 }`, `/health` with the pipes connected). The migration had been applied through the tunnel in task 3, so the pipeline's `migrate deploy` found nothing pending; `prisma migrate diff --from-url <production> --to-schema-datamodel` after the deploy → "No difference detected". The book is in production (454 schemes, 878 trades, imported in task 3 and read by the task 4 checks against the same database: 2026 → 25 schemes, totals 18 / 1 / 6 / 72 % / 150 740.76 € / +23.26 R; all → 454, 346 / 7 / 101 / 76 % / 745 026.05 € / +449.12 R, the document's header).
 - Est vs Actual: 0.5 vs 0.25 SP.
+
+## Task 6 — Schemas page: totals, year filter, table and pagination (frontend)
+
+- `src/lib/book.ts` (types, the nine API calls, `fmtEur` / `fmtR` / `fmtR1` / `fmtPrice` / `fmtPips` / `fmtDateTime` / `fmtShort` on the book's untimed clock, `resultLabel` / `resultTone`), `features/book/useBook.ts` (year / page / page size state, one fetch under an `AbortController`, mutations that refetch), `BookPage.tsx` + `.module.css` (top bar with year select and **Nuevo esquema**, seven totals tiles with "n en curso" when pending schemes exist, pagination bar 25 / 50 / 100 with "Esquemas 1–25 de 454"), `SchemesTable.tsx` + `.module.css` (the document's columns, result badges in green / red / gold / muted, a row expands to its operations table with ticket, slot, direction, lots, entry, SL, open, close or "en curso", price, pips, €, R, balance, note and per-row actions; cards under 768 px). Route `/schemas`, nav entry **Schemas** with `IconBook`. The create / edit / delete handlers show a toast until the panels of task 7.
+- `npm run build` and `npm run lint` clean.
+- Local app (backend 3001 against the production database through the tunnel, Vite 5174): the page showed 2026 by default with 25 schemes, totals 18 / 1 / 6 / 72 % / 150 744.60 / +23.26 R and the table from 454 downwards with the document's trades lines, tickets, results and nets; confirmed by the user from a screenshot. (The € differ from the document's header by 3.84 € because the test write of task 4 realigned its seven hand-adjusted rows.)
+- Est vs Actual: 1.5 vs 1 SP.

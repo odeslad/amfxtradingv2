@@ -12,9 +12,12 @@ same reading (totals, schemes, their operations) and the ability to keep it up t
 and delete schemes and operations. The book does not touch brokers, positions or trades of the app.
 
 Every figure of an operation derives from its prices and the running balance, exactly as the document does:
-the account starts at 10 000; lots = 1 % of the balance before the operation ÷ (SL distance in pips × 10),
-rounded to 0.01; result in € = lots × pips gained × 10; R = result ÷ (1 % of the balance before); balance
-after = balance before + result. A scheme's summary (trades line, tickets, net € and net R) and the totals of
+the account starts at 10 000; the balance is chained in **close order** (an operation that closes later
+takes the balance left by the one that closed before it, whatever their tickets); result in € = lots × pips
+gained × 10; R = result ÷ (1 % of the balance before the close); balance after = balance before + result.
+The lots the app proposes are 1 % of the current balance ÷ (SL distance in pips × 10), rounded to 0.01, but
+the lots are the operator's (the document keeps the ones really used, which differ from that proposal in
+more than half of the rows), so they are editable. A scheme's summary (trades line, tickets, net € and net R) and the totals of
 the header come from its operations.
 
 ## Affected layers
@@ -48,12 +51,12 @@ No EA change, no new dependencies.
   created (409 on a duplicate number) with `result` `auto` by default; `PUT /book/schemes/:id` edits those fields; `DELETE /book/schemes/:id`
   removes the scheme and its operations.
 - AC 4. WHEN `POST /book/trades` is called with `{ schemeId, slot, direction, entry, sl, openTime, closeTime?,
-  closePrice?, note? }` THEN the operation gets the next ticket number and its lots are computed from the
-  balance of the previous closed operation (by ticket); WHEN it has a close time and price THEN pips, result €,
-  R and balance after are computed too; WHEN it has neither THEN it is **open** (`en curso`): no pips, € or R,
+  closePrice?, note? }` THEN the operation gets the next ticket number and its lots (given, or proposed from the current balance);
+  WHEN it has a close time and price THEN pips, result €, R and balance after are computed too and the whole
+  chain is recomputed (the balance threads in close order); WHEN it has neither THEN it is **open** (`en curso`): no pips, € or R,
   and it does not move the balance chain until it closes; `PUT /book/trades/:id` edits
-  those inputs and recomputes the operation **and every later one** (the balance chain); `DELETE
-  /book/trades/:id` removes it and recomputes the later ones.
+  those inputs (lots sent as null ask for the proposal again) and recomputes the chain; `DELETE
+  /book/trades/:id` removes it and recomputes the chain.
 - AC 5. WHEN a scheme's result is `auto` (the default) THEN the operations define it: `Pendiente` while the
   scheme has no end date, no operations or an open operation (in progress, counted apart in the totals, never as won or lost);
   once it has an end date, the slot of the operation that reached its target (`T1` / `T2` / `T3` / `RE`),

@@ -132,6 +132,7 @@ export function deriveResult(trades: SummaryTrade[], ended: boolean): EffectiveR
   if (Math.abs(netR) < DRAW_BAND_R) return 'Empate';
   const winners = trades.filter(t => (t.r ?? 0) >= WIN_R);
   if (winners.length > 0) return winners[winners.length - 1].slot;
+  if (netR > 0) return [...trades].sort((a, b) => (b.r ?? 0) - (a.r ?? 0))[0].slot;
   return 'Pierde';
 }
 

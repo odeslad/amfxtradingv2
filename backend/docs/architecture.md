@@ -76,6 +76,9 @@ backend/
 │   │   ├── parse.ts              # query/body parsing helpers
 │   │   └── requireAuth.ts        # JWT cookie → req.userId
 │   ├── routes/                   # one router per path, see HTTP API
+│   ├── book/                     # Libro de esquemas (spec 020): the operator's hand-kept backtest
+│   │   ├── calc.ts               # pure arithmetic: pips, lots proposal, €, R, close-order balance chain, summaries, totals
+│   │   └── repository.ts         # book tables access, chain recompute, preview
 │   ├── services/
 │   │   ├── account.ts            # daily balance upsert
 │   │   ├── balance-operations.ts # deposits/withdrawals from history.json
@@ -139,6 +142,7 @@ Every router except `/auth` and `/health` sits behind `requireAuth`: the JWT tra
 | `/setup-levels` | `GET` | Levels of the last EMA cross setup of a symbol |
 | `/push` | `GET /vapid`, `POST /subscribe`, `POST /unsubscribe` | Web Push subscriptions |
 | `/stats` | `GET` | Account statistics per broker and period |
+| `/book` | `GET /schemes?year&page&pageSize`, `POST /schemes`, `GET /schemes/:id`, `PUT /schemes/:id`, `DELETE /schemes/:id`, `POST /trades`, `PUT /trades/:id`, `DELETE /trades/:id`, `POST /preview` | Libro de esquemas: the operator's book of EURUSD schemes and operations (see below) |
 
 ### `GET /health`
 Unauthenticated, always `200` (the deploy and startup scripts only check the status code). Lists every configured broker with its liveness:
@@ -209,6 +213,10 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 | `ema_alert` | `{ broker, symbol, timeframe, direction }` | EMA alert, only to its owner |
 
 A tick carries `symbol`, `bid`, `ask`, `time`, `broker_offset` and the open/high/low/time of the current M5, M15, H1, H4 and D1 candles, so the frontend builds the live candle itself; only closed candles are persisted.
+
+## Libro de esquemas (book)
+
+`src/book/` keeps the operator's hand-made backtest of the EURUSD H1 scheme system (454 schemes and 878 operations from 2015, imported once from `data/esquemas y operaciones EURUSD.html` with `npx tsx --env-file=.env scripts/import-book.ts "<path>"`, idempotent). It is informational and has no link to brokers, positions or trades. `book_schemes` holds number, start, end, result (`auto` by default, or a hand-typed `T1` / `T2` / `T3` / `RE` / `Pierde` / `Empate`) and note; `book_trades` the operations (ticket, slot, direction, lots, entry, SL, open / close time, close price, note) with their computed €, R and balance after. `calc.ts` reproduces the document's arithmetic: the account starts at 10 000; € = lots × pips × 10; the balance chains in **close order**; R = € ÷ 1 % of the balance before the close; the lots the app proposes are 1 % of the latest balance ÷ (SL pips × 10), but the operator's lots are kept and editable; an operation without close is open (lots only). `recomputeAll` rewrites €, R and balances after any write. A scheme's summary (trades line, tickets, net € and R) and the effective result (`Pendiente` while `auto` and no end / no operations / an open one; else derived: draw inside ±0.5 R, the last operation with R ≥ 1.5, else `Pierde`) and the totals of a selection are computed on read. Routes under `/book`: paginated schemes by year with totals and years, scheme and trade CRUD, and `POST /preview` for the figures a trade body would get.
 
 ## Database
 

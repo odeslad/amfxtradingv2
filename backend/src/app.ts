@@ -17,6 +17,7 @@ import scannerRouter from './routes/scanner';
 import setupLevelsRouter from './routes/setup-levels';
 import pushRouter from './routes/push';
 import statsRouter from './routes/stats';
+import bookRouter from './routes/book';
 import { requireAuth } from './middleware/requireAuth';
 import { errorHandler } from './middleware/errors';
 import { version } from './version';
@@ -60,6 +61,7 @@ app.use('/scanner', requireAuth, scannerRouter);
 app.use('/setup-levels', requireAuth, setupLevelsRouter);
 app.use('/push', requireAuth, pushRouter);
 app.use('/stats', requireAuth, statsRouter);
+app.use('/book', requireAuth, bookRouter);
 
 app.use(errorHandler);
 

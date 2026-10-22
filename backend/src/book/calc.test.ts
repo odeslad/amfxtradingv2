@@ -74,6 +74,9 @@ describe('summaryOf and results', () => {
     expect(deriveResult([{ ticket: 1, slot: 'T1', r: -1, profit: -100 }, { ticket: 2, slot: 'T2', r: -1, profit: -100 }, { ticket: 3, slot: 'T3', r: -1, profit: -100 }], true)).toBe('Pierde');
     expect(deriveResult([{ ticket: 1, slot: 'T1', r: -1, profit: -100 }, { ticket: 2, slot: 'RE', r: 2.15, profit: 215 }, { ticket: 3, slot: 'T3', r: -1, profit: -100 }], true)).toBe('Empate');
     expect(deriveResult([{ ticket: 1, slot: 'T1', r: -1, profit: -100 }, { ticket: 2, slot: 'RE', r: 2.15, profit: 215 }], true)).toBe('RE');
+    // A positive net without any operation at its target: the best operation wins the scheme.
+    expect(deriveResult([{ ticket: 1, slot: 'T1', r: 1.33, profit: 133 }], true)).toBe('T1');
+    expect(deriveResult([{ ticket: 1, slot: 'T1', r: -1, profit: -100 }, { ticket: 2, slot: 'T2', r: 0.3, profit: 30 }], true)).toBe('Pierde');
   });
 
   it('is pending without an end, without operations or with an open one', () => {

@@ -45,6 +45,7 @@ export interface BookPage {
   total: number;
   totals: Totals;
   years: number[];
+  year: number | 'all';
 }
 
 type SchemeRow = Prisma.BookSchemeGetPayload<{ include: { trades: true } }>;
@@ -77,16 +78,17 @@ export async function listYears(): Promise<number[]> {
   return rows.map(r => r.year);
 }
 
-export async function listSchemes(year: number | 'all', page: number, pageSize: number): Promise<BookPage> {
-  const where: Prisma.BookSchemeWhereInput = year === 'all' ? {} : { start: yearRange(year) };
-  const [rows, total, all, years] = await Promise.all([
+export async function listSchemes(year: number | 'all' | 'latest', page: number, pageSize: number): Promise<BookPage> {
+  const years = await listYears();
+  const selected = year === 'latest' ? (years[0] ?? 'all') : year;
+  const where: Prisma.BookSchemeWhereInput = selected === 'all' ? {} : { start: yearRange(selected) };
+  const [rows, total, all] = await Promise.all([
     db.bookScheme.findMany({ where, orderBy: { number: 'desc' }, skip: (page - 1) * pageSize, take: pageSize, include: { trades: true } }),
     db.bookScheme.count({ where }),
     db.bookScheme.findMany({ where, include: { trades: true } }),
-    listYears(),
   ]);
   const totals = totalsOf(all.map(toScheme));
-  return { schemes: rows.map(toScheme), total, totals, years };
+  return { schemes: rows.map(toScheme), total, totals, years, year: selected };
 }
 
 export async function getScheme(id: number): Promise<BookSchemeDto> {

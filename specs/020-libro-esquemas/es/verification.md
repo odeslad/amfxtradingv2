@@ -6,6 +6,7 @@
 | 2 | `npm test` + `npm run build` | ✅ | 1 | 0,5 |
 | 3 | `npm run build` + importación del documento real | ✅ | 1,25 | 1,5 |
 | 4 | `npm run build` + backend local | ✅ | 1 | 0,75 |
+| 5 | manual (evidencia del despliegue) | ✅ | 0,5 | 0,25 |
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -28,6 +29,11 @@
 ## Tarea 4 — Rutas y documentación (backend)
 
 - `src/routes/book.ts` montado en `/book` tras `requireAuth` (17 routers): `GET /schemes?year=YYYY|all&page&pageSize` (año por defecto = el último; devuelve la página, `total`, los totales de toda la selección, `years`, `year`, `nextNumber`), `POST /schemes` (número opcional → siguiente; `result` `auto` por defecto), `GET|PUT|DELETE /schemes/:id`, `POST /trades` (lotes opcionales → propuestos; hora y precio de cierre van juntos o faltan ambos), `PUT|DELETE /trades/:id`, `POST /preview`. Las fechas aceptan el `YYYY-MM-DD HH:MM` del documento o ISO, leídas como UTC. `deriveResult` ganó una regla descubierta al probar: un neto positivo sin ninguna operación en su objetivo lo gana la mejor operación (el documento no tiene ningún caso así). Docs: `architecture.md` (`book/` en el árbol, fila de ruta `/book`, sección "Libro de esquemas (book)"), `.claude/CLAUDE.md` (17 routers, modelos).
-- `npm run build`, `npx eslint src/book src/routes/book.ts src/app.ts` limpios; `npx vitest run src/book` → 13 pasados.
+- `npm run build`, `npx eslint src/book src/routes/book.ts src/app.ts` limpios; `npx vitest run src/book` → 12 pasados (la regla nueva se cubre dentro del test de resultado existente).
 - Backend local en 3001 contra los datos de producción (BD por el túnel): listado sin `year` → 2026, 25 esquemas, totales 18 / 1 / 6 / 72 % / 150 740,76 / +23,26 R, primer esquema 454 con su resumen; `year=all` → 454 esquemas, totales 346 / 7 / 101 / 76 % / 745 026,05 / +449,12 R (la cabecera del documento); crear esquema sin número → 455 `Pendiente`; crear 455 de nuevo → 409; previsualización de una operación en curso → ticket 950, base de riesgo 755 026,05, lotes 25,17; crear la operación cerrada → lotes 25,17, 60 pips, 15 102 €, 2 R, saldo 770 132,90; editar el precio de cierre → 40 pips, 10 068 €, 1,33 R; el resumen del esquema lo sigue (`T1 +1.3`); poner el fin → resultado derivado; borrar operación y esquema → 204 / 204 / 404. Efecto anotado: la primera escritura ejecutó `recomputeAll`, que realineó las 7 filas retocadas a mano del documento y los saldos posteriores (ticket 949 ahora 14 839,20 € / 755 030,90 en vez de 14 837,51 / 755 026,05).
 - Est vs Real: 1 vs 0,75 SP.
+
+## Tarea 5 — Despliegue del backend (infra)
+
+- Push de `master` (`cb4dce1` … `cdd4e62`) el 23-10-2026; el pipeline del backend desplegó la build 191 a las 00:27 (`/version` `{ backend: 191 }`, `/health` con los pipes conectados). La migración se había aplicado por el túnel en la tarea 3, así que el `migrate deploy` del pipeline no encontró nada pendiente; `prisma migrate diff --from-url <producción> --to-schema-datamodel` tras el despliegue → "No difference detected". El libro está en producción (454 esquemas, 878 operaciones, importados en la tarea 3 y leídos por las comprobaciones de la tarea 4 contra la misma base de datos: 2026 → 25 esquemas, totales 18 / 1 / 6 / 72 % / 150 740,76 € / +23,26 R; todos → 454, 346 / 7 / 101 / 76 % / 745 026,05 € / +449,12 R, la cabecera del documento).
+- Est vs Real: 0,5 vs 0,25 SP.

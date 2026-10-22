@@ -6,6 +6,7 @@
 | 2 | `npm test` + `npm run build` | ✅ | 1 | 0.5 |
 | 3 | `npm run build` + import of the real document | ✅ | 1.25 | 1.5 |
 | 4 | `npm run build` + local backend | ✅ | 1 | 0.75 |
+| 5 | manual (deploy evidence) | ✅ | 0.5 | 0.25 |
 
 ## Task 1 — Migration and models (db)
 
@@ -28,6 +29,11 @@
 ## Task 4 — Routes and docs (backend)
 
 - `src/routes/book.ts` mounted at `/book` behind `requireAuth` (17 routers): `GET /schemes?year=YYYY|all&page&pageSize` (default year = the latest; returns the page, `total`, the totals of the whole selection, `years`, `year`, `nextNumber`), `POST /schemes` (number optional → next; `result` `auto` by default), `GET|PUT|DELETE /schemes/:id`, `POST /trades` (lots optional → proposed; close time and price go together or are both absent), `PUT|DELETE /trades/:id`, `POST /preview`. Dates accept the document's `YYYY-MM-DD HH:MM` or ISO, read as UTC. `deriveResult` gained one rule found while testing: a positive net with no operation at its target is won by the best operation (the document has no such case). Docs: `architecture.md` (`book/` in the tree, `/book` route row, "Libro de esquemas (book)" section), `.claude/CLAUDE.md` (17 routers, models).
-- `npm run build`, `npx eslint src/book src/routes/book.ts src/app.ts` clean; `npx vitest run src/book` → 13 passed.
+- `npm run build`, `npx eslint src/book src/routes/book.ts src/app.ts` clean; `npx vitest run src/book` → 12 passed (the new rule is covered inside the existing result test).
 - Local backend on 3001 against production data (DB through the tunnel): list without `year` → 2026, 25 schemes, totals 18 / 1 / 6 / 72 % / 150 740.76 / +23.26 R, first scheme 454 with its summary; `year=all` → 454 schemes, totals 346 / 7 / 101 / 76 % / 745 026.05 / +449.12 R (the document's header); create scheme without number → 455 `Pendiente`; create 455 again → 409; preview of an open trade → ticket 950, risk base 755 026.05, lots 25.17; create the closed trade → lots 25.17, 60 pips, 15 102 €, 2 R, balance 770 132.90; edit the close price → 40 pips, 10 068 €, 1.33 R; scheme summary follows (`T1 +1.3`); set the end → result derived; delete trade and scheme → 204 / 204 / 404. Side effect noted: the first write ran `recomputeAll`, which realigned the 7 hand-adjusted rows of the document and the balances after them (ticket 949 now 14 839.20 € / 755 030.90 instead of 14 837.51 / 755 026.05).
 - Est vs Actual: 1 vs 0.75 SP.
+
+## Task 5 — Backend deploy (infra)
+
+- Pushed `master` (`cb4dce1` … `cdd4e62`) on 2026-10-23; the backend pipeline deployed build 191 at 00:27 (`/version` `{ backend: 191 }`, `/health` with the pipes connected). The migration had been applied through the tunnel in task 3, so the pipeline's `migrate deploy` found nothing pending; `prisma migrate diff --from-url <production> --to-schema-datamodel` after the deploy → "No difference detected". The book is in production (454 schemes, 878 trades, imported in task 3 and read by the task 4 checks against the same database: 2026 → 25 schemes, totals 18 / 1 / 6 / 72 % / 150 740.76 € / +23.26 R; all → 454, 346 / 7 / 101 / 76 % / 745 026.05 € / +449.12 R, the document's header).
+- Est vs Actual: 0.5 vs 0.25 SP.

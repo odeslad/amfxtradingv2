@@ -6,12 +6,13 @@ interface ConfirmPanelProps {
   description: string;
   detail?: string;
   confirmLabel?: string;
+  confirmingLabel?: string;
   confirming?: boolean;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export function ConfirmPanel({ open, title, description, detail, confirmLabel = 'Confirm', confirming, onConfirm, onClose }: ConfirmPanelProps) {
+export function ConfirmPanel({ open, title, description, detail, confirmLabel = 'Confirm', confirmingLabel = 'Closing...', confirming, onConfirm, onClose }: ConfirmPanelProps) {
   return (
     <>
       {open && <div className={styles.backdrop} onClick={onClose} />}
@@ -27,7 +28,7 @@ export function ConfirmPanel({ open, title, description, detail, confirmLabel = 
           <div className={styles.actions}>
             <button type="button" className={styles.cancelBtn} onClick={onClose}>Cancel</button>
             <button type="button" className={styles.confirmBtn} onClick={onConfirm} disabled={confirming}>
-              {confirming ? 'Closing...' : confirmLabel}
+              {confirming ? confirmingLabel : confirmLabel}
             </button>
           </div>
         </div>

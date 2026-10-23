@@ -45,3 +45,11 @@
 - `npm run build` and `npm run lint` clean.
 - Local app (backend 3001 against the production database through the tunnel, Vite 5174): the page showed 2026 by default with 25 schemes, totals 18 / 1 / 6 / 72 % / 150 744.60 / +23.26 R and the table from 454 downwards with the document's trades lines, tickets, results and nets; confirmed by the user from a screenshot. (The € differ from the document's header by 3.84 € because the test write of task 4 realigned its seven hand-adjusted rows.)
 - Est vs Actual: 1.5 vs 1 SP.
+
+## Task 7 — Scheme and operation panels (frontend)
+
+- `features/book/panels.module.css`, `SchemePanel.tsx` (number, result with **Automático** first, start, end, note; the help explains how the automatic result reads the operations), `TradePanel.tsx` (slot proposed from the operations already there, direction, entry, SL, open, close or "en curso", close price, lots empty = the 1 % proposal, note; `/book/preview` debounced 300 ms shows ticket, risk base, lots, pips, €, R and the proposed lots), `BookPage.tsx` with one `Panel` state (scheme / trade / deleteScheme / deleteTrade; each opening carries a `nonce` so the form restarts), deletes through `ConfirmPanel` (gained an optional `confirmingLabel`).
+- Fixed on the way: `POST /book/schemes` rejected `note: null` (the panel sends null for an empty note). And, on the user's check of ticket 951 (sell 1.1203, SL 1.1247 = 44 pips, closed 1.1116 = +87 pips), R was the document's € ÷ 1 % of the balance (+2.51) instead of the classic pips ÷ SL pips (+1.98): `calc.figuresFor` now divides pips gained by the SL distance, `calc.test.ts` expects −1 / 3.67 on the document's first two operations, `recomputeAll` rewrote 684 rows of production, requirements updated in both languages.
+- `npm run build` + `npm run lint` clean on the frontend; backend `npm run build`, `npx eslint src/book` and `npx vitest run src/book` (12 passed).
+- Local app: scheme 455 created (pending, "Nueva operación" on its row), two operations typed with prices and dates only → lots / € / R / balance as the preview, second form opened empty, edit and deletes back to the table; ticket 951 at +1.98 R after the R change. Confirmed by the user.
+- Est vs Actual: 1.5 vs 1.75 SP (the R rule change).

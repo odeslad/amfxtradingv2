@@ -6,6 +6,7 @@
 | 2 | `npm test` (7 on the pure rules) + `npm run build` + lint | ✅ | 1.5 | 1 |
 | 3 | `npm run build` + local backend probes against the production database | ✅ | 1 | 1 |
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
+| 5 | `npm run build` + `npm run lint` + local app against the local backend (user) | ✅ | 2 | 1.5 |
 
 ## Task 1 — Migration and models (db)
 
@@ -32,3 +33,10 @@
 - `npm run build` and `npx eslint src/features/settings` clean.
 - Local app (Vite 5174 against the production API), checked by the user on 2026-10-23: tabs, mirror table edited and saved, reload keeps the values, display options, mobile layout and decimal keyboard. Validated by the user.
 - Est vs Actual: 1.5 vs 1 SP.
+
+## Task 5 — Notifications tab, panel and hook (frontend)
+
+- `lib/useEmaNotifications.ts` (types, `useRemoteList` over `/ema-notifications`, create / update / toggle / remove, label helpers). `NotificationsTab.tsx` + `.module.css`: desktop table (On toggle, Symbols + broker, TF, EMAs, Event, Direction, Repeat, Ends, State badge green / muted / gold, Last fired, Edit / Delete), mobile cards (toggle, symbols, state; tap expands timeframe · EMAs, event, direction, repeat, ends, broker, last fired, note, Edit / Delete); paused and ended rows dimmed. `NotificationPanel.tsx` + `.module.css`: the mockup form in the edit-panel sizes — broker and timeframe selects, symbol chips in a 5-column grid from `/symbols?broker=` plus "All symbols of the broker", EMA fast / slow, event and direction segmented buttons (threshold hidden for cross), repeat select + minutes, ends typed as `dd/mm/yyyy hh:mm` in local time, note; client-side checks with toasts; `nonce` restarts the form on every open. `SettingsPage`: + New notification in the bar, edit / toggle / delete (ConfirmPanel) wired. `AppLayout`: WS `ema_notification` → toast "EURUSD H1 · bullish cross · darwinex" (green for bullish, red for bearish, 8 s).
+- `npm run build` and `npx eslint` clean.
+- Local app (Vite 5174 against the local backend 3001 on the production database, incognito session), checked by the user on 2026-10-23: rule created (EURUSD H1, approach ≤ 3 p, every 15 min), edit with the panel filled in, pause / resume, ended state with a past end, delete with confirmation, mobile cards. Fixed on review: the Ends column rendered the date with the book's UTC formatter, two hours off the typed local time → local formatter. The fire toast is checked in production (task 7).
+- Est vs Actual: 2 vs 1.5 SP.

@@ -1,0 +1,145 @@
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  border: 1px solid;
+  white-space: nowrap;
+}
+
+.active { color: var(--green); border-color: var(--green); }
+.paused { color: var(--muted); border-color: var(--border-bright); }
+.ended { color: var(--gold); border-color: var(--gold); }
+
+.buy { color: var(--green); }
+.sell { color: var(--red); }
+
+.brokerLine {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-normal);
+  text-transform: uppercase;
+}
+
+.rowActions {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.editBtn,
+.deleteBtn {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.editBtn { color: var(--orange); border-color: var(--orange); }
+.editBtn:hover { background: rgba(245, 166, 35, 0.15); }
+.deleteBtn { color: var(--red); border-color: var(--red); }
+.deleteBtn:hover { background: rgba(224, 92, 92, 0.15); }
+
+/* ── Cards (mobile) ───────────────────────────────── */
+
+.cards {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .cards {
+    display: flex;
+    flex-direction: column;
+    margin: 12px -8px 0;
+  }
+
+  .card {
+    padding: 0 2px;
+    border-left: 2px solid transparent;
+  }
+
+  .cardExpanded {
+    border-left-color: var(--blue);
+  }
+
+  .summary {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 14px;
+    width: 100%;
+    padding: 14px 5px;
+    background: var(--bg);
+    border: none;
+    border-top: 1px solid var(--border-bright);
+    cursor: pointer;
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    color: var(--text);
+  }
+
+  .summaryActive {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .symbols {
+    letter-spacing: var(--tracking-tight);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .details {
+    display: flex;
+    flex-direction: column;
+    padding: 0 5px;
+  }
+
+  .field {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    color: var(--text);
+    padding: 8px 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .label {
+    font-family: var(--font-sans);
+    font-size: var(--text-2xs);
+    color: var(--muted);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+  }
+
+  .cardActions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    padding: 10px 0 12px;
+  }
+
+  .editBtn,
+  .deleteBtn {
+    height: 34px;
+    padding: 0 14px;
+    font-size: var(--text-sm);
+  }
+
+  .last {
+    display: none;
+  }
+}

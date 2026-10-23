@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
+import { useEmaNotifications, type EmaNotification, type NotificationInput } from '../../lib/useEmaNotifications';
+import { ConfirmPanel } from '../journal/ConfirmPanel';
 import { MirrorTab, type AccountInfo, type MirrorBroker } from './MirrorTab';
 import { DisplayTab, type DisplaySettingsForm } from './DisplayTab';
+import { NotificationsTab } from './NotificationsTab';
+import { NotificationPanel } from './NotificationPanel';
 import styles from './SettingsPage.module.css';
 
 type Tab = 'mirror' | 'display' | 'notifications';
@@ -28,6 +32,10 @@ export function SettingsPage() {
   const [display, setDisplay] = useState<DisplaySettingsForm>(DEFAULT_DISPLAY);
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const { notifications, create, update, toggle, remove } = useEmaNotifications();
+  const [panel, setPanel] = useState<{ notification: EmaNotification | null; nonce: number } | null>(null);
+  const [deleting, setDeleting] = useState<EmaNotification | null>(null);
+  const [confirming, setConfirming] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -66,6 +74,27 @@ export function SettingsPage() {
     }
   };
 
+  const saveNotification = useCallback((input: NotificationInput, id: number | null) =>
+    id === null ? create(input) : update(id, input), [create, update]);
+
+  const handleToggle = (n: EmaNotification) =>
+    toggle(n).catch(err => addToast(errorMessage(err, 'Failed to update the notification'), 'error'));
+
+  const confirmDelete = async () => {
+    if (!deleting) return;
+    setConfirming(true);
+    try {
+      await remove(deleting.id);
+      addToast('Notification deleted', 'success');
+      setDeleting(null);
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to delete the notification'), 'error');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const brokers = mirror.map(m => m.broker);
   const savable = tab === 'mirror' || tab === 'display';
 
   return (
@@ -84,12 +113,43 @@ export function SettingsPage() {
               {saving ? 'Saving…' : 'Save'}
             </button>
           )}
+          {tab === 'notifications' && (
+            <button type="button" className={styles.newBtn} onClick={() => setPanel({ notification: null, nonce: Date.now() })}>+ New notification</button>
+          )}
         </div>
       </div>
 
       {tab === 'mirror' && <MirrorTab mirror={mirror} accounts={accounts} onChange={updateBroker} />}
       {tab === 'display' && <DisplayTab display={display} onChange={updateDisplay} />}
-      {tab === 'notifications' && <div className={styles.empty}>Notifications arrive with the next task.</div>}
+      {tab === 'notifications' && (
+        <NotificationsTab
+          notifications={notifications}
+          onToggle={handleToggle}
+          onEdit={n => setPanel({ notification: n, nonce: Date.now() })}
+          onDelete={setDeleting}
+        />
+      )}
+
+      <NotificationPanel
+        open={panel !== null}
+        brokers={brokers}
+        notification={panel?.notification ?? null}
+        nonce={panel?.nonce ?? 0}
+        onSave={saveNotification}
+        onClose={() => setPanel(null)}
+      />
+
+      <ConfirmPanel
+        open={deleting !== null}
+        title="Delete notification?"
+        description={deleting ? `${deleting.symbols.length === 0 ? 'All symbols' : deleting.symbols.join(' · ')} · ${deleting.timeframe} · EMA ${deleting.emaFast}/${deleting.emaSlow}` : ''}
+        detail={deleting?.broker}
+        confirmLabel="Delete"
+        confirmingLabel="Deleting…"
+        confirming={confirming}
+        onConfirm={confirmDelete}
+        onClose={() => setDeleting(null)}
+      />
     </div>
   );
 }

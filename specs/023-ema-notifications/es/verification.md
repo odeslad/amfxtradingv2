@@ -6,6 +6,7 @@
 | 2 | `npm test` (7 sobre las reglas puras) + `npm run build` + lint | ✅ | 1,5 | 1 |
 | 3 | `npm run build` + sondeos al backend local contra la base de datos de producción | ✅ | 1 | 1 |
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
+| 5 | `npm run build` + `npm run lint` + app local contra el backend local (usuario) | ✅ | 2 | 1,5 |
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -32,3 +33,10 @@
 - `npm run build` y `npx eslint src/features/settings` limpios.
 - App local (Vite 5174 contra la API de producción), comprobada por el usuario el 23-10-2026: pestañas, tabla del mirror editada y guardada, la recarga conserva los valores, opciones de display, disposición móvil y teclado decimal. Validado por el usuario.
 - Est vs Real: 1,5 vs 1 SP.
+
+## Tarea 5 — Pestaña Notifications, panel y hook (frontend)
+
+- `lib/useEmaNotifications.ts` (tipos, `useRemoteList` sobre `/ema-notifications`, crear / actualizar / alternar / borrar, helpers de etiquetas). `NotificationsTab.tsx` + `.module.css`: tabla en escritorio (toggle On, Symbols + broker, TF, EMAs, Event, Direction, Repeat, Ends, insignia State verde / gris / dorada, Last fired, Edit / Delete), tarjetas en móvil (toggle, pares, estado; al tocar se despliegan timeframe · EMAs, evento, dirección, repetición, fin, broker, último disparo, nota, Edit / Delete); filas pausadas y terminadas atenuadas. `NotificationPanel.tsx` + `.module.css`: el formulario de la maqueta con los tamaños del panel de edición — selects de broker y timeframe, chips de pares en rejilla de 5 columnas desde `/symbols?broker=` más "All symbols of the broker", EMA rápida / lenta, botones segmentados de evento y dirección (umbral oculto con cross), select de repetición + minutos, fin tecleado como `dd/mm/yyyy hh:mm` en hora local, nota; comprobaciones en cliente con toasts; `nonce` reinicia el formulario en cada apertura. `SettingsPage`: + New notification en la barra, editar / alternar / borrar (ConfirmPanel) conectados. `AppLayout`: WS `ema_notification` → toast "EURUSD H1 · bullish cross · darwinex" (verde alcista, rojo bajista, 8 s).
+- `npm run build` y `npx eslint` limpios.
+- App local (Vite 5174 contra el backend local 3001 sobre la base de datos de producción, sesión en incógnito), comprobada por el usuario el 23-10-2026: regla creada (EURUSD H1, aproximación ≤ 3 p, cada 15 min), edición con el panel relleno, pausar / reanudar, estado terminada con fin pasado, borrado con confirmación, tarjetas móviles. Arreglado en la revisión: la columna Ends pintaba la fecha con el formateador UTC del libro, dos horas distinta de la hora local tecleada → formateador local. El toast de disparo se comprueba en producción (tarea 7).
+- Est vs Real: 2 vs 1,5 SP.

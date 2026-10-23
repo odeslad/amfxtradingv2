@@ -23,6 +23,13 @@ export function AppLayout() {
   useEffect(() => subscribe((data) => {
     if (typeof data !== 'object' || data === null) return;
     const msg = data as { type: string; id: string; status: string; ticket?: number; error?: string };
+    if (msg.type === 'ema_notification') {
+      const n = data as { symbol: string; timeframe: string; broker: string; kind: 'cross' | 'approach'; direction: 'buy' | 'sell'; gapPips: number };
+      const side = n.direction === 'buy' ? 'bullish' : 'bearish';
+      const what = n.kind === 'cross' ? `${side} cross` : `${side} approach (${Math.abs(n.gapPips).toFixed(1)} p)`;
+      addToast(`${n.symbol} ${n.timeframe} · ${what} · ${n.broker}`, n.direction === 'buy' ? 'success' : 'error', 8000);
+      return;
+    }
     if (msg.type !== 'command_result') return;
     if (msg.status === 'ok') {
       const detail = msg.ticket != null ? ` — ticket #${msg.ticket}` : '';

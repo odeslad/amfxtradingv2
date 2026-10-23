@@ -1,0 +1,100 @@
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.chips {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.chip {
+  height: 34px;
+  padding: 0 4px;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.chip:hover { color: var(--text); }
+
+.chipOn {
+  color: var(--text);
+  border-color: var(--text);
+}
+
+.chipAll {
+  width: 100%;
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.chipAll.chipOn {
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.segBtn {
+  height: 34px;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-normal);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.segOn {
+  color: var(--green);
+  border-color: var(--green);
+  background: rgba(76, 175, 132, 0.1);
+}
+
+.segOnRed {
+  color: var(--red);
+  border-color: var(--red);
+  background: rgba(224, 92, 92, 0.1);
+}
+
+.segOnNeutral {
+  color: var(--text);
+  border-color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.hintInline {
+  font-style: normal;
+  color: #555;
+  margin-left: 6px;
+}
+
+.empty {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+@media (max-width: 768px) {
+  .chip,
+  .segBtn {
+    height: 44px;
+    font-size: var(--text-lg);
+  }
+}

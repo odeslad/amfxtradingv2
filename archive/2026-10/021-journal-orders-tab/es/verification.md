@@ -10,6 +10,10 @@
 | 6 | ambos documentos coinciden; `npm run build` del backend intacto | ✅ | 0,25 | 0,25 |
 | 7 | manual (despliegues comprobados por el operador + validación del usuario en producción) | ✅ | 0,75 | 1,5 |
 | 8 | manual (run del EA en el push, pipes vigilados, terminales y log de relanzamiento comprobados por SSH) | ✅ | 0,75 | 1 |
+| 9 | manual | ✅ | 0,25 | 0,25 |
+| **Total** | | | **8** | **7,75** |
+
+Calibración: las tareas de frontend salieron por debajo de su estimación (el código de Positions y la maqueta dieron casi toda la estructura), mientras que las de infra se pasaron: la suposición errónea de que MT4 recarga un `.ex4` sustituido costó un incidente y una tarea extra. Desviación acordada: tarea 8 (recarga de terminales en el workflow del EA). Nada pendiente del usuario.
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -64,3 +68,8 @@
 - `ea/scripts/restart-mt4.ps1` reescrito: por cada `terminal.exe` en marcha (de `Win32_Process`), cierra su ventana principal (forzado a los 10 s), ejecuta `schtasks /run /tn AMFX-Watchdog` y sondea cada 5 s hasta que vuelve un proceso con la misma ruta (120 s de espera), y pasa al siguiente; sale con 1 si alguno no vuelve o el recuento final es menor. `deploy-ea.yml` gana el paso "Reload the EA on every terminal" tras la distribución; `ea/docs/deploy.md` (tabla de pasos, sección del script, recarga manual) y el `design.md` de la spec corregidos.
 - Push `45ea60b..3ae6af4` el 23-10-2026 a las 09:51 UTC: el run del EA relanzó los 12 terminales uno a uno entre las 09:52 y las 10:10 UTC (`startup.log`: manu, darwinex, jessy, isa, mick, alvaro, II, marquez, aymerich, FTMO, III, solidary), el pipe de cada broker fuera 1–2 minutos (arranque del proceso, login en el broker, inicio del EA) y nunca más de uno a la vez; `/health` de vuelta a 11/12 conectados (solidary isa no tiene cuenta) y estable desde las 10:10 UTC; `Win32_Process`: 12 terminales en la sesión 1. El usuario vio en Accounts cómo se atenuaba un broker cada vez durante el run.
 - Est vs Real: 0,75 vs 1 SP.
+
+## Tarea 9 — Cierre (specs)
+
+- Builds de backend y frontend limpios de nuevo; Est vs Real registrado; `Estado: cerrada`; carpeta movida a `archive/2026-10/`.
+- Est vs Real: 0,25 vs 0,25 SP.

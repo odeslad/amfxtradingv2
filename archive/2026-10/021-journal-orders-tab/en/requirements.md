@@ -1,6 +1,6 @@
 # 021 — Orders tab in the Journal
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

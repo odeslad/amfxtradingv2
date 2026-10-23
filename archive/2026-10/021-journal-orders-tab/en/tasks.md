@@ -10,6 +10,6 @@ Each task is one conventional commit. The project must build after every task. T
 - [x] 6. [backend] `docs/architecture.md` commands section + `.claude/CLAUDE.md`: `modify` takes an optional `price` applied by the EA to pending orders only · **Verify:** both documents agree; `npm run build` untouched · **Est:** 0.25 SP
 - [x] 7. [infra] Push `master`: the EA pipeline must go green (compile step output, `.ex4` distributed, terminals report 2.22 on reinit); then the frontend deploy when the user asks; **validate on production**: Positions without pending orders, Orders tab with the live orders, filters, colour, edit price / SL / TP of one order on a demo account, group Edit and group Cancel, `+ New Trade` from the tab · **Verify:** manual (user validation) · **Est:** 0.75 SP
 - [x] 8. [infra] Agreed deviation: `restart-mt4.ps1` reloads the terminals through the `AMFX-Watchdog` task one at a time (close, run the task, wait until it is back, exit 1 if not) and `deploy-ea.yml` runs it as its last step; `ea/docs/deploy.md` updated · **Verify:** manual — push, the EA run green with the reload step output, `/health` pipes back, the terminals announce the EA version · **Est:** 0.75 SP
-- [ ] 9. [specs] Record Est vs Actual in `verification.md` (both languages), mark the spec closed and archive it under `archive/2026-10/` · **Verify:** manual · **Est:** 0.25 SP
+- [x] 9. [specs] Record Est vs Actual in `verification.md` (both languages), mark the spec closed and archive it under `archive/2026-10/` · **Verify:** manual · **Est:** 0.25 SP
 
 **Total estimate**: 8 SP

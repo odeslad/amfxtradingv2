@@ -10,6 +10,10 @@
 | 6 | both documents agree; backend `npm run build` untouched | ✅ | 0.25 | 0.25 |
 | 7 | manual (deploys checked by the operator + user validation on production) | ✅ | 0.75 | 1.5 |
 | 8 | manual (EA run on push, pipes watched, terminals and relaunch log checked over SSH) | ✅ | 0.75 | 1 |
+| 9 | manual | ✅ | 0.25 | 0.25 |
+| **Total** | | | **8** | **7.75** |
+
+Calibration: the frontend tasks came in under their estimates (the Positions code and the mockup gave most of the structure), while the infra tasks ran over: the wrong assumption that MT4 reloads a replaced `.ex4` cost an incident and an extra task. Deviation agreed: task 8 (terminal reload in the EA workflow). Nothing left pending on the user.
 
 ## Task 1 — `modify` moves a pending order to the received price (ea)
 
@@ -64,3 +68,8 @@
 - `ea/scripts/restart-mt4.ps1` rewritten: for each running `terminal.exe` (from `Win32_Process`), close its main window (forced after 10 s), run `schtasks /run /tn AMFX-Watchdog` and poll every 5 s until a process with the same path is back (120 s timeout), then the next one; exit 1 when one does not return or the final count is lower. `deploy-ea.yml` gains the step "Reload the EA on every terminal" after the distribution; `ea/docs/deploy.md` (steps table, script section, manual reload) and the spec's `design.md` corrected.
 - Push `45ea60b..3ae6af4` on 2026-10-23 09:51 UTC: the EA run relaunched the 12 terminals one at a time between 09:52 and 10:10 UTC (`startup.log`: manu, darwinex, jessy, isa, mick, alvaro, II, marquez, aymerich, FTMO, III, solidary), each broker's pipe off for 1–2 minutes (process start, broker login, EA init) and never more than one at a time; `/health` back to 11/12 connected (solidary isa has no account) and stable from 10:10 UTC; `Win32_Process`: 12 terminals in session 1. The user watched the Accounts page grey out one broker at a time during the run.
 - Est vs Actual: 0.75 vs 1 SP.
+
+## Task 9 — Close (specs)
+
+- Backend and frontend builds clean once more; Est vs Actual recorded; `Status: closed`; folder moved to `archive/2026-10/`.
+- Est vs Actual: 0.25 vs 0.25 SP.

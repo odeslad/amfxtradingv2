@@ -1,6 +1,6 @@
 # 021 — Pestaña Orders en el Journal
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

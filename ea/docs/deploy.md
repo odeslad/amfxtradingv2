@@ -38,7 +38,7 @@ El workflow se dispara en push a `master` que toque `ea/**`, o manualmente con `
 ## Scripts PowerShell
 
 ### `ea/scripts/compile-ea.ps1`
-Busca `metaeditor.exe` bajo `C:\Program Files (x86)\`, compila los dos `.mq4` en `C:\deploy\` y produce los `.ex4` correspondientes.
+Busca `metaeditor.exe` bajo `C:\Program Files (x86)\`, compila los dos `.mq4` de `C:\amfxtradingv2\ea\` (parámetro `-SourceDir` para otra carpeta) y produce los `.ex4` correspondientes. Muestra las líneas de error y el `Result:` del log de MetaEditor y **sale con 1** si algún fichero no produce un `.ex4` nuevo o el log acaba con errores, de modo que el workflow falla antes de distribuir. Ojo: el código de salida de MetaEditor no sirve de señal (devuelve 1 al compilar bien y 0 al fallar); la comprobación es el `.ex4` y el log.
 
 ### `ea/scripts/distribute-ea.ps1`
 Itera todos los directorios bajo `C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\`. Para cada uno que tenga `MQL4\Experts\`, copia los `.mq4` y `.ex4` de `C:\deploy\`.

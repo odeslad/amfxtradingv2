@@ -1,21 +1,25 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { OpenPositions, type BulkGroup } from './OpenPositions';
+import { PendingOrders } from './PendingOrders';
 import { ClosedPositions } from './ClosedPositions';
 import { Accounts } from './Accounts';
 import { FiltersPanel, type FilterValues, type FilterOptions } from './FiltersPanel';
+import { OrderFiltersPanel } from './OrderFiltersPanel';
+import { DEFAULT_ORDER_FILTERS, hasActiveOrderFilters, type OrderFilterValues } from './utils/orderFilters';
 import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
+import { CancelOrdersPanel } from './CancelOrdersPanel';
 import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
-import { TYPE_LABEL, fmt, isPending } from './utils/position';
+import { type Position, TYPE_LABEL, fmt, isPending } from './utils/position';
 import { useLivePositions } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
-type Tab = 'accounts' | 'open' | 'closed';
+type Tab = 'accounts' | 'open' | 'orders' | 'closed';
 
 const DEFAULT_FILTERS: FilterValues = {
   broker: '', symbol: '', type: '', color: '',
@@ -25,29 +29,42 @@ const DEFAULT_OPTIONS: FilterOptions = { brokers: [], symbols: [], colors: [] };
 
 export function JournalPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  // A deep link (?broker=…) lands on the open positions tab.
-  const [tab, setTab] = useState<Tab>(() => (searchParams.get('broker') ? 'open' : 'accounts'));
+  // A deep link lands on Orders with ?tab=orders, else on Positions when it carries a broker.
+  const [tab, setTab] = useState<Tab>(() => (searchParams.get('tab') === 'orders' ? 'orders' : searchParams.get('broker') ? 'open' : 'accounts'));
   const [storedFilters, setFilters] = useLocalStorage<FilterValues>('journal.filters', DEFAULT_FILTERS);
-  // Stored filters may predate the date fields; merge so every key exists.
-  // Memoised: a fresh object every render retriggers the bulkGroup effect in
-  // OpenPositions, which sets state here and loops the render infinitely.
+  const [storedOrderFilters, setOrderFilters] = useLocalStorage<OrderFilterValues>('journal.orderFilters', DEFAULT_ORDER_FILTERS);
+  // Stored filters may predate some fields; merge so every key exists.
+  // Memoised: a fresh object every render retriggers the group effects in the
+  // tabs, which set state here and loop the render infinitely.
   const filters: FilterValues = useMemo(
     () => ({ ...DEFAULT_FILTERS, ...storedFilters }),
     [storedFilters],
+  );
+  const orderFilters: OrderFilterValues = useMemo(
+    () => ({ ...DEFAULT_ORDER_FILTERS, ...storedOrderFilters }),
+    [storedOrderFilters],
   );
 
   useEffect(() => {
     const broker = searchParams.get('broker');
     const symbol = searchParams.get('symbol');
     if (broker) {
-      setFilters(f => ({ ...f, broker, ...(symbol ? { symbol } : {}) }));
+      const seed = { broker, ...(symbol ? { symbol } : {}) };
+      if (searchParams.get('tab') === 'orders') setOrderFilters(f => ({ ...f, ...seed }));
+      else setFilters(f => ({ ...f, ...seed }));
+      setSearchParams({}, { replace: true });
+    } else if (searchParams.get('tab')) {
       setSearchParams({}, { replace: true });
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
   const live = useLivePositions();
   const openPositions = useMemo(() => live.positions.filter(p => !isPending(p.type)), [live.positions]);
+  const pendingOrders = useMemo(() => live.positions.filter(p => isPending(p.type)), [live.positions]);
+
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
+  const [orderOptions, setOrderOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [closedOptions, setClosedOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [panelOpen, setPanelOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -55,12 +72,14 @@ export function JournalPage() {
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const [bulkConfirmClose, setBulkConfirmClose] = useState(false);
   const [bulkClosing, setBulkClosing] = useState(false);
+  const [orderGroup, setOrderGroup] = useState<Position[] | null>(null);
+  const [cancelOrders, setCancelOrders] = useState<Position[] | null>(null);
+  const [cancelling, setCancelling] = useState(false);
 
   const filterOptions = tab === 'open' ? openOptions : closedOptions;
-  const hasActiveFilters = !!(
-    filters.broker || filters.symbol || filters.type || filters.color ||
-    (tab === 'closed' && filters.dateRange)
-  );
+  const hasActiveFilters = tab === 'orders'
+    ? hasActiveOrderFilters(orderFilters)
+    : !!(filters.broker || filters.symbol || filters.type || filters.color || (tab === 'closed' && filters.dateRange));
 
   const handleTabChange = (next: Tab) => {
     setTab(next);
@@ -77,6 +96,10 @@ export function JournalPage() {
     setBulk(group);
   }, []);
 
+  const handleOrderGroupChange = useCallback((group: Position[] | null) => {
+    setOrderGroup(group);
+  }, []);
+
   const handleBulkClose = async () => {
     if (!bulk) return;
     setBulkClosing(true);
@@ -88,6 +111,24 @@ export function JournalPage() {
     } finally {
       setBulkClosing(false);
       setBulkConfirmClose(false);
+    }
+  };
+
+  const handleEditOrder = useCallback((p: Position) => {
+    addToast(`Editing order ${p.ticket} arrives with the next task`, 'info');
+  }, []);
+
+  const handleCancelOrders = async () => {
+    if (!cancelOrders) return;
+    setCancelling(true);
+    try {
+      await sendCommands(cancelOrders.map(closeCommand));
+      addToast(cancelOrders.length === 1 ? 'Cancel sent' : `Cancel sent for ${cancelOrders.length} orders`, 'info');
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to send cancel commands'), 'error');
+    } finally {
+      setCancelling(false);
+      setCancelOrders(null);
     }
   };
 
@@ -111,6 +152,13 @@ export function JournalPage() {
           </button>
           <button
             type="button"
+            className={`${styles.tab} ${tab === 'orders' ? styles.tabActive : ''}`}
+            onClick={() => handleTabChange('orders')}
+          >
+            Orders
+          </button>
+          <button
+            type="button"
             className={`${styles.tab} ${tab === 'closed' ? styles.tabActive : ''}`}
             onClick={() => handleTabChange('closed')}
           >
@@ -126,6 +174,16 @@ export function JournalPage() {
               </button>
               <button type="button" className={styles.bulkCloseBtn} onClick={() => setBulkConfirmClose(true)}>
                 <span>Close</span>
+              </button>
+            </>
+          )}
+          {tab === 'orders' && orderGroup && (
+            <>
+              <button type="button" className={styles.bulkEditBtn} onClick={() => handleEditOrder(orderGroup[0])}>
+                <span>Edit</span>
+              </button>
+              <button type="button" className={styles.bulkCloseBtn} onClick={() => setCancelOrders(orderGroup)}>
+                <span>Cancel</span>
               </button>
             </>
           )}
@@ -154,12 +212,20 @@ export function JournalPage() {
       <NewTradePanel open={panelOpen} onClose={() => setPanelOpen(false)} />
 
       <FiltersPanel
-        open={filtersOpen}
+        open={filtersOpen && tab !== 'orders'}
         onClose={() => setFiltersOpen(false)}
         values={filters}
         options={filterOptions}
         onChange={setFilters}
         showDateFilter={tab === 'closed'}
+      />
+
+      <OrderFiltersPanel
+        open={filtersOpen && tab === 'orders'}
+        onClose={() => setFiltersOpen(false)}
+        values={orderFilters}
+        options={orderOptions}
+        onChange={setOrderFilters}
       />
 
       <BulkEditPanel
@@ -179,6 +245,14 @@ export function JournalPage() {
         onClose={() => setBulkConfirmClose(false)}
       />
 
+      <CancelOrdersPanel
+        open={!!cancelOrders}
+        orders={cancelOrders ?? []}
+        cancelling={cancelling}
+        onConfirm={handleCancelOrders}
+        onClose={() => setCancelOrders(null)}
+      />
+
       <div className={styles.tabContent}>
         <div className={tab === 'accounts' ? styles.tabPanel : styles.tabPanelHidden}>
           <Accounts onSelectBroker={handleSelectBroker} />
@@ -191,6 +265,18 @@ export function JournalPage() {
             filters={filters}
             onOptionsChange={setOpenOptions}
             onBulkChange={handleBulkChange}
+          />
+        </div>
+        <div className={tab === 'orders' ? styles.tabPanel : styles.tabPanelHidden}>
+          <PendingOrders
+            orders={pendingOrders}
+            colors={live.colors}
+            onColorChange={live.setColor}
+            filters={orderFilters}
+            onOptionsChange={setOrderOptions}
+            onGroupChange={handleOrderGroupChange}
+            onEdit={handleEditOrder}
+            onCancel={p => setCancelOrders([p])}
           />
         </div>
         <div className={tab === 'closed' ? styles.tabPanel : styles.tabPanelHidden}>

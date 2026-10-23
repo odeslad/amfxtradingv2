@@ -1,0 +1,85 @@
+.head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.kind {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  letter-spacing: var(--tracking-tight);
+  white-space: nowrap;
+}
+
+.price {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rowBroker {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.buy { color: var(--green); }
+.sell { color: var(--red); }
+
+.broker {
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+}
+
+.row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  align-items: baseline;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-size: var(--text-xl);
+  color: var(--text);
+}
+
+.row:last-child {
+  border-bottom: 1px solid var(--border);
+}
+
+.labels {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 16px;
+  padding: 0 0 6px;
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.right { text-align: right; }
+
+.distance {
+  font-size: var(--text-2xl);
+  text-align: right;
+}
+
+.profit { color: var(--green); }
+.loss { color: var(--red); }
+.muted { color: var(--muted); }

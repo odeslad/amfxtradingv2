@@ -137,6 +137,9 @@ export function orderDistancePips(p: Position): number | null {
   return (towards * direction * (p.openPrice - quote)) / pipSize(p.symbol);
 }
 
+export const fmtDistance = (pips: number | null): string =>
+  pips === null ? '—' : `${pips >= 0 ? '+' : ''}${pips.toFixed(1)}`;
+
 // Raw numeric P&L for a mode. The 'pct' mode needs the account balance; when it's
 // missing it falls back to the net currency value so callers never get NaN.
 export function calcPnl(p: Position, mode: PnlMode, balance?: number): number {

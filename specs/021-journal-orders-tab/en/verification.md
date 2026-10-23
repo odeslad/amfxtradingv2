@@ -5,6 +5,7 @@
 | 1 | manual (read-through) + local MetaEditor compile | ✅ | 0.5 | 0.25 |
 | 2 | manual (script run against a broken copy and the real files) | ✅ | 0.5 | 0.5 |
 | 3 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
+| 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 2 | 1.75 |
 
 ## Task 1 — `modify` moves a pending order to the received price (ea)
 
@@ -25,3 +26,10 @@
 - `npm run build` and `npm run lint` clean.
 - Local app: Vite 5174 proxying `https://api-v2.amfxtrading.com` (the `.amfxtrading.com` cookie and origin are accepted), signed in; the user checked Positions on 2026-10-23: Accounts and the open positions of every broker with live P&L, colour badges, no pending section; a command sent from the page returned its `command_result` toast. Confirmed by the user from screenshots.
 - Est vs Actual: 1.5 vs 1 SP.
+
+## Task 4 — Orders tab (frontend)
+
+- `PendingOrders.tsx`: table (Broker, Symbol with ColorBadge, Type, Lots, Price, Distance, SL, TP, Placed, row Edit / Cancel), cards under 768 px, filtering by broker / symbol / order type / side / colour, options reported for the filters panel, group reported through `onGroupChange` only when every listed order shares symbol and type (the Positions rule), empty states "No pending orders" / "No orders match the selected filters", double-click → chart. `OrderCard.tsx` (+ small `.module.css`) reuses `PositionCard.module.css` and `useSwipeActions`: Distance in the P&L slot at 28 px, the kind "· Limit / · Stop" in the label row, details Type / Lots / SL / TP / Broker / Placed. `OrderFiltersPanel.tsx` with `utils/orderFilters.ts` (`OrderFilterValues`, defaults, `hasActiveOrderFilters`), stored as `journal.orderFilters`. `JournalPage`: Orders tab between Positions and History, `?tab=orders` deep link seeding the order filters, Filters button and panel switching by tab, group Edit (placeholder toast until task 5) / Cancel, row Cancel. Cancel confirmation as the mockup: `CancelOrdersPanel.tsx` over `ConfirmPanel.module.css` with `OrderList.tsx` (head "Sell Limit EURUSD" + broker, or the broker per row when the group spans several brokers; one row per order with price, lots, distance), "Cancel all / Cancel order" and "Keep orders / Keep order". `fmtDistance` in `utils/position.ts`.
+- `npm run build` and `npm run lint` clean (three react-refresh errors fixed by moving the helpers out of the component files).
+- Local app against production: the user checked on 2026-10-23 the Orders tab with the live pending orders of every broker, the distance column, filters, the group Cancel over five Sell Limit EURUSD orders across five brokers (panel adjusted twice on the user's review: mockup layout, then the broker per row when brokers differ). Validated by the user.
+- Est vs Actual: 2 vs 1.75 SP.

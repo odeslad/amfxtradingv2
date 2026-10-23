@@ -1,0 +1,13 @@
+.kind {
+  color: #555;
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.distance {
+  font-size: var(--text-3xl);
+}
+
+.pending {
+  color: var(--muted);
+}

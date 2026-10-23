@@ -5,6 +5,7 @@
 | 1 | manual (lectura) + compilación local con MetaEditor | ✅ | 0,5 | 0,25 |
 | 2 | manual (script contra una copia rota y contra los ficheros reales) | ✅ | 0,5 | 0,5 |
 | 3 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
+| 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 2 | 1,75 |
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -25,3 +26,10 @@
 - `npm run build` y `npm run lint` limpios.
 - App local: Vite 5174 con proxy a `https://api-v2.amfxtrading.com` (la cookie y el origen `.amfxtrading.com` se aceptan), sesión iniciada; el usuario comprobó Positions el 23-10-2026: Accounts y las posiciones abiertas de todos los brokers con P&L en vivo, insignias de color, sin sección de pendientes; un comando enviado desde la página devolvió su toast de `command_result`. Confirmado por el usuario con capturas.
 - Est vs Real: 1,5 vs 1 SP.
+
+## Tarea 4 — Pestaña Orders (frontend)
+
+- `PendingOrders.tsx`: tabla (Broker, Symbol con ColorBadge, Type, Lots, Price, Distance, SL, TP, Placed, Edit / Cancel por fila), tarjetas bajo 768 px, filtrado por broker / símbolo / tipo de orden / lado / color, opciones comunicadas al panel de filtros, grupo comunicado por `onGroupChange` solo cuando todas las órdenes listadas comparten símbolo y tipo (la regla de Positions), estados vacíos "No pending orders" / "No orders match the selected filters", doble clic → gráfico. `OrderCard.tsx` (+ pequeño `.module.css`) reutiliza `PositionCard.module.css` y `useSwipeActions`: Distance en el hueco del P&L a 28 px, el tipo "· Limit / · Stop" en la línea de etiquetas, detalle Type / Lots / SL / TP / Broker / Placed. `OrderFiltersPanel.tsx` con `utils/orderFilters.ts` (`OrderFilterValues`, valores por defecto, `hasActiveOrderFilters`), guardado como `journal.orderFilters`. `JournalPage`: pestaña Orders entre Positions e History, enlace `?tab=orders` que siembra los filtros de órdenes, botón y panel de Filters según la pestaña, Edit de grupo (toast provisional hasta la tarea 5) / Cancel, Cancel por fila. Confirmación de cancelación como la maqueta: `CancelOrdersPanel.tsx` sobre `ConfirmPanel.module.css` con `OrderList.tsx` (cabecera "Sell Limit EURUSD" + broker, o el broker en cada fila cuando el grupo abarca varios brokers; una fila por orden con precio, lotes, distancia), "Cancel all / Cancel order" y "Keep orders / Keep order". `fmtDistance` en `utils/position.ts`.
+- `npm run build` y `npm run lint` limpios (tres errores de react-refresh resueltos sacando los helpers de los ficheros de componentes).
+- App local contra producción: el usuario comprobó el 23-10-2026 la pestaña Orders con las órdenes pendientes en vivo de todos los brokers, la columna de distancia, los filtros, el Cancel de grupo sobre cinco Sell Limit EURUSD de cinco brokers (panel ajustado dos veces en su revisión: disposición de la maqueta, y después el broker por fila cuando difieren). Validado por el usuario.
+- Est vs Real: 2 vs 1,75 SP.

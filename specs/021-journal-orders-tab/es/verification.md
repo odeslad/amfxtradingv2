@@ -4,6 +4,7 @@
 |---|---|---|---|---|
 | 1 | manual (lectura) + compilación local con MetaEditor | ✅ | 0,5 | 0,25 |
 | 2 | manual (script contra una copia rota y contra los ficheros reales) | ✅ | 0,5 | 0,5 |
+| 3 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -17,3 +18,10 @@
 - Hallazgo por el camino: el código de salida de MetaEditor es **1 al compilar bien y 0 al fallar**, así que el "código ≠ 0 → aviso" del script antiguo estaba invertido y nunca fue una señal; la comprobación es el `.ex4` y el log.
 - Ejecuciones (MetaEditor local de Darwinex MT4): fuentes reales → ambos `[OK]`, `Result: 0 errors, 0 warnings`, salida 0. Copia con `this is not mql4 ;` añadido a `HttpBridgeCommands.mq4` → tres líneas `error` y `Result: 3 errors` impresas, `[FAILED] HttpBridgeCommands.mq4 : no .ex4 produced`, el otro fichero OK, `Compilation failed for: HttpBridgeCommands.mq4`, salida 1.
 - Est vs Real: 0,5 vs 0,5 SP.
+
+## Tarea 3 — Flujo en vivo compartido, hook de deslizar, helpers de pips; Positions sin la sección de pendientes (frontend)
+
+- `features/journal/useLivePositions.ts`: la instantánea REST de `/positions/live`, la fusión del `positions` del WebSocket (los brokers ya refrescados por el WS no los pisa una instantánea tardía) y el mapa de colores con `setColor`, sacados de `OpenPositions` y llamados una vez en `JournalPage`, que pasa `positions.filter(!isPending)` a Positions. `utils/useSwipeActions.ts`: los gestos de la tarjeta (deslizar izquierda / derecha, toque, doble toque) desde `PositionCard`, que ahora usa el hook. `utils/position.ts`: `pipSize(símbolo)` (también lo usa `calcPnl`) y `orderDistancePips(p)` para la tarea 4. `OpenPositions` recibe `positions` / `colors` / `onColorChange` por props y pierde el fetch, el WS, el estado de colores, la tabla y tarjetas "Pending Orders" y su CSS `.pending*`; su panel de confirmación es solo "Close position?". `vite.config.ts`: `changeOrigin: true` en el proxy de desarrollo para que `DEV_API_TARGET` pueda ser la API de producción tras Cloudflare (respondía 530 a la cabecera Host local).
+- `npm run build` y `npm run lint` limpios.
+- App local: Vite 5174 con proxy a `https://api-v2.amfxtrading.com` (la cookie y el origen `.amfxtrading.com` se aceptan), sesión iniciada; el usuario comprobó Positions el 23-10-2026: Accounts y las posiciones abiertas de todos los brokers con P&L en vivo, insignias de color, sin sección de pendientes; un comando enviado desde la página devolvió su toast de `command_result`. Confirmado por el usuario con capturas.
+- Est vs Real: 1,5 vs 1 SP.

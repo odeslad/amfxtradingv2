@@ -48,6 +48,7 @@ export default defineConfig(({ command }) => ({
           proxy: {
             '/__api': {
               target: process.env.DEV_API_TARGET ?? 'http://localhost:3000',
+              changeOrigin: true,   // a remote target behind Cloudflare needs its own Host header
               ws: true,
               rewrite: (path: string) => path.replace(/^\/__api/, ''),
             },

@@ -1,11 +1,7 @@
-import { useRef, useState, type TouchEvent } from 'react';
 import { type Position, type PnlMode, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol } from './utils/position';
+import { useSwipeActions } from './utils/useSwipeActions';
 import { ColorBadge } from './ColorBadge';
 import styles from './PositionCard.module.css';
-
-const SWIPE_THRESHOLD = 50;
-const TAP_TOLERANCE = 8;
-const DOUBLE_TAP_MS = 300;
 
 interface PositionCardProps {
   position: Position;
@@ -19,54 +15,13 @@ interface PositionCardProps {
 }
 
 export function PositionCard({ position: p, pnlMode, balance, color, onColorChange, onEdit, onClose, onOpenChart }: PositionCardProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [open, setOpen] = useState(false);
-
-  const startX = useRef(0);
-  const lastDx = useRef(0);
-  const moved = useRef(false);
-  const lastTapTime = useRef(0);
-
-  const onTouchStart = (e: TouchEvent) => {
-    startX.current = e.touches[0].clientX;
-    lastDx.current = 0;
-    moved.current = false;
-  };
-
-  const onTouchMove = (e: TouchEvent) => {
-    lastDx.current = e.touches[0].clientX - startX.current;
-    if (Math.abs(lastDx.current) > TAP_TOLERANCE) moved.current = true;
-  };
-
-  const onTouchEnd = () => {
-    if (lastDx.current < -SWIPE_THRESHOLD) setOpen(true);
-    else if (lastDx.current > SWIPE_THRESHOLD) setOpen(false);
-  };
-
-  const onSummaryClick = () => {
-    if (moved.current) return;
-    if (open) { setOpen(false); return; }
-
-    const now = Date.now();
-    if (now - lastTapTime.current < DOUBLE_TAP_MS) {
-      onOpenChart?.(p);
-      lastTapTime.current = 0;
-      return;
-    }
-    lastTapTime.current = now;
-    setExpanded(prev => !prev);
-  };
+  const { open, expanded, touchHandlers, onSummaryClick } = useSwipeActions(() => onOpenChart?.(p));
 
   const pnlValue = calcPnl(p, pnlMode, balance);
 
   return (
     <div className={`${styles.card} ${expanded ? styles.cardExpanded : ''}`}>
-      <div
-        className={styles.swipeRow}
-        onTouchStart={onTouchStart}
-        onTouchMove={onTouchMove}
-        onTouchEnd={onTouchEnd}
-      >
+      <div className={styles.swipeRow} {...touchHandlers}>
         <div className={styles.actions}>
           <div className={`${styles.actionsInner} ${open ? styles.actionsInnerOpen : ''} ${expanded ? styles.actionsInnerExpanded : ''}`}>
             <button type="button" className={styles.editBtn} onClick={() => onEdit(p)}>Edit</button>

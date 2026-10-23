@@ -1,10 +1,9 @@
-import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useState, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useWs } from '../../lib/useWs';
-import { apiFetch, errorMessage } from '../../lib/api';
+import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
-import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, openTimeMs, currencySymbol, TYPE_LABEL, isPending, isBuySide } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useBalances } from '../../lib/useBalances';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
@@ -12,14 +11,8 @@ import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
 import { ConfirmPanel } from './ConfirmPanel';
 import { BulkEditPanel } from './BulkEditPanel';
+import { posKey } from './useLivePositions';
 import styles from './JournalPage.module.css';
-
-interface LiveBrokerPositions {
-  broker: string;
-  currency: string;
-  brokerOffset: number;
-  positions: Position[];
-}
 
 export interface BulkGroup {
   symbol: string;
@@ -28,97 +21,28 @@ export interface BulkGroup {
 }
 
 interface OpenPositionsProps {
+  positions: Position[];                // open market positions only
+  colors: Map<string, string>;
+  onColorChange: (broker: string, ticket: number, color: string) => void;
   filters: FilterValues;
   onOptionsChange: (options: FilterOptions) => void;
   onBulkChange: (group: BulkGroup | null) => void;
 }
 
-function posKey(broker: string, ticket: number) { return `${broker}:${ticket}`; }
-function byBrokerThenTime(a: Position, b: Position) {
-  return (a.broker ?? '').localeCompare(b.broker ?? '') || openTimeMs(a.openTime) - openTimeMs(b.openTime);
-}
-
-export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
+export function OpenPositions({ positions, colors, onColorChange, filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
   const navigate = useNavigate();
-  const [positions, setPositions] = useState<Position[]>([]);
-  const [colors, setColors] = useState<Map<string, string>>(new Map());
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
   const [closing, setClosing] = useState(false);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const { pnlMode } = useDisplaySettings();
   const balances = useBalances();
 
-  const handleColorChange = (broker: string, ticket: number, color: string) => {
-    setColors(prev => {
-      const next = new Map(prev);
-      if (color) next.set(posKey(broker, ticket), color);
-      else next.delete(posKey(broker, ticket));
-      return next;
-    });
-  };
-
-  // Brokers already refreshed by the WebSocket; the REST snapshot must not overwrite them.
-  const wsBrokersRef = useRef(new Set<string>());
-
-  useEffect(() => {
-    const ac = new AbortController();
-    apiFetch<LiveBrokerPositions[]>('/positions/live', { signal: ac.signal })
-      .then((brokers) => {
-        const colorMap = new Map<string, string>();
-        const fresh = brokers
-          .filter(({ broker }) => !wsBrokersRef.current.has(broker))
-          .flatMap(({ broker, currency, brokerOffset, positions: ps }) =>
-            ps.map(p => {
-              const pos = { ...p, broker: p.broker ?? broker, currency: p.currency ?? currency, brokerOffset: p.brokerOffset ?? brokerOffset };
-              if (pos.color) colorMap.set(posKey(pos.broker!, pos.ticket), pos.color);
-              return pos;
-            })
-          );
-        if (colorMap.size > 0) setColors(prev => new Map([...prev, ...colorMap]));
-        if (fresh.length > 0) setPositions(prev => [...prev, ...fresh].sort(byBrokerThenTime));
-      })
-      .catch(() => {});
-    return () => ac.abort();
-  }, []);
-
   useEffect(() => {
     const brokers = [...new Set(positions.map(p => p.broker ?? '').filter(Boolean))].sort();
     const symbols = [...new Set(positions.map(p => p.symbol).filter(Boolean))].sort();
-    const activeColors = [...new Set([...colors.values()].filter(Boolean))];
+    const activeColors = [...new Set(positions.map(p => colors.get(posKey(p.broker!, p.ticket)) ?? '').filter(Boolean))];
     onOptionsChange({ brokers, symbols, colors: activeColors });
   }, [positions, colors, onOptionsChange]);
-
-  const handleWsMessage = useCallback((data: unknown) => {
-    if (typeof data !== 'object' || data === null) return;
-    const msg = data as { type: string; broker: string; currency?: string; brokerOffset?: number; positions: Position[] };
-    if (msg.type !== 'positions') return;
-    const incoming = msg.positions.map(p => ({
-      ...p,
-      broker: p.broker ?? msg.broker,
-      currency: p.currency ?? msg.currency,
-      brokerOffset: p.brokerOffset ?? msg.brokerOffset,
-    }));
-    wsBrokersRef.current.add(msg.broker);
-    setPositions(prev => {
-      const withoutBroker = prev.filter(p => p.broker !== msg.broker);
-      return [...withoutBroker, ...incoming].sort(byBrokerThenTime);
-    });
-    // Clean up colors for closed positions of this broker
-    const activeTickets = new Set(incoming.map(p => posKey(p.broker!, p.ticket)));
-    setColors(prev => {
-      const next = new Map(prev);
-      let changed = false;
-      for (const key of next.keys()) {
-        if (key.startsWith(`${msg.broker}:`) && !activeTickets.has(key)) {
-          next.delete(key);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, []);
-
-  useWs(handleWsMessage);
 
   const handleOpenChart = useCallback((p: Position) => {
     const params = new URLSearchParams({ broker: p.broker ?? '', symbol: p.symbol, timeframe: 'H1' });
@@ -151,18 +75,15 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
     return true;
   }), [positions, filters, colors]);
 
-  const openPositions = useMemo(() => filtered.filter(p => !isPending(p.type)), [filtered]);
-  const pendingOrders = useMemo(() => filtered.filter(p => isPending(p.type)), [filtered]);
-
-  // bulk close applies only to open market positions, never to pending orders
+  // The group actions apply when every listed position shares symbol and type.
   const bulkGroup = useMemo(() => {
-    if (openPositions.length < 1) return null;
-    const symbol = openPositions[0].symbol;
-    const type = openPositions[0].type;
-    return openPositions.every(p => p.symbol === symbol && p.type === type)
-      ? { symbol, type, positions: openPositions }
+    if (filtered.length < 1) return null;
+    const symbol = filtered[0].symbol;
+    const type = filtered[0].type;
+    return filtered.every(p => p.symbol === symbol && p.type === type)
+      ? { symbol, type, positions: filtered }
       : null;
-  }, [openPositions]);
+  }, [filtered]);
 
   useEffect(() => {
     onBulkChange(bulkGroup);
@@ -178,7 +99,6 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
 
   return (
     <>
-      {openPositions.length > 0 && (
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
           <thead>
@@ -198,7 +118,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
             </tr>
           </thead>
           <tbody>
-            {openPositions.map(p => (
+            {filtered.map(p => (
               <tr key={`${p.broker}-${p.ticket}`} onDoubleClick={() => handleOpenChart(p)} style={{ cursor: 'pointer' }}>
                 <td className={styles.broker}>{p.broker}</td>
                 <td>
@@ -207,7 +127,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
                       broker={p.broker!}
                       ticket={p.ticket}
                       color={colors.get(posKey(p.broker!, p.ticket))}
-                      onColorChange={handleColorChange}
+                      onColorChange={onColorChange}
                     />
                     <span className={p.type === 0 ? styles.buy : styles.sell}>{p.symbol}</span>
                   </span>
@@ -240,89 +160,22 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
           </tbody>
         </table>
       </div>
-      )}
 
       <div className={styles.cards}>
-        {openPositions.map(p => (
+        {filtered.map(p => (
           <PositionCard
             key={`${p.broker}-${p.ticket}`}
             position={p}
             pnlMode={pnlMode}
             balance={balances[p.broker ?? '']}
             color={colors.get(posKey(p.broker!, p.ticket))}
-            onColorChange={handleColorChange}
+            onColorChange={onColorChange}
             onEdit={handleEdit}
             onClose={handleClose}
             onOpenChart={handleOpenChart}
           />
         ))}
       </div>
-
-      {pendingOrders.length > 0 && (
-        <div className={styles.pendingSection}>
-          <div className={styles.pendingHeader}>Pending Orders</div>
-
-          <div className={styles.tableWrapper}>
-            <table className={styles.table}>
-              <thead>
-                <tr>
-                  <th>Broker</th>
-                  <th>Symbol</th>
-                  <th>Type</th>
-                  <th>Lots</th>
-                  <th>Price</th>
-                  <th>SL</th>
-                  <th>TP</th>
-                  <th>Placed</th>
-                  <th className={styles.actionsCell} aria-label="Actions"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {pendingOrders.map(p => (
-                  <tr key={`${p.broker}-${p.ticket}`} onDoubleClick={() => handleOpenChart(p)} style={{ cursor: 'pointer' }}>
-                    <td className={styles.broker}>{p.broker}</td>
-                    <td><span className={isBuySide(p.type) ? styles.buy : styles.sell}>{p.symbol}</span></td>
-                    <td className={isBuySide(p.type) ? styles.buy : styles.sell}>{TYPE_LABEL[p.type]}</td>
-                    <td>{fmt(p.lots, 2)}</td>
-                    <td>{fmt(p.openPrice, 5)}</td>
-                    <td>{p.sl ? fmt(p.sl, 5) : '—'}</td>
-                    <td>{p.tp ? fmt(p.tp, 5) : '—'}</td>
-                    <td>{fmtLocalTime(p.openTime, p.brokerOffset)}</td>
-                    <td className={styles.actionsCell}>
-                      <div className={styles.rowActions}>
-                        <div className={styles.rowActionsInner}>
-                          <button type="button" className={styles.editBtn} onClick={() => handleEdit(p)}>Edit</button>
-                          <button type="button" className={styles.closeBtn} onClick={() => handleClose(p)}>Cancel</button>
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className={styles.cards}>
-            {pendingOrders.map(p => (
-              <div key={`${p.broker}-${p.ticket}`} className={styles.pendingCard}>
-                <div className={styles.pendingCardTop}>
-                  <span className={isBuySide(p.type) ? styles.buy : styles.sell}>{p.symbol}</span>
-                  <span className={styles.pendingType}>{TYPE_LABEL[p.type]}</span>
-                </div>
-                <div className={styles.pendingCardRow}><span className={styles.label}>Broker</span><span>{p.broker}</span></div>
-                <div className={styles.pendingCardRow}><span className={styles.label}>Price</span><span>{fmt(p.openPrice, 5)}</span></div>
-                <div className={styles.pendingCardRow}><span className={styles.label}>Lots</span><span>{fmt(p.lots, 2)}</span></div>
-                <div className={styles.pendingCardRow}><span className={styles.label}>SL</span><span>{p.sl ? fmt(p.sl, 5) : '—'}</span></div>
-                <div className={styles.pendingCardRow}><span className={styles.label}>TP</span><span>{p.tp ? fmt(p.tp, 5) : '—'}</span></div>
-                <div className={styles.pendingCardActions}>
-                  <button type="button" className={styles.editBtn} onClick={() => handleEdit(p)}>Edit</button>
-                  <button type="button" className={styles.closeBtn} onClick={() => handleClose(p)}>Cancel</button>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
       <BulkEditPanel
         open={!!editPosition}
@@ -332,10 +185,10 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
 
       <ConfirmPanel
         open={!!confirmClose}
-        title={confirmClose && isPending(confirmClose.type) ? 'Cancel order?' : 'Close position?'}
+        title="Close position?"
         description={confirmClose ? `${TYPE_LABEL[confirmClose.type]} ${confirmClose.symbol} — ${fmt(confirmClose.lots, 2)} lots` : ''}
         detail={confirmClose?.broker}
-        confirmLabel={confirmClose && isPending(confirmClose.type) ? 'Cancel order' : 'Close'}
+        confirmLabel="Close"
         confirming={closing}
         onConfirm={confirmAndClose}
         onClose={() => setConfirmClose(null)}

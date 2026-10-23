@@ -11,7 +11,8 @@ import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
-import { TYPE_LABEL, fmt } from './utils/position';
+import { TYPE_LABEL, fmt, isPending } from './utils/position';
+import { useLivePositions } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'closed';
@@ -44,6 +45,8 @@ export function JournalPage() {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const live = useLivePositions();
+  const openPositions = useMemo(() => live.positions.filter(p => !isPending(p.type)), [live.positions]);
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [closedOptions, setClosedOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [panelOpen, setPanelOpen] = useState(false);
@@ -182,6 +185,9 @@ export function JournalPage() {
         </div>
         <div className={tab === 'open' ? styles.tabPanel : styles.tabPanelHidden}>
           <OpenPositions
+            positions={openPositions}
+            colors={live.colors}
+            onColorChange={live.setColor}
             filters={filters}
             onOptionsChange={setOpenOptions}
             onBulkChange={handleBulkChange}

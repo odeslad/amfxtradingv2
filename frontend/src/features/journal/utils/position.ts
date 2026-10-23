@@ -121,6 +121,22 @@ export function currentQuote(p: Position): number | null {
   return q ?? null;
 }
 
+// One pip: 0.01 on JPY pairs, 0.0001 elsewhere (the backend's sizing rule).
+export function pipSize(symbol: string): number {
+  return symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
+}
+
+// Pips from the price a pending order fills at (ask for buys, bid for sells) to
+// its price, positive while the market still has to move towards the order and
+// negative once it has crossed it; null without a quote.
+export function orderDistancePips(p: Position): number | null {
+  const quote = isBuySide(p.type) ? p.currentAsk : p.currentBid;
+  if (quote == null) return null;
+  const towards = p.type === 2 || p.type === 5 ? -1 : 1;   // limits sit behind the market, stops ahead
+  const direction = isBuySide(p.type) ? 1 : -1;
+  return (towards * direction * (p.openPrice - quote)) / pipSize(p.symbol);
+}
+
 // Raw numeric P&L for a mode. The 'pct' mode needs the account balance; when it's
 // missing it falls back to the net currency value so callers never get NaN.
 export function calcPnl(p: Position, mode: PnlMode, balance?: number): number {
@@ -130,13 +146,13 @@ export function calcPnl(p: Position, mode: PnlMode, balance?: number): number {
     if (!balance || balance <= 0) return netPnl(p);
     return (netPnl(p) / balance) * 100;
   }
-  const pipSize = p.symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
+  const pip = pipSize(p.symbol);
   const closePrice = p.type === 0 ? p.currentBid : p.currentAsk;
   if (closePrice != null) {
     const direction = p.type === 0 ? 1 : -1;
-    return direction * (closePrice - p.openPrice) / pipSize;
+    return direction * (closePrice - p.openPrice) / pip;
   }
-  return p.profit / (p.lots * pipSize * 100_000);
+  return p.profit / (p.lots * pip * 100_000);
 }
 
 export function fmtPnlMode(p: Position, mode: PnlMode, balance?: number): string {

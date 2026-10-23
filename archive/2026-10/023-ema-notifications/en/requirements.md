@@ -1,6 +1,6 @@
 # 023 — EMA cross notifications in Settings
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

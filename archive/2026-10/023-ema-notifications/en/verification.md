@@ -8,6 +8,11 @@
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
 | 5 | `npm run build` + `npm run lint` + local app against the local backend (user) | ✅ | 2 | 1.5 |
 | 6 | `npm run build` + `npm run lint` + local app against the local backend (user) | ✅ | 1 | 0.75 |
+| 7 | manual (deploys checked by the operator + user validation on production) | ✅ | 1 | 0.75 |
+| 8 | manual | ✅ | 0.25 | 0.25 |
+| **Total** | | | **8.75** | **6.5** |
+
+Calibration: every layer came in under its estimate; the pieces already there (EMA alert evaluator, push service, Journal tab bar, edit-panel styles, book date helpers) carried most of the structure, and the mockup settled the UI before any code.
 
 ## Task 1 — Migration and models (db)
 
@@ -48,3 +53,14 @@
 - `npm run build` and `npx eslint` clean (one `set-state-in-effect` rewritten as a promise started in the effect).
 - Local app against the local backend, checked by the user on 2026-10-23: Devices button and dot, panel with the two existing subscriptions ("Unknown device": subscribed before the user agent was stored), Remove with confirmation, chart hint. The Enable flow needs the VAPID keys of production and is checked in task 7.
 - Est vs Actual: 1 vs 0.75 SP.
+
+## Task 7 — Deploys and production validation (infra)
+
+- Two pushes on 2026-10-23: `d33519f..2758a8b` (spec, db, backend) → backend 198 with `migrate deploy` finding nothing pending (the migration had been applied through the tunnel in task 3), `/ema-notifications` and `/push` answering 401 without a session; then `2758a8b..a4cb836` (frontend) → bundle with the new Settings served at 14:21 UTC. The user's first look on the iPhone found Mirror and Display overflowing the width (selects sized by their longest option, cards with a negative margin): `f017600` fixed it, deployed at 14:27 UTC.
+- User validation on production (desktop and iPhone), 2026-10-23: Settings tabs, mirror % with decimals on the phone, Devices (Enable on both devices, labelled rows, old entries removed), a rule on EURUSD M5 firing push and toast with "Last fired" filled, end time → Ended, chart Alerts panel unchanged with the hint. Validated by the user.
+- Est vs Actual: 1 vs 0.75 SP.
+
+## Task 8 — Close (specs)
+
+- Backend and frontend builds clean once more; Est vs Actual recorded; `Status: closed`; folder moved to `archive/2026-10/`. Left for the user to tune in use: the once-per-event approach rule (fires when the approach opens, again only after the gap leaves the threshold or a cross).
+- Est vs Actual: 0.25 vs 0.25 SP.

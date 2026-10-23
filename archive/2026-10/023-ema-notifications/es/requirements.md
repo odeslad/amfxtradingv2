@@ -1,6 +1,6 @@
 # 023 — Notificaciones de cruce de EMAs en Settings
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

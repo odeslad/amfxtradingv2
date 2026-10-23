@@ -8,6 +8,11 @@
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 | 5 | `npm run build` + `npm run lint` + app local contra el backend local (usuario) | ✅ | 2 | 1,5 |
 | 6 | `npm run build` + `npm run lint` + app local contra el backend local (usuario) | ✅ | 1 | 0,75 |
+| 7 | manual (despliegues comprobados por el operador + validación del usuario en producción) | ✅ | 1 | 0,75 |
+| 8 | manual | ✅ | 0,25 | 0,25 |
+| **Total** | | | **8,75** | **6,5** |
+
+Calibración: todas las capas salieron por debajo de su estimación; las piezas ya existentes (evaluador de alertas EMA, servicio push, barra de pestañas del Journal, estilos del panel de edición, helpers de fecha del libro) dieron casi toda la estructura, y la maqueta fijó la interfaz antes de escribir código.
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -48,3 +53,14 @@
 - `npm run build` y `npx eslint` limpios (un `set-state-in-effect` reescrito como promesa iniciada en el efecto).
 - App local contra el backend local, comprobada por el usuario el 23-10-2026: botón Devices y punto, panel con las dos suscripciones existentes ("Unknown device": suscritas antes de guardar el user agent), Remove con confirmación, pista del gráfico. El flujo Enable necesita las claves VAPID de producción y se comprueba en la tarea 7.
 - Est vs Real: 1 vs 0,75 SP.
+
+## Tarea 7 — Despliegues y validación en producción (infra)
+
+- Dos push el 23-10-2026: `d33519f..2758a8b` (spec, db, backend) → backend 198 con `migrate deploy` sin nada pendiente (la migración se había aplicado por el túnel en la tarea 3), `/ema-notifications` y `/push` respondiendo 401 sin sesión; después `2758a8b..a4cb836` (frontend) → bundle con el nuevo Settings servido a las 14:21 UTC. La primera mirada del usuario en el iPhone encontró Mirror y Display desbordando el ancho (selects dimensionados por su opción más larga, tarjetas con margen negativo): `f017600` lo corrigió, desplegado a las 14:27 UTC.
+- Validación del usuario en producción (escritorio e iPhone), 23-10-2026: pestañas de Settings, % del mirror con decimales en el móvil, Devices (Enable en ambos dispositivos, filas con nombre, entradas antiguas quitadas), una regla en EURUSD M5 disparando push y toast con "Last fired" relleno, hora de fin → Ended, panel Alerts del gráfico sin cambios con la pista. Validado por el usuario.
+- Est vs Real: 1 vs 0,75 SP.
+
+## Tarea 8 — Cierre (specs)
+
+- Builds de backend y frontend limpios de nuevo; Est vs Real registrado; `Estado: cerrada`; carpeta movida a `archive/2026-10/`. Queda para que el usuario lo afine con el uso: la regla de aproximación "una vez" (dispara al abrirse la aproximación, y de nuevo solo tras salir el gap del umbral o un cruce).
+- Est vs Real: 0,25 vs 0,25 SP.

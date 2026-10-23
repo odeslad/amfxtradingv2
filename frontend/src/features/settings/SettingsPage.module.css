@@ -375,7 +375,8 @@
   .cards {
     display: flex;
     flex-direction: column;
-    margin: 12px -8px 0;
+    margin: 12px 0 0;
+    min-width: 0;
   }
 
   .card {
@@ -403,10 +404,16 @@
     height: 44px;
     font-size: var(--text-xl);
     padding-left: 10px;
+    max-width: 100%;
+    min-width: 0;
   }
 
   .select {
     width: 100%;
+  }
+
+  .card > * {
+    min-width: 0;
   }
 
   .input {
@@ -417,5 +424,14 @@
     flex-direction: column;
     align-items: stretch;
     gap: 6px;
+  }
+
+  .displayRow .select {
+    width: 100%;
+  }
+
+  .page {
+    max-width: 100%;
+    overflow-x: hidden;
   }
 }

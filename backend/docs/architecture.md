@@ -85,7 +85,6 @@ backend/
 │   │   ├── candles.ts            # closed candles createMany
 │   │   ├── chunk.ts              # chunked createMany helper
 │   │   ├── push.ts               # Web Push delivery (VAPID)
-│   │   ├── scanner.ts            # EMA cross scanner per broker/timeframe
 │   │   ├── sizing.ts             # risk % → lots
 │   │   ├── stats.ts / stats-core.ts # account statistics
 │   │   └── trades.ts             # closed trades createMany
@@ -138,7 +137,6 @@ Every router except `/auth` and `/health` sits behind `requireAuth`: the JWT tra
 | `/drawings` | `GET`, `PUT` | Chart drawings per user, broker, symbol, timeframe |
 | `/alerts` | `GET`, `POST`, `PUT /:id`, `DELETE /:id` | Price alerts |
 | `/ema-alerts` | `GET`, `POST`, `PUT /:id`, `DELETE /:id` | EMA convergence alerts |
-| `/scanner` | `GET` | EMA cross state of every symbol of a broker and timeframe |
 | `/setup-levels` | `GET` | Levels of the last EMA cross setup of a symbol |
 | `/push` | `GET /vapid`, `POST /subscribe`, `POST /unsubscribe` | Web Push subscriptions |
 | `/stats` | `GET` | Account statistics per broker and period |

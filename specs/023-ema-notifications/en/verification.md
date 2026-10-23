@@ -5,6 +5,7 @@
 | 1 | `prisma generate` + `npm run build` + `prisma migrate diff` | ✅ | 0.5 | 0.25 |
 | 2 | `npm test` (7 on the pure rules) + `npm run build` + lint | ✅ | 1.5 | 1 |
 | 3 | `npm run build` + local backend probes against the production database | ✅ | 1 | 1 |
+| 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
 
 ## Task 1 — Migration and models (db)
 
@@ -24,3 +25,10 @@
 - Migration applied to production through the tunnel (`prisma migrate deploy`: `20261024000000_ema_notifications` applied; `migrate diff` → empty) so the pipeline of task 7 finds nothing pending.
 - Local backend (3001, bridges off, production database) with a forged session: list → `[]`; POST missing symbols / equal EMAs / timeframe H2 / approach with threshold 0 → 400 with the field named; POST ok → 201 (symbols `["eurusd","EURUSD","gbpusd"]` stored as `["EURUSD","GBPUSD"]`, state active, lastFired null); PUT pause + past end → state ended; PUT once per event + all symbols → `repeatMinutes` null, `symbols` `[]`; PUT / DELETE on 999999 → 404; DELETE → 204, again → 404. `GET /push` lists the two existing devices as "Unknown device" (subscribed before the user agent was stored; they relabel on the next subscribe); `DELETE /push/999999` → 404. First run exposed that `integer()` rejects a path param string: switched to `intParam`. Test rule removed afterwards.
 - Est vs Actual: 1 vs 1 SP.
+
+## Task 4 — Settings shell, Mirror and Display tabs (frontend)
+
+- `SettingsPage.tsx` rewritten as the shell: Journal-style tab bar (Mirror / Display / Notifications), one Save for Mirror + Display with an "Unsaved changes" marker and a success toast, settings and balances loaded together; `SettingsPage.module.css` rewritten (tab bar and bar buttons from the Journal, table, toggle, inputs, display rows, mobile rules: full-width tabs, button row under the tabs, stacked broker cards, 44 px inputs at 16 px). `MirrorTab.tsx`: desktop table (Broker, Mirror toggle, Sizing, Lots / %, Account, Balance from `/balances`), mobile cards; the lots / % input is a text field with `inputMode="decimal"` parsed on change (AC 8). `DisplayTab.tsx`: today's four rows. The Notifications tab is a placeholder until task 5; the 600 px cap is gone.
+- `npm run build` and `npx eslint src/features/settings` clean.
+- Local app (Vite 5174 against the production API), checked by the user on 2026-10-23: tabs, mirror table edited and saved, reload keeps the values, display options, mobile layout and decimal keyboard. Validated by the user.
+- Est vs Actual: 1.5 vs 1 SP.

@@ -1,64 +1,64 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
-import type { PnlMode } from '../journal/utils/position';
-import type { TrendlineStyle } from '../chart/DrawingTools';
+import { MirrorTab, type AccountInfo, type MirrorBroker } from './MirrorTab';
+import { DisplayTab, type DisplaySettingsForm } from './DisplayTab';
 import styles from './SettingsPage.module.css';
 
-interface MirrorBroker {
-  id?: number;
-  broker: string;
-  enabled: boolean;
-  lotsMode: 'fixed' | 'risk_pct';
-  lots: number;
+type Tab = 'mirror' | 'display' | 'notifications';
+
+interface SettingsResponse {
+  mirror: MirrorBroker[];
+  display: Partial<DisplaySettingsForm>;
 }
 
 interface Balance {
   broker: string;
+  name: string;
+  balance: number;
+  currency: string;
 }
 
-const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
-const TRENDLINE_WIDTHS = [1, 2, 3];
+const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1 };
 
 export function SettingsPage() {
+  const [tab, setTab] = useState<Tab>('mirror');
   const [mirror, setMirror] = useState<MirrorBroker[]>([]);
-  const [pnlMode, setPnlMode] = useState<PnlMode>('net');
-  const [trendlineColor, setTrendlineColor] = useState('#8c8c8c');
-  const [trendlineStyle, setTrendlineStyle] = useState<TrendlineStyle>('dashed');
-  const [trendlineWidth, setTrendlineWidth] = useState(1);
+  const [accounts, setAccounts] = useState<Record<string, AccountInfo>>({});
+  const [display, setDisplay] = useState<DisplaySettingsForm>(DEFAULT_DISPLAY);
+  const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    const ac = new AbortController();
     Promise.all([
-      apiFetch<{ mirror: MirrorBroker[]; display: { pnlMode: PnlMode; trendlineColor: string; trendlineStyle: TrendlineStyle; trendlineWidth: number } }>('/settings'),
-      apiFetch<Balance[]>('/balances'),
+      apiFetch<SettingsResponse>('/settings', { signal: ac.signal }),
+      apiFetch<Balance[]>('/balances', { signal: ac.signal }),
     ]).then(([settings, balances]) => {
       const existing = new Map(settings.mirror.map(m => [m.broker, m]));
-      const merged = balances.map(b => existing.get(b.broker) ?? {
-        broker: b.broker,
-        enabled: false,
-        lotsMode: 'fixed' as const,
-        lots: 0.01,
-      });
-      setMirror(merged);
-      if (settings.display?.pnlMode) setPnlMode(settings.display.pnlMode);
-      if (settings.display?.trendlineColor) setTrendlineColor(settings.display.trendlineColor);
-      if (settings.display?.trendlineStyle) setTrendlineStyle(settings.display.trendlineStyle);
-      if (settings.display?.trendlineWidth) setTrendlineWidth(settings.display.trendlineWidth);
+      setMirror(balances.map(b => existing.get(b.broker) ?? { broker: b.broker, enabled: false, lotsMode: 'fixed' as const, lots: 0.01 }));
+      setAccounts(Object.fromEntries(balances.map(b => [b.broker, { name: b.name, balance: b.balance, currency: b.currency }])));
+      setDisplay({ ...DEFAULT_DISPLAY, ...settings.display });
     }).catch(() => {});
+    return () => ac.abort();
   }, []);
 
   const updateBroker = useCallback((broker: string, patch: Partial<MirrorBroker>) => {
     setMirror(prev => prev.map(m => m.broker === broker ? { ...m, ...patch } : m));
-    setSaved(false);
+    setDirty(true);
+  }, []);
+
+  const updateDisplay = useCallback((patch: Partial<DisplaySettingsForm>) => {
+    setDisplay(prev => ({ ...prev, ...patch }));
+    setDirty(true);
   }, []);
 
   const handleSave = async () => {
     setSaving(true);
     try {
-      await apiSend('/settings', 'PUT', { mirror, display: { pnlMode, trendlineColor, trendlineStyle, trendlineWidth } });
-      setSaved(true);
+      await apiSend('/settings', 'PUT', { mirror, display });
+      setDirty(false);
+      addToast('Settings saved', 'success');
     } catch (err) {
       addToast(errorMessage(err, 'Network error saving settings'), 'error');
     } finally {
@@ -66,144 +66,30 @@ export function SettingsPage() {
     }
   };
 
+  const savable = tab === 'mirror' || tab === 'display';
+
   return (
     <div className={styles.page}>
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Mirror</h2>
-          <p className={styles.sectionDesc}>Replicate trades across brokers. Configure lot size per broker.</p>
+      <div className={styles.tabBar}>
+        <div className={styles.tabs}>
+          <button type="button" className={`${styles.tab} ${tab === 'mirror' ? styles.tabActive : ''}`} onClick={() => setTab('mirror')}>Mirror</button>
+          <button type="button" className={`${styles.tab} ${tab === 'display' ? styles.tabActive : ''}`} onClick={() => setTab('display')}>Display</button>
+          <button type="button" className={`${styles.tab} ${tab === 'notifications' ? styles.tabActive : ''}`} onClick={() => setTab('notifications')}>Notifications</button>
         </div>
 
-        <div className={styles.brokerList}>
-          {mirror.map(m => (
-            <div key={m.broker} className={`${styles.brokerRow} ${m.enabled ? styles.brokerRowActive : ''}`}>
-              <div className={styles.brokerName}>{m.broker.toUpperCase()}</div>
-
-              <label className={styles.toggle}>
-                <input
-                  type="checkbox"
-                  checked={m.enabled}
-                  onChange={e => updateBroker(m.broker, { enabled: e.target.checked })}
-                />
-                <span className={styles.toggleTrack}>
-                  <span className={styles.toggleThumb} />
-                </span>
-              </label>
-
-              <select
-                className={styles.select}
-                value={m.lotsMode}
-                disabled={!m.enabled}
-                onChange={e => updateBroker(m.broker, { lotsMode: e.target.value as 'fixed' | 'risk_pct' })}
-              >
-                <option value="fixed">Fixed lots</option>
-                <option value="risk_pct">% Risk</option>
-              </select>
-
-              <input
-                className={styles.input}
-                type="number"
-                step={m.lotsMode === 'fixed' ? '0.01' : '0.1'}
-                min="0"
-                value={m.lots}
-                disabled={!m.enabled}
-                onChange={e => updateBroker(m.broker, { lots: parseFloat(e.target.value) || 0 })}
-              />
-
-              <span className={styles.lotsUnit}>{m.lotsMode === 'fixed' ? 'lots' : '%'}</span>
-            </div>
-          ))}
-
-          {mirror.length === 0 && (
-            <div className={styles.empty}>No brokers connected</div>
+        <div className={styles.tabBarRight}>
+          {savable && dirty && <span className={styles.unsaved}>Unsaved changes</span>}
+          {savable && (
+            <button type="button" className={styles.saveBtn} onClick={handleSave} disabled={saving || !dirty}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
           )}
         </div>
-
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.saveBtn}
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
-          </button>
-        </div>
       </div>
 
-      <div className={styles.section}>
-        <div className={styles.sectionHeader}>
-          <h2 className={styles.sectionTitle}>Display</h2>
-          <p className={styles.sectionDesc}>Customize how data is shown across the app.</p>
-        </div>
-
-        <div className={styles.brokerList}>
-          <div className={styles.displayRow}>
-            <span className={styles.displayLabel}>P&amp;L Mode</span>
-            <select
-              className={styles.select}
-              value={pnlMode}
-              onChange={e => { setPnlMode(e.target.value as PnlMode); setSaved(false); }}
-            >
-              <option value="net">Net (profit + swap + commission)</option>
-              <option value="gross">Gross (profit only)</option>
-              <option value="pips">Pips</option>
-              <option value="pct">% Net (over account balance)</option>
-            </select>
-          </div>
-
-          <div className={styles.displayRow}>
-            <span className={styles.displayLabel}>Trendline style</span>
-            <select
-              className={styles.select}
-              value={trendlineStyle}
-              onChange={e => { setTrendlineStyle(e.target.value as TrendlineStyle); setSaved(false); }}
-            >
-              <option value="solid">Solid</option>
-              <option value="dashed">Dashed</option>
-              <option value="dotted">Dotted</option>
-            </select>
-          </div>
-
-          <div className={styles.displayRow}>
-            <span className={styles.displayLabel}>Trendline width</span>
-            <select
-              className={styles.select}
-              value={trendlineWidth}
-              onChange={e => { setTrendlineWidth(Number(e.target.value)); setSaved(false); }}
-            >
-              {TRENDLINE_WIDTHS.map(w => <option key={w} value={w}>{w}px</option>)}
-            </select>
-          </div>
-
-          <div className={styles.displayRow}>
-            <span className={styles.displayLabel}>Trendline color</span>
-            <div className={styles.colorSwatches}>
-              {TRENDLINE_COLORS.map(c => (
-                <button
-                  key={c}
-                  type="button"
-                  className={`${styles.colorSwatch} ${trendlineColor === c ? styles.colorSwatchActive : ''}`}
-                  style={{ background: c }}
-                  onClick={() => { setTrendlineColor(c); setSaved(false); }}
-                  aria-label={`Color ${c}`}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className={styles.actions}>
-          <button
-            type="button"
-            className={styles.saveBtn}
-            onClick={handleSave}
-            disabled={saving}
-          >
-            {saving ? 'Saving...' : saved ? 'Saved' : 'Save'}
-          </button>
-        </div>
-      </div>
+      {tab === 'mirror' && <MirrorTab mirror={mirror} accounts={accounts} onChange={updateBroker} />}
+      {tab === 'display' && <DisplayTab display={display} onChange={updateDisplay} />}
+      {tab === 'notifications' && <div className={styles.empty}>Notifications arrive with the next task.</div>}
     </div>
   );
 }

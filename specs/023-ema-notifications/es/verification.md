@@ -5,6 +5,7 @@
 | 1 | `prisma generate` + `npm run build` + `prisma migrate diff` | ✅ | 0,5 | 0,25 |
 | 2 | `npm test` (7 sobre las reglas puras) + `npm run build` + lint | ✅ | 1,5 | 1 |
 | 3 | `npm run build` + sondeos al backend local contra la base de datos de producción | ✅ | 1 | 1 |
+| 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -24,3 +25,10 @@
 - Migración aplicada a producción por el túnel (`prisma migrate deploy`: `20261024000000_ema_notifications` aplicada; `migrate diff` → vacío) para que el pipeline de la tarea 7 no encuentre nada pendiente.
 - Backend local (3001, bridges apagados, base de datos de producción) con sesión forjada: lista → `[]`; POST sin pares / EMAs iguales / timeframe H2 / aproximación con umbral 0 → 400 con el campo nombrado; POST correcto → 201 (pares `["eurusd","EURUSD","gbpusd"]` guardados como `["EURUSD","GBPUSD"]`, estado active, lastFired nulo); PUT pausa + fin pasado → estado ended; PUT una vez por evento + todos los pares → `repeatMinutes` nulo, `symbols` `[]`; PUT / DELETE sobre 999999 → 404; DELETE → 204, repetido → 404. `GET /push` lista los dos dispositivos existentes como "Unknown device" (suscritos antes de guardar el user agent; se reetiquetan en la siguiente suscripción); `DELETE /push/999999` → 404. La primera pasada destapó que `integer()` rechaza el parámetro de ruta como texto: cambiado a `intParam`. Regla de prueba eliminada después.
 - Est vs Real: 1 vs 1 SP.
+
+## Tarea 4 — Armazón de Settings, pestañas Mirror y Display (frontend)
+
+- `SettingsPage.tsx` reescrito como armazón: barra de pestañas al estilo Journal (Mirror / Display / Notifications), un Save para Mirror + Display con marcador "Unsaved changes" y toast de éxito, ajustes y saldos cargados juntos; `SettingsPage.module.css` reescrito (barra de pestañas y botones del Journal, tabla, toggle, inputs, filas de display, reglas móviles: pestañas a ancho completo, fila de botones bajo las pestañas, tarjetas apiladas por broker, inputs de 44 px a 16 px). `MirrorTab.tsx`: tabla en escritorio (Broker, toggle Mirror, Sizing, Lots / %, Account, Balance de `/balances`), tarjetas en móvil; el input de lotes / % es un campo de texto con `inputMode="decimal"` parseado al cambiar (CA 8). `DisplayTab.tsx`: las cuatro filas de hoy. La pestaña Notifications es un hueco hasta la tarea 5; desaparece el tope de 600 px.
+- `npm run build` y `npx eslint src/features/settings` limpios.
+- App local (Vite 5174 contra la API de producción), comprobada por el usuario el 23-10-2026: pestañas, tabla del mirror editada y guardada, la recarga conserva los valores, opciones de display, disposición móvil y teclado decimal. Validado por el usuario.
+- Est vs Real: 1,5 vs 1 SP.

@@ -53,7 +53,7 @@ router.post('/schemes', asyncRoute(async (req, res) => {
   const number = optionalInteger(body.number, 'number', { min: 1 }) ?? await nextSchemeNumber();
   const scheme = await createScheme({
     number, start: parseDate(body.start, 'start'), end: optionalDate(body.end, 'end') ?? null,
-    result: optionalOneOf(body.result, 'result', RESULT_INPUTS) ?? 'auto', note: optionalString(body.note, 'note') ?? null,
+    result: optionalOneOf(body.result, 'result', RESULT_INPUTS) ?? 'auto', note: body.note === null ? null : optionalString(body.note, 'note') ?? null,
   });
   res.status(201).json({ scheme });
 }));

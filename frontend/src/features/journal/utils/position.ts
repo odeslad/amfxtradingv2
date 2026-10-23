@@ -132,7 +132,7 @@ export function pipSize(symbol: string): number {
 export function orderDistancePips(p: Position): number | null {
   const quote = isBuySide(p.type) ? p.currentAsk : p.currentBid;
   if (quote == null) return null;
-  const towards = p.type === 2 || p.type === 5 ? -1 : 1;   // limits sit behind the market, stops ahead
+  const towards = p.type === 2 || p.type === 3 ? -1 : 1;   // limits sit behind the market, stops ahead
   const direction = isBuySide(p.type) ? 1 : -1;
   return (towards * direction * (p.openPrice - quote)) / pipSize(p.symbol);
 }

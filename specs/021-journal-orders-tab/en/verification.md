@@ -6,6 +6,7 @@
 | 2 | manual (script run against a broken copy and the real files) | ✅ | 0.5 | 0.5 |
 | 3 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 2 | 1.75 |
+| 5 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1.25 |
 
 ## Task 1 — `modify` moves a pending order to the received price (ea)
 
@@ -33,3 +34,10 @@
 - `npm run build` and `npm run lint` clean (three react-refresh errors fixed by moving the helpers out of the component files).
 - Local app against production: the user checked on 2026-10-23 the Orders tab with the live pending orders of every broker, the distance column, filters, the group Cancel over five Sell Limit EURUSD orders across five brokers (panel adjusted twice on the user's review: mockup layout, then the broker per row when brokers differ). Validated by the user.
 - Est vs Actual: 2 vs 1.75 SP.
+
+## Task 5 — Edit panel for one order or a group (frontend)
+
+- `EditOrderPanel.tsx` (+ `.module.css` for the stats row and the error box) over `BulkEditPanel.module.css`: header "Edit order · ticket" / "Edit N orders", the `OrderList` head and rows, Price, then SL / TP (empty = keep), then a row with the current fill price (ask for buys, bid for sells) and the **new distance** recomputed from the typed price, the side-of-market check (buy limit below the ask, sell limit above the bid, stops the other way) shown as a red box that disables the button, and "Modify order" / "Modify N". `lib/commands.ts`: `modifyCommand(p, sl, tp, price?)` adds `price` only when given, so position edits are unchanged. `JournalPage`: row Edit and group Edit open the panel; the edit and cancel panels keep ticket keys and resolve the live orders on every render, so their prices, SL / TP and distances follow the WebSocket while open (the first version held a copy and froze). Fixed on the way: `orderDistancePips` had the limit / stop test on types 2 and 5 instead of 2 and 3, which inverted the sign of sell limits and sell stops.
+- `npm run build` and `npm run lint` clean.
+- Local app against production, checked by the user on 2026-10-23: the panel follows the live quote (+100.3 → +99.2 while open), the new distance moves with the typed price, a sell limit typed below the bid shows "A sell limit must sit above the bid (1.12008)" with the button disabled, the price field no longer stretches the form (a `flex: 1` inherited from the positions panel). SL edit sent and confirmed; moving the price needs the EA 2.22 that ships in task 7 (the 2.21 keeps the open price and MT4 answers error 1, no change), so that check is part of the production validation. Validated by the user.
+- Est vs Actual: 1.5 vs 1.25 SP.

@@ -27,8 +27,9 @@ export function closeCommand(p: PositionRef): Command {
   return { id: newCommandId(), action: 'close', broker: p.broker ?? '', symbol: p.symbol, ticket: p.ticket, lots: p.lots };
 }
 
-export function modifyCommand(p: PositionRef, sl: number, tp: number): Command {
-  return { ...closeCommand(p), action: 'modify', sl, tp };
+// `price` moves a pending order; it is only sent when given, so position edits are unchanged.
+export function modifyCommand(p: PositionRef, sl: number, tp: number, price?: number): Command {
+  return { ...closeCommand(p), action: 'modify', sl, tp, ...(price !== undefined ? { price } : {}) };
 }
 
 // Resolves to the command id so callers can match the WS command_result.

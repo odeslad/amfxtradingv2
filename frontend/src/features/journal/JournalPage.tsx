@@ -11,12 +11,13 @@ import { NewTradePanel } from './NewTradePanel';
 import { BulkEditPanel } from './BulkEditPanel';
 import { ConfirmPanel } from './ConfirmPanel';
 import { CancelOrdersPanel } from './CancelOrdersPanel';
+import { EditOrderPanel } from './EditOrderPanel';
 import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
 import { type Position, TYPE_LABEL, fmt, isPending } from './utils/position';
-import { useLivePositions } from './useLivePositions';
+import { useLivePositions, posKey } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'orders' | 'closed';
@@ -73,7 +74,15 @@ export function JournalPage() {
   const [bulkConfirmClose, setBulkConfirmClose] = useState(false);
   const [bulkClosing, setBulkClosing] = useState(false);
   const [orderGroup, setOrderGroup] = useState<Position[] | null>(null);
-  const [cancelOrders, setCancelOrders] = useState<Position[] | null>(null);
+  // The panels hold ticket keys, not copies, so they follow the live feed while open.
+  const [editKeys, setEditKeys] = useState<string[] | null>(null);
+  const [cancelKeys, setCancelKeys] = useState<string[] | null>(null);
+  const liveByKeys = useCallback((keys: string[] | null): Position[] | null =>
+    keys ? pendingOrders.filter(p => keys.includes(posKey(p.broker!, p.ticket))) : null, [pendingOrders]);
+  const editOrders = useMemo(() => liveByKeys(editKeys), [liveByKeys, editKeys]);
+  const cancelOrders = useMemo(() => liveByKeys(cancelKeys), [liveByKeys, cancelKeys]);
+  const setEditOrders = useCallback((orders: Position[] | null) => setEditKeys(orders ? orders.map(p => posKey(p.broker!, p.ticket)) : null), []);
+  const setCancelOrders = useCallback((orders: Position[] | null) => setCancelKeys(orders ? orders.map(p => posKey(p.broker!, p.ticket)) : null), []);
   const [cancelling, setCancelling] = useState(false);
 
   const filterOptions = tab === 'open' ? openOptions : closedOptions;
@@ -114,9 +123,7 @@ export function JournalPage() {
     }
   };
 
-  const handleEditOrder = useCallback((p: Position) => {
-    addToast(`Editing order ${p.ticket} arrives with the next task`, 'info');
-  }, []);
+  const handleEditOrder = useCallback((p: Position) => setEditOrders([p]), [setEditOrders]);
 
   const handleCancelOrders = async () => {
     if (!cancelOrders) return;
@@ -179,7 +186,7 @@ export function JournalPage() {
           )}
           {tab === 'orders' && orderGroup && (
             <>
-              <button type="button" className={styles.bulkEditBtn} onClick={() => handleEditOrder(orderGroup[0])}>
+              <button type="button" className={styles.bulkEditBtn} onClick={() => setEditOrders(orderGroup)}>
                 <span>Edit</span>
               </button>
               <button type="button" className={styles.bulkCloseBtn} onClick={() => setCancelOrders(orderGroup)}>
@@ -243,6 +250,12 @@ export function JournalPage() {
         confirming={bulkClosing}
         onConfirm={handleBulkClose}
         onClose={() => setBulkConfirmClose(false)}
+      />
+
+      <EditOrderPanel
+        open={!!editOrders}
+        orders={editOrders ?? []}
+        onClose={() => setEditOrders(null)}
       />
 
       <CancelOrdersPanel

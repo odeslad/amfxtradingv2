@@ -1,0 +1,42 @@
+.stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.statRight {
+  align-items: flex-end;
+}
+
+.statValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-2xl);
+  color: var(--text);
+}
+
+.statBig {
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+
+.profit { color: var(--green); }
+.loss { color: var(--red); }
+.muted { color: var(--muted); }
+
+.error {
+  border: 1px solid var(--red);
+  background: rgba(224, 92, 92, 0.08);
+  padding: 8px 10px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  color: var(--red);
+}

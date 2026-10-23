@@ -6,6 +6,7 @@
 | 2 | manual (script contra una copia rota y contra los ficheros reales) | ✅ | 0,5 | 0,5 |
 | 3 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 2 | 1,75 |
+| 5 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1,25 |
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -33,3 +34,10 @@
 - `npm run build` y `npm run lint` limpios (tres errores de react-refresh resueltos sacando los helpers de los ficheros de componentes).
 - App local contra producción: el usuario comprobó el 23-10-2026 la pestaña Orders con las órdenes pendientes en vivo de todos los brokers, la columna de distancia, los filtros, el Cancel de grupo sobre cinco Sell Limit EURUSD de cinco brokers (panel ajustado dos veces en su revisión: disposición de la maqueta, y después el broker por fila cuando difieren). Validado por el usuario.
 - Est vs Real: 2 vs 1,75 SP.
+
+## Tarea 5 — Panel de edición de una orden o de un grupo (frontend)
+
+- `EditOrderPanel.tsx` (+ `.module.css` para la fila de datos y la caja de error) sobre `BulkEditPanel.module.css`: cabecera "Edit order · ticket" / "Edit N orders", la cabecera y filas de `OrderList`, Price, después SL / TP (vacío = conservar), después una fila con el precio de ejecución actual (ask en compras, bid en ventas) y la **nueva distancia** recalculada con el precio tecleado, la comprobación del lado del mercado (buy limit bajo el ask, sell limit sobre el bid, stops al revés) mostrada como caja roja que deshabilita el botón, y "Modify order" / "Modify N". `lib/commands.ts`: `modifyCommand(p, sl, tp, price?)` añade `price` solo cuando se da, así las ediciones de posiciones no cambian. `JournalPage`: Edit por fila y Edit de grupo abren el panel; los paneles de editar y cancelar guardan las claves de ticket y resuelven las órdenes en vivo en cada render, así sus precios, SL / TP y distancias siguen al WebSocket mientras están abiertos (la primera versión guardaba una copia y se congelaba). Arreglado por el camino: `orderDistancePips` comprobaba limit / stop en los tipos 2 y 5 en vez de 2 y 3, lo que invertía el signo de sell limit y sell stop.
+- `npm run build` y `npm run lint` limpios.
+- App local contra producción, comprobada por el usuario el 23-10-2026: el panel sigue la cotización en vivo (+100,3 → +99,2 abierto), la nueva distancia se mueve con el precio tecleado, una sell limit tecleada bajo el bid muestra "A sell limit must sit above the bid (1.12008)" con el botón deshabilitado, el campo de precio ya no estira el formulario (un `flex: 1` heredado del panel de posiciones). Edición de SL enviada y confirmada; mover el precio necesita el EA 2.22 que sale en la tarea 7 (el 2.21 conserva el precio de apertura y MT4 responde error 1, sin cambios), así que esa comprobación forma parte de la validación en producción. Validado por el usuario.
+- Est vs Real: 1,5 vs 1,25 SP.

@@ -14,7 +14,8 @@ and delete schemes and operations. The book does not touch brokers, positions or
 Every figure of an operation derives from its prices and the running balance, exactly as the document does:
 the account starts at 10 000; the balance is chained in **close order** (an operation that closes later
 takes the balance left by the one that closed before it, whatever their tickets); result in € = lots × pips
-gained × 10; R = result ÷ (1 % of the balance before the close); balance after = balance before + result.
+gained × 10; R = pips gained ÷ pips from the entry to the SL (the classic R, not the document's € ÷ 1 % of
+the balance); balance after = balance before + result.
 The lots the app proposes are 1 % of the current balance ÷ (SL distance in pips × 10), rounded to 0.01, but
 the lots are the operator's (the document keeps the ones really used, which differ from that proposal in
 more than half of the rows), so they are editable. A scheme's summary (trades line, tickets, net € and net R) and the totals of

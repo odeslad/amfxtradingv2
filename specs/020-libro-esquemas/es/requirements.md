@@ -14,7 +14,8 @@ esquemas y operaciones. El libro no toca brokers, posiciones ni trades de la app
 Cada cifra de una operación se deriva de sus precios y del saldo acumulado, exactamente como hace el
 documento: la cuenta empieza en 10 000; el saldo se encadena en **orden de cierre** (una operación que cierra después
 toma el saldo que dejó la que cerró antes, sean cuales sean sus tickets); resultado en € = lotes × pips
-ganados × 10; R = resultado ÷ (1 % del saldo antes del cierre); saldo después = saldo previo + resultado.
+ganados × 10; R = pips ganados ÷ pips de la entrada al SL (la R clásica, no la del documento, € ÷ 1 % del
+saldo); saldo después = saldo previo + resultado.
 Los lotes que propone la app son el 1 % del saldo actual ÷ (distancia del SL en pips × 10), redondeado a
 0,01, pero los lotes son del operador (el documento conserva los que usó de verdad, que difieren de esa
 propuesta en más de la mitad de las filas), así que son editables. El resumen de un esquema (línea de trades, tickets, neto €

@@ -2,10 +2,10 @@
 // computes it (verified on its 878 operations): the account starts at 10 000;
 // one pip of one lot is worth 10 (account currency); the balance is chained in
 // **close order** (an operation that closes later takes the balance left by the
-// one that closed before it, whatever their tickets), and R measures the € of
-// an operation against 1 % of that balance before its close. The lots the book
-// proposes are 1 % of the current balance over the SL distance; the operator's
-// own lots (kept on import, editable in the form) are what the € come from.
+// one that closed before it, whatever their tickets). R is the classic one:
+// pips gained ÷ pips from the entry to the SL (1R = the SL distance). The lots
+// the book proposes are 1 % of the current balance over the SL distance; the
+// operator's own lots (kept on import, editable in the form) are what the € come from.
 
 export const START_BALANCE = 10_000;
 export const RISK = 0.01;
@@ -56,7 +56,8 @@ export function figuresFor(riskBase: number, input: TradeInput, lots = lotsFor(r
   if (input.closePrice === null) return { lots, pips: null, profit: null, r: null };
   const gained = pips(input.direction, input.entry, input.closePrice);
   const profit = round2(lots * gained * PIP_VALUE);
-  return { lots, pips: gained, profit, r: round2(profit / (riskBase * RISK)) };
+  const stop = slPips(input.entry, input.sl);
+  return { lots, pips: gained, profit, r: stop > 0 ? round2(gained / stop) : 0 };
 }
 
 export interface ChainTrade extends TradeInput {

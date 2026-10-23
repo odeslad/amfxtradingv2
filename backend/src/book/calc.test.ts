@@ -24,12 +24,13 @@ describe('pips and lots', () => {
 
 describe('figuresFor', () => {
   it('reproduces the document for a loss and a win', () => {
-    expect(figuresFor(10_000, t1)).toEqual({ lots: 0.14, pips: -73, profit: -102.2, r: -1.02 });
-    expect(figuresFor(9897.8, t2)).toEqual({ lots: 0.24, pips: 154, profit: 369.6, r: 3.73 });
+    // R is pips gained over the SL distance: −73 / 73 and 154 / 42.
+    expect(figuresFor(10_000, t1)).toEqual({ lots: 0.14, pips: -73, profit: -102.2, r: -1 });
+    expect(figuresFor(9897.8, t2)).toEqual({ lots: 0.24, pips: 154, profit: 369.6, r: 3.67 });
   });
 
   it('keeps the lots it is given and derives the rest from them', () => {
-    expect(figuresFor(10_000, t1, 0.1)).toEqual({ lots: 0.1, pips: -73, profit: -73, r: -0.73 });
+    expect(figuresFor(10_000, t1, 0.1)).toEqual({ lots: 0.1, pips: -73, profit: -73, r: -1 });
   });
 
   it('gives an open operation its lots only', () => {
@@ -45,16 +46,16 @@ describe('chain', () => {
   it('threads the balance and the risk base in close order', () => {
     const out = chain([c2, c1, { ticket: 3, slot: 'T1' as const, direction: 'buy' as const, entry: 1.1337, sl: 1.13, lots: 0.28, closePrice: null, closeTime: null }]);
     expect(out.map(t => t.ticket)).toEqual([1, 2, 3]);
-    expect(out[0]).toMatchObject({ riskBase: 10_000, r: -1.02, balanceAfter: 9897.8 });
-    expect(out[1]).toMatchObject({ riskBase: 9897.8, r: 3.73, balanceAfter: 10267.4 });
+    expect(out[0]).toMatchObject({ riskBase: 10_000, r: -1, balanceAfter: 9897.8 });
+    expect(out[1]).toMatchObject({ riskBase: 9897.8, r: 3.67, balanceAfter: 10267.4 });
     expect(out[2]).toMatchObject({ riskBase: 10267.4, lots: 0.28, r: null, balanceAfter: null });
   });
 
   it('lets an operation that closed earlier take the balance first, whatever its ticket', () => {
     // Ticket 2 closes before ticket 1: both chain from the start balance in that order.
     const out = chain([{ ...c1, closeTime: at('2015-02-04T10:00') }, { ...c2, closeTime: at('2015-02-03T09:00') }]);
-    expect(out[1]).toMatchObject({ riskBase: 10_000, r: 3.7, balanceAfter: 10369.6 });
-    expect(out[0]).toMatchObject({ riskBase: 10369.6, r: -0.99, balanceAfter: 10267.4 });
+    expect(out[1]).toMatchObject({ riskBase: 10_000, r: 3.67, balanceAfter: 10369.6 });
+    expect(out[0]).toMatchObject({ riskBase: 10369.6, r: -1, balanceAfter: 10267.4 });
   });
 });
 

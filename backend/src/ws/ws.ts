@@ -109,6 +109,10 @@ export function createWss(server: Server) {
     broadcastEmaAlert(userId: number, broker: string, symbol: string, timeframe: string, direction: string) {
       sendToUser(userId, 'ema_alert', { userId, broker, symbol, timeframe, direction });
     },
+    // A standing EMA notification rule fired (spec 023); only its owner receives it.
+    broadcastEmaNotification(userId: number, payload: Record<string, unknown>) {
+      sendToUser(userId, 'ema_notification', payload);
+    },
     clientCount: () => clients.size,
     close() {
       clearInterval(heartbeat);

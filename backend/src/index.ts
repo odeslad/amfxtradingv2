@@ -20,6 +20,8 @@ import { evaluateAlerts, setAlertBroadcaster } from './alerts/alert-evaluator';
 import { refreshAlerts } from './alerts/alert-store';
 import { evaluateEmaAlerts, setEmaAlertBroadcaster } from './alerts/ema-alert-evaluator';
 import { refreshEmaAlerts } from './alerts/ema-alert-store';
+import { evaluateEmaNotifications, setEmaNotificationBroadcaster } from './alerts/ema-notification-evaluator';
+import { refreshEmaNotifications, startEmaNotificationRefresh } from './alerts/ema-notification-store';
 
 type Wss = ReturnType<typeof createWss>;
 
@@ -39,6 +41,7 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     if (features.alerts) {
       evaluateAlerts(brokerName, batch);
       evaluateEmaAlerts(brokerName, batch);
+      evaluateEmaNotifications(brokerName, batch);
     }
   });
 
@@ -90,6 +93,8 @@ async function main() {
 
   await refreshAlerts();
   await refreshEmaAlerts();
+  await refreshEmaNotifications();
+  startEmaNotificationRefresh();
   console.log('[ALERT] Armed alerts loaded');
 
   const server = http.createServer(app);
@@ -97,6 +102,7 @@ async function main() {
   setBroadcaster((id, status, ticket, error, late) => wss.broadcastCommandResult(id, status, ticket, error, late));
   setAlertBroadcaster((userId, broker, symbol, price, direction) => wss.broadcastAlert(userId, broker, symbol, price, direction));
   setEmaAlertBroadcaster((userId, broker, symbol, timeframe, direction) => wss.broadcastEmaAlert(userId, broker, symbol, timeframe, direction));
+  setEmaNotificationBroadcaster((fire) => wss.broadcastEmaNotification(fire.userId, { ...fire }));
 
   const watchers = config.brokers.map(({ name, bridgePath }) =>
     startBroker(name, bridgePath, wss),

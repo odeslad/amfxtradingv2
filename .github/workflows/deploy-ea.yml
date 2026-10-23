@@ -61,3 +61,11 @@ jobs:
           SSH_USER: ${{ secrets.SSH_USER }}
         run: |
           ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\amfxtradingv2\ea\scripts\distribute-ea.ps1"
+
+      # MT4 does not reload an EA when its .ex4 changes on disk: each terminal is
+      # stopped and restarted by the AMFX-Watchdog task in the interactive session.
+      - name: Reload the EA on every terminal
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+        run: |
+          ssh $SSH_USER@ssh-v2.amfxtrading.com "powershell -ExecutionPolicy Bypass -File C:\amfxtradingv2\ea\scripts\restart-mt4.ps1"

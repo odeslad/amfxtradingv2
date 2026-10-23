@@ -32,6 +32,7 @@ VPS Windows
 | Upload EA and scripts | SCP de los dos `.mq4` y los dos `.ps1` a `C:\deploy\` |
 | Compile EA files | Ejecuta `compile-ea.ps1` en el VPS |
 | Distribute to all MT4 instances | Ejecuta `distribute-ea.ps1` en el VPS |
+| Reload the EA on every terminal | Ejecuta `restart-mt4.ps1` en el VPS: cierra cada terminal y la tarea `AMFX-Watchdog` lo relanza con el EA nuevo |
 
 El workflow se dispara en push a `master` que toque `ea/**`, o manualmente con `workflow_dispatch`.
 
@@ -44,10 +45,10 @@ Busca `metaeditor.exe` bajo `C:\Program Files (x86)\`, compila los dos `.mq4` de
 Itera todos los directorios bajo `C:\Users\Administrator\AppData\Roaming\MetaQuotes\Terminal\`. Para cada uno que tenga `MQL4\Experts\`, copia los `.mq4` y `.ex4` de `C:\deploy\`.
 
 ### `ea/scripts/restart-mt4.ps1`
-Script manual (no integrado en CI). Para cada proceso `terminal.exe` en ejecución: lo para, espera 3 segundos y lo reinicia. Ejecutar en el VPS cuando se quiera aplicar los cambios sin recargar el EA a mano en el chart.
+Último paso del workflow. MT4 **no recarga** un EA cuando se sustituye su `.ex4` en disco (comprobado el 23-10-2026: los terminales siguieron con la versión cargada semanas antes), así que, terminal a terminal, el script cierra el proceso y lanza la tarea programada `AMFX-Watchdog` (`infra/scripts/startup.ps1`, ejecutada como el Administrator con sesión abierta) para que lo arranque de nuevo en la sesión interactiva; espera a que vuelva (hasta 120 s) antes de pasar al siguiente, así cada broker está sin terminal unos 20–30 s y nunca se paran todos a la vez. Sale con 1 si alguno no vuelve. **Nunca** arrancar `terminal.exe` con `Start-Process` desde SSH: queda en la sesión 0, invisible, y muere.
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\deploy\restart-mt4.ps1"
+powershell -ExecutionPolicy Bypass -File "C:\amfxtradingv2\ea\scripts\restart-mt4.ps1"
 ```
 
 ## Infraestructura de red
@@ -76,10 +77,6 @@ Si el archivo existe, sobreescribe los inputs del EA. Si no existe, el EA usa `A
 
 Ver `ea/config.example.json` como referencia.
 
-## Restart manual del EA en MT4
+## Recarga del EA en MT4
 
-El deploy copia los archivos compilados pero **no recarga el EA** en los charts activos. Para aplicar los cambios:
-
-1. En MT4, clic derecho sobre el EA en el chart → **Remove**
-2. Arrastrar el EA de nuevo desde el Navigator
-3. O usar `restart-mt4.ps1` para reiniciar el proceso completo (solo fuera de mercado o sin posiciones activas)
+MT4 no recarga el EA de los charts activos al cambiar el `.ex4`, por eso el workflow termina con `restart-mt4.ps1` (ver arriba). Si hiciera falta recargar a mano un solo terminal: en MT4, clic derecho sobre el EA en el chart → **Remove** y arrastrarlo de nuevo desde el Navigator, o cerrar ese terminal y lanzar la tarea `AMFX-Watchdog` (`schtasks /run /tn AMFX-Watchdog`) para que lo arranque en la sesión interactiva. Comprobación: la línea `[CMD] HttpBridgeCommands v<versión> | broker: …` en `…\Terminal\<id>\MQL4\Logs\<fecha>.log` y los pipes en `/health`.

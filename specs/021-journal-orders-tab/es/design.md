@@ -112,8 +112,10 @@ Artefacto Design aprobado por el usuario el 23-10-2026: https://claude.ai/artifa
 cambian. Los códigos de error vuelven por el `ResultError` existente (130 stops inválidos, 4107 precio
 inválido). Versión a 2.22. El push lanza el pipeline del EA: el `.mq4` va al VPS por el túnel,
 `compile-ea.ps1` lo compila allí con MetaEditor y `distribute-ea.ps1` copia el `.ex4` al `MQL4\Experts`
-de cada terminal; MT4 reinicializa el EA en marcha cuando cambia su `.ex4`, así que no hay compilación ni
-recarga manual. Hoy un error de compilación solo imprime un aviso y el pipeline queda en verde mientras se
+de cada terminal. **Corrección tras el despliegue (23-10-2026):** MT4 *no* recarga un EA en marcha
+cuando cambia su `.ex4` en disco, así que un paso final del workflow ejecuta `restart-mt4.ps1`, reescrito
+para cerrar cada terminal y dejar que la tarea `AMFX-Watchdog` lo arranque de nuevo en la sesión
+interactiva, terminal a terminal (nunca `Start-Process` desde SSH: sesión 0). Hoy un error de compilación solo imprime un aviso y el pipeline queda en verde mientras se
 distribuye el `.ex4` anterior: `compile-ea.ps1` saldrá con 1 si MetaEditor devuelve un código distinto de
 cero o si tras la ejecución el `.ex4` es más antiguo que el `.mq4`, de modo que el workflow falle antes de
 distribuir.

@@ -107,8 +107,10 @@ Design artifact approved by the user on 2026-10-23: https://claude.ai/artifact/H
 untouched. Error codes come back through the existing `ResultError` (130 invalid stops, 4107 invalid
 price). Version bump to 2.22. The push runs the EA pipeline: the `.mq4` goes to the VPS over the
 tunnel, `compile-ea.ps1` compiles it with MetaEditor there and `distribute-ea.ps1` copies the `.ex4`
-into every terminal's `MQL4\Experts`; MT4 reinitialises the running EA when its `.ex4` changes, so no
-manual compile or reload. Today a compile error only prints a warning and the pipeline stays green
+into every terminal's `MQL4\Experts`. **Correction after the deploy (2026-10-23):** MT4 does *not*
+reload a running EA when its `.ex4` changes on disk, so a final workflow step runs
+`restart-mt4.ps1`, rewritten to close each terminal and let the `AMFX-Watchdog` task start it again in
+the interactive session, one terminal at a time (never `Start-Process` from SSH: session 0). Today a compile error only prints a warning and the pipeline stays green
 while the previous `.ex4` is distributed: `compile-ea.ps1` will exit 1 on a non-zero MetaEditor exit
 code or when the `.ex4` is older than the `.mq4` after the run, so the workflow fails before distributing.
 

@@ -8,6 +8,12 @@
 | 4 | `npm run build` + local backend | ✅ | 1 | 0.75 |
 | 5 | manual (deploy evidence) | ✅ | 0.5 | 0.25 |
 | 6 | `npm run build` + `npm run lint` + local app (user) | ✅ | 1.5 | 1 |
+| 7 | `npm run build` + `npm run lint` + local app (user) | ✅ | 1.5 | 1.75 |
+| 8 | manual (user validation on production) | ✅ | 0.5 | 0.5 |
+| 9 | manual | ✅ | 0.25 | 0.25 |
+| **Total** | | | **8** | **6.75** |
+
+Calibration: the arithmetic and the CRUD came in under the estimate because the document's rules were proven by the import before any UI existed; the only overrun was task 7, where the R rule changed on the user's check (classic R instead of the document's).
 
 ## Task 1 — Migration and models (db)
 
@@ -53,3 +59,15 @@
 - `npm run build` + `npm run lint` clean on the frontend; backend `npm run build`, `npx eslint src/book` and `npx vitest run src/book` (12 passed).
 - Local app: scheme 455 created (pending, "Nueva operación" on its row), two operations typed with prices and dates only → lots / € / R / balance as the preview, second form opened empty, edit and deletes back to the table; ticket 951 at +1.98 R after the R change. Confirmed by the user.
 - Est vs Actual: 1.5 vs 1.75 SP (the R rule change).
+
+## Task 8 — Frontend deploy and production validation (infra)
+
+- Pushed `master` (`420eced` … `0df1dcb`) on 2026-10-23: backend build 193 (`/version`, `/health` with the pipes connected; "degraded" only because one terminal was not connected to its pipe) and the frontend bundle with the panels served from v2.amfxtrading.com. On the user's first look the dates had to be dd/mm/yyyy hh:mm in 24 h: the native `datetime-local` follows the browser locale (AM/PM), so `0993f56` replaced it with text inputs in that format (`parseBookInput` / `toBookInput`) and gave the operations table the year; pushed and deployed the same morning.
+- The user validated on production: the imported book with its totals, year filter and pagination; the R as pips ÷ SL pips (ticket 951 at +1.98 R); scheme 455 created with an operation typed as prices and dates, preview equal to the saved row, edited, and both deleted.
+- Est vs Actual: 0.5 vs 0.5 SP.
+
+## Task 9 — Close (specs)
+
+- Builds of backend and frontend clean once more; Est vs Actual recorded; `Status: closed`; folder moved to `archive/2026-10/`.
+- Left pending on the user: nothing. The document's seven hand-adjusted € rows now follow the arithmetic (3.84 € drift in the 2026 totals), as agreed.
+- Est vs Actual: 0.25 vs 0.25 SP.

@@ -9,7 +9,7 @@ Each task is one conventional commit. The project must build after every task. T
 - [x] 5. [infra] Push `master` (db + backend deploy) and validate: `/health`, migration diff empty, import run on production data (same counts), `GET /book/schemes?year=2026` · **Verify:** manual · **Est:** 0.5 SP
 - [x] 6. [frontend] `src/lib/book.ts`, `useBook.ts`, route `/schemas`, nav **Schemas** with `IconBook`, `BookPage` (totals header, year filter), `SchemesTable` with expandable `TradeRows` (table / cards) · **Verify:** `npm run build` + `npm run lint`; local app shows the document's figures (totals row, schemes 2026, operations of one scheme) · **Est:** 1.5 SP
 - [x] 7. [frontend] `SchemePanel` and `TradePanel` (create / edit with preview, deletes through `ConfirmPanel`), wired to the table · **Verify:** `npm run build` + `npm run lint`; local app: create scheme 455 with two operations typing only prices and dates → lots / € / R / balance as the preview said, edit one → later balances change, delete both → table back · **Est:** 1.5 SP
-- [ ] 8. [infra] Push `master` (frontend deploy, when the user asks) and **validate on production**: Schemas shows the imported book with the document's totals; create, edit and delete a scheme and an operation · **Verify:** manual (user validation) · **Est:** 0.5 SP
-- [ ] 9. [specs] Record Est vs Actual in `verification.md` (both languages), mark the spec closed and archive it under `archive/2026-10/` · **Verify:** manual · **Est:** 0.25 SP
+- [x] 8. [infra] Push `master` (frontend deploy, when the user asks) and **validate on production**: Schemas shows the imported book with the document's totals; create, edit and delete a scheme and an operation · **Verify:** manual (user validation) · **Est:** 0.5 SP
+- [x] 9. [specs] Record Est vs Actual in `verification.md` (both languages), mark the spec closed and archive it under `archive/2026-10/` · **Verify:** manual · **Est:** 0.25 SP
 
 **Total estimate**: 8 SP

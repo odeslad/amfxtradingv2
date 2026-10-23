@@ -1,6 +1,6 @@
 # 020 — Libro de esquemas EURUSD
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

@@ -8,6 +8,12 @@
 | 4 | `npm run build` + backend local | ✅ | 1 | 0,75 |
 | 5 | manual (evidencia del despliegue) | ✅ | 0,5 | 0,25 |
 | 6 | `npm run build` + `npm run lint` + app local (usuario) | ✅ | 1,5 | 1 |
+| 7 | `npm run build` + `npm run lint` + app local (usuario) | ✅ | 1,5 | 1,75 |
+| 8 | manual (validación del usuario en producción) | ✅ | 0,5 | 0,5 |
+| 9 | manual | ✅ | 0,25 | 0,25 |
+| **Total** | | | **8** | **6,75** |
+
+Calibración: la aritmética y el CRUD salieron por debajo de la estimación porque la importación demostró las reglas del documento antes de que existiera interfaz; el único exceso fue la tarea 7, donde la regla de R cambió en la comprobación del usuario (R clásica en vez de la del documento).
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -53,3 +59,15 @@
 - `npm run build` + `npm run lint` limpios en el frontend; en el backend `npm run build`, `npx eslint src/book` y `npx vitest run src/book` (12 pasan).
 - App local: esquema 455 creado (pendiente, "Nueva operación" en su fila), dos operaciones tecleando solo precios y fechas → lotes / € / R / saldo como la previsualización, segundo formulario abierto vacío, edición y borrados hasta volver a la tabla; ticket 951 en +1,98 R tras el cambio de R. Confirmado por el usuario.
 - Est vs Real: 1,5 vs 1,75 SP (el cambio de la regla de R).
+
+## Tarea 8 — Despliegue del frontend y validación en producción (infra)
+
+- Push de `master` (`420eced` … `0df1dcb`) el 23-10-2026: backend build 193 (`/version`, `/health` con los pipes conectados; "degraded" solo porque un terminal no estaba conectado a su pipe) y el bundle del frontend con los paneles servido desde v2.amfxtrading.com. En la primera mirada del usuario las fechas tenían que ser dd/mm/aaaa hh:mm en 24 h: el `datetime-local` nativo sigue el idioma del navegador (AM/PM), así que `0993f56` lo sustituyó por campos de texto con ese formato (`parseBookInput` / `toBookInput`) y puso el año en la tabla de operaciones; subido y desplegado la misma mañana.
+- El usuario validó en producción: el libro importado con sus totales, filtro de año y paginación; la R como pips ÷ pips de SL (ticket 951 en +1,98 R); esquema 455 creado con una operación tecleada como precios y fechas, previsualización igual a la fila guardada, editada, y ambos borrados.
+- Est vs Real: 0,5 vs 0,5 SP.
+
+## Tarea 9 — Cierre (specs)
+
+- Builds de backend y frontend limpios de nuevo; Est vs Real registrado; `Estado: cerrada`; carpeta movida a `archive/2026-10/`.
+- Pendiente del usuario: nada. Las siete filas de € retocadas a mano del documento siguen ahora la aritmética (3,84 € de diferencia en los totales de 2026), como se acordó.
+- Est vs Real: 0,25 vs 0,25 SP.

@@ -57,7 +57,10 @@ backend/
 │   │   ├── alert-evaluator.ts    # price alerts on every tick
 │   │   ├── alert-store.ts        # armed price alerts cache
 │   │   ├── ema-alert-evaluator.ts# EMA convergence alerts at candle close
-│   │   └── ema-alert-store.ts    # armed EMA alerts cache
+│   │   ├── ema-alert-store.ts    # armed EMA alerts cache
+│   │   ├── ema-notification-rules.ts     # pure cross / approach decision (spec 023, unit-tested)
+│   │   ├── ema-notification-evaluator.ts # standing EMA notification rules at candle close
+│   │   └── ema-notification-store.ts     # active rules cache, refreshed every minute
 │   ├── bridge/
 │   │   ├── pipe-reader.ts        # named-pipe server per broker, retries listen with backoff
 │   │   ├── file-watcher.ts       # polls bridge/*.json, awaited handlers per file
@@ -137,8 +140,9 @@ Every router except `/auth` and `/health` sits behind `requireAuth`: the JWT tra
 | `/drawings` | `GET`, `PUT` | Chart drawings per user, broker, symbol, timeframe |
 | `/alerts` | `GET`, `POST`, `PUT /:id`, `DELETE /:id` | Price alerts |
 | `/ema-alerts` | `GET`, `POST`, `PUT /:id`, `DELETE /:id` | EMA convergence alerts |
+| `/ema-notifications` | `GET`, `POST`, `PUT /:id`, `DELETE /:id` | Standing EMA cross notification rules (symbols list or all, cross / approach, direction, repeat every N min, end time); `GET` adds `state` and `lastFired` |
 | `/setup-levels` | `GET` | Levels of the last EMA cross setup of a symbol |
-| `/push` | `GET /vapid`, `POST /subscribe`, `POST /unsubscribe` | Web Push subscriptions |
+| `/push` | `GET /vapid`, `GET /`, `POST /subscribe`, `POST /unsubscribe`, `DELETE /:id` | Web Push subscriptions; `GET /` lists the user's devices (label from the user agent, endpoint hash, since, last push) |
 | `/stats` | `GET` | Account statistics per broker and period |
 | `/book` | `GET /schemes?year&page&pageSize`, `POST /schemes`, `GET /schemes/:id`, `PUT /schemes/:id`, `DELETE /schemes/:id`, `POST /trades`, `PUT /trades/:id`, `DELETE /trades/:id`, `POST /preview` | Libro de esquemas: the operator's book of EURUSD schemes and operations (see below) |
 
@@ -209,6 +213,7 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 | `command_result` | `{ id, status, ticket?, error?, late? }` | command bridge |
 | `alert` | `{ broker, symbol, price, direction }` | price alert, only to its owner |
 | `ema_alert` | `{ broker, symbol, timeframe, direction }` | EMA alert, only to its owner |
+| `ema_notification` | `{ notificationId, broker, symbol, timeframe, kind, direction, gapPips, emaFast, emaSlow, note }` | A standing EMA notification rule fired (spec 023), only to its owner |
 
 A tick carries `symbol`, `bid`, `ask`, `time`, `broker_offset` and the open/high/low/time of the current M5, M15, H1, H4 and D1 candles, so the frontend builds the live candle itself; only closed candles are persisted.
 
@@ -231,7 +236,8 @@ Managed with **Prisma**; see `prisma/schema.prisma`. Migrations are hand-written
 | `position_colors` | `/positions/color` | colour per broker and ticket |
 | `users` | — | created out of band; bcrypt password hash |
 | `price_alerts`, `ema_cross_alerts` | `/alerts`, `/ema-alerts`, evaluators | per user; `triggeredAt` set when fired |
-| `push_subscriptions` | `/push` | Web Push endpoints per user |
+| `push_subscriptions` | `/push` | Web Push endpoints per user, with `userAgent` and `lastPushAt` |
+| `ema_notifications`, `ema_notification_events` | `/ema-notifications`, `ema-notification-evaluator` | standing rules (never self-disabled) and every fire: symbol, kind, direction, candle, time |
 | `drawings` | `/drawings` | chart drawings JSON per user, broker, symbol, timeframe |
 | `chart_indicators` | `/chart-indicators` | the user's EMA list |
 

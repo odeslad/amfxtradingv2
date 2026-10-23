@@ -35,6 +35,7 @@ export async function sendToUser(userId: number, payload: PushPayload): Promise<
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         body,
       );
+      await db.pushSubscription.update({ where: { id: sub.id }, data: { lastPushAt: new Date() } }).catch(() => {});
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) {

@@ -300,11 +300,11 @@ Las velas activas **no se persisten**: cada tick trae OHLC de todos los TF (`m5_
 
 ### HTTP y auth
 
-Express con 16 routers (`/auth`, `/commands`, `/trades`, `/positions`, `/balances`, `/settings`, `/symbols`, `/candles`, `/chart-indicators`, `/drawings`, `/alerts`, `/ema-alerts`, `/setup-levels`, `/push`, `/stats`, `/book`) más `GET /health` (sin auth, vitalidad por broker). JWT en cookie HttpOnly `token`; `requireAuth` en todo salvo `/auth` y `/health`. Parámetros validados (400), errores no controlados al handler final (500) sin tumbar el proceso.
+Express con 17 routers (`/auth`, `/commands`, `/trades`, `/positions`, `/balances`, `/settings`, `/symbols`, `/candles`, `/chart-indicators`, `/drawings`, `/alerts`, `/ema-alerts`, `/ema-notifications`, `/setup-levels`, `/push`, `/stats`, `/book`) más `GET /health` (sin auth, vitalidad por broker). JWT en cookie HttpOnly `token`; `requireAuth` en todo salvo `/auth` y `/health`. Parámetros validados (400), errores no controlados al handler final (500) sin tumbar el proceso.
 
 ### Modelos BD
 
-`Candle` · `Trade` · `Balance` (snapshot diario por broker y día UTC) · `BalanceOperation` · `SettingsMirror` · `SettingsDisplay` · `PositionColor` · `User` · `PriceAlert` · `EmaCrossAlert` · `PushSubscription` · `Drawing` · `ChartIndicators` · `BookScheme` · `BookTrade` (libro de esquemas, spec 020: backtest manual del operador, sin vínculo con la operativa). Migraciones SQL escritas a mano en `backend/prisma/migrations/`; `prisma migrate diff` contra producción debe salir vacío.
+`Candle` · `Trade` · `Balance` (snapshot diario por broker y día UTC) · `BalanceOperation` · `SettingsMirror` · `SettingsDisplay` · `PositionColor` · `User` · `PriceAlert` · `EmaCrossAlert` · `EmaNotification` · `EmaNotificationEvent` (reglas permanentes de cruce de EMAs configuradas en Settings, spec 023, y sus disparos) · `PushSubscription` · `Drawing` · `ChartIndicators` · `BookScheme` · `BookTrade` (libro de esquemas, spec 020: backtest manual del operador, sin vínculo con la operativa). Migraciones SQL escritas a mano en `backend/prisma/migrations/`; `prisma migrate diff` contra producción debe salir vacío.
 
 ### Feature flags y entorno
 

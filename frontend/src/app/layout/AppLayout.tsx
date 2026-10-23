@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import { useAuth } from '../../features/auth/useAuth';
-import { IconJournal, IconChart, IconScanner, IconStats, IconBook, IconSettings, IconSignOut } from '../../shared/ui/icons';
+import { IconJournal, IconChart, IconStats, IconBook, IconSettings, IconSignOut } from '../../shared/ui/icons';
 import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
@@ -11,7 +11,6 @@ import styles from './AppLayout.module.css';
 const NAV = [
   { label: 'Journal', to: '/journal', icon: <IconJournal /> },
   { label: 'Chart', to: '/chart', icon: <IconChart /> },
-  { label: 'Scanner', to: '/scanner', icon: <IconScanner /> },
   { label: 'Stats', to: '/stats', icon: <IconStats /> },
   { label: 'Schemas', to: '/schemas', icon: <IconBook /> },
   { label: 'Settings', to: '/settings', icon: <IconSettings /> },

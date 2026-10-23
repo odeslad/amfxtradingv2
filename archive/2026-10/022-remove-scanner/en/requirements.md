@@ -1,6 +1,6 @@
 # 022 — Remove the Scanner section
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 
@@ -39,7 +39,7 @@ The removed code remains in git history (last touched in `673a569`) for the sect
 
 ## Where to find the removed code later
 
-Last commit holding the scanner before this spec: the parent of the removal commit (`git show <removal>^:backend/src/services/scanner.ts`). Files: `backend/src/services/scanner.ts` (per symbol and direction: state imminent / crossed / na from the EMA gap and its convergence per candle, ETA in candles and ms, candles since the last cross, activation close for the live distance, last 10 crosses with MFE / MAE in pips via `detectEmaCrossSetups`), `backend/src/routes/scanner.ts` (`GET /scanner?broker&tf&emaFast&emaSlow`), `frontend/src/lib/useScanner.ts`, `frontend/src/features/scanner/ScannerPage.tsx` + `.module.css` (two tables BUYS / SELLS, RR colouring red < 1 / orange 1–2 / green > 2, cross circles sized by MFE, live distance from the `ticks` WS message). The building blocks it used stay in the repo: `indicators/ema.ts`, `indicators/ema-cross.ts`, `indicators/pip-size.ts`, `indicators/timeframe.ts`.
+Last commit holding the scanner before this spec: the parent of the removal commit (`git show d3ee654^:frontend/src/features/scanner/ScannerPage.tsx`, `git show 6908fb4^:backend/src/services/scanner.ts`). Files: `backend/src/services/scanner.ts` (per symbol and direction: state imminent / crossed / na from the EMA gap and its convergence per candle, ETA in candles and ms, candles since the last cross, activation close for the live distance, last 10 crosses with MFE / MAE in pips via `detectEmaCrossSetups`), `backend/src/routes/scanner.ts` (`GET /scanner?broker&tf&emaFast&emaSlow`), `frontend/src/lib/useScanner.ts`, `frontend/src/features/scanner/ScannerPage.tsx` + `.module.css` (two tables BUYS / SELLS, RR colouring red < 1 / orange 1–2 / green > 2, cross circles sized by MFE, live distance from the `ticks` WS message). The building blocks it used stay in the repo: `indicators/ema.ts`, `indicators/ema-cross.ts`, `indicators/pip-size.ts`, `indicators/timeframe.ts`.
 
 ## Out of scope
 

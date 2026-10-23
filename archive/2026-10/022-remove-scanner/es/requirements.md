@@ -1,6 +1,6 @@
 # 022 — Eliminar la sección Scanner
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 
@@ -41,7 +41,7 @@ sección que lo sustituya.
 
 ## Dónde encontrar el código retirado más adelante
 
-Último commit con el scanner antes de esta spec: el padre del commit de retirada (`git show <retirada>^:backend/src/services/scanner.ts`). Ficheros: `backend/src/services/scanner.ts` (por símbolo y dirección: estado imminent / crossed / na según el gap de EMAs y su convergencia por vela, ETA en velas y ms, velas desde el último cruce, cierre de activación para la distancia en vivo, últimos 10 cruces con MFE / MAE en pips mediante `detectEmaCrossSetups`), `backend/src/routes/scanner.ts` (`GET /scanner?broker&tf&emaFast&emaSlow`), `frontend/src/lib/useScanner.ts`, `frontend/src/features/scanner/ScannerPage.tsx` + `.module.css` (dos tablas BUYS / SELLS, color por RR rojo < 1 / naranja 1–2 / verde > 2, círculos de cruce dimensionados por MFE, distancia en vivo desde el mensaje WS `ticks`). Las piezas que usaba siguen en el repo: `indicators/ema.ts`, `indicators/ema-cross.ts`, `indicators/pip-size.ts`, `indicators/timeframe.ts`.
+Último commit con el scanner antes de esta spec: el padre del commit de retirada (`git show d3ee654^:frontend/src/features/scanner/ScannerPage.tsx`, `git show 6908fb4^:backend/src/services/scanner.ts`). Ficheros: `backend/src/services/scanner.ts` (por símbolo y dirección: estado imminent / crossed / na según el gap de EMAs y su convergencia por vela, ETA en velas y ms, velas desde el último cruce, cierre de activación para la distancia en vivo, últimos 10 cruces con MFE / MAE en pips mediante `detectEmaCrossSetups`), `backend/src/routes/scanner.ts` (`GET /scanner?broker&tf&emaFast&emaSlow`), `frontend/src/lib/useScanner.ts`, `frontend/src/features/scanner/ScannerPage.tsx` + `.module.css` (dos tablas BUYS / SELLS, color por RR rojo < 1 / naranja 1–2 / verde > 2, círculos de cruce dimensionados por MFE, distancia en vivo desde el mensaje WS `ticks`). Las piezas que usaba siguen en el repo: `indicators/ema.ts`, `indicators/ema-cross.ts`, `indicators/pip-size.ts`, `indicators/timeframe.ts`.
 
 ## Fuera de alcance
 

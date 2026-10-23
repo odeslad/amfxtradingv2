@@ -4,6 +4,11 @@
 |---|---|---|---|---|
 | 1 | `npm run build` + `npm run lint` + `git grep` + local app (user) | ✅ | 0.5 | 0.25 |
 | 2 | `npm run build` + `git grep` + local backend probes | ✅ | 0.5 | 0.5 |
+| 3 | manual (deploys checked by the operator + user validation on production) | ✅ | 0.25 | 0.25 |
+| 4 | manual | ✅ | 0.25 | 0.25 |
+| **Total** | | | **1.5** | **1.25** |
+
+Calibration: a removal spec with no surprises; slightly under because the frontend had a single consumer per file.
 
 ## Task 1 — Scanner page, hook, route, nav entry and icon removed (frontend)
 
@@ -18,3 +23,13 @@
 - `npm run build` clean; `grep -ri scanner backend/src backend/docs .claude/CLAUDE.md` empty.
 - Local backend (3001, bridges off, production database through the 5433 tunnel): `GET /scanner?…` → 404 (no router at all, same as `/nonexistent`), `GET /setup-levels?…` → 401 without a cookie, i.e. still mounted behind `requireAuth`; `/health` 200.
 - Est vs Actual: 0.5 vs 0.5 SP.
+
+## Task 3 — Push and production validation (infra)
+
+- Pushed `bd08095..6908fb4` on 2026-10-23 at 10:59 UTC; frontend and backend pipelines ran at once without a `git pull` conflict: backend 195 (`/health` 200), bundle without the `/scanner` route served at 11:00. Production probes: `GET /scanner?…` → 404, `GET /setup-levels?…` → 401 (mounted, auth first). The user validated on 2026-10-23: nav without Scanner, `/scanner` → Journal, New Trade levels, EMA alert still listed.
+- Est vs Actual: 0.25 vs 0.25 SP.
+
+## Task 4 — Close (specs)
+
+- Backend and frontend builds clean once more; Est vs Actual recorded; `Status: closed`; folder moved to `archive/2026-10/`. The `Where to find the removed code later` section of `requirements.md` points at the removal commits (`d3ee654` frontend, `6908fb4` backend).
+- Est vs Actual: 0.25 vs 0.25 SP.

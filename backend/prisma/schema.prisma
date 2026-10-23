@@ -88,6 +88,7 @@ model User {
   drawings          Drawing[]
   alerts            PriceAlert[]
   emaCrossAlerts    EmaCrossAlert[]
+  emaNotifications  EmaNotification[]
   pushSubscriptions PushSubscription[]
 
   @@map("users")
@@ -135,16 +136,59 @@ model EmaCrossAlert {
 }
 
 model PushSubscription {
-  id        Int      @id @default(autoincrement())
-  userId    Int
-  user      User     @relation(fields: [userId], references: [id])
-  endpoint  String   @unique
-  p256dh    String
-  auth      String
-  createdAt DateTime @default(now())
+  id         Int       @id @default(autoincrement())
+  userId     Int
+  user       User      @relation(fields: [userId], references: [id])
+  endpoint   String    @unique
+  p256dh     String
+  auth       String
+  userAgent  String?
+  lastPushAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([userId])
   @@map("push_subscriptions")
+}
+
+// Standing EMA-cross notification rules (spec 023): evaluated at every candle
+// close of their timeframe, repeatable, with an optional end; unlike
+// EmaCrossAlert they never disable themselves on firing.
+model EmaNotification {
+  id            Int                    @id @default(autoincrement())
+  userId        Int
+  user          User                   @relation(fields: [userId], references: [id])
+  broker        String
+  symbols       String[]               // empty = every symbol of the broker
+  timeframe     String                 // M5 | M15 | H1 | H4 | D1
+  emaFast       Int
+  emaSlow       Int
+  event         String                 // cross | approach | both
+  thresholdPips Float                  @default(2)
+  direction     String                 // buy | sell | both
+  repeatMinutes Int?                   // null = once per event
+  endsAt        DateTime?
+  enabled       Boolean                @default(true)
+  note          String?
+  createdAt     DateTime               @default(now())
+  events        EmaNotificationEvent[]
+
+  @@index([userId])
+  @@index([broker, enabled])
+  @@map("ema_notifications")
+}
+
+model EmaNotificationEvent {
+  id             Int             @id @default(autoincrement())
+  notificationId Int
+  notification   EmaNotification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  symbol         String
+  kind           String          // cross | approach
+  direction      String          // buy | sell
+  candleTime     DateTime
+  firedAt        DateTime        @default(now())
+
+  @@index([notificationId, symbol, firedAt(sort: Desc)])
+  @@map("ema_notification_events")
 }
 
 model Drawing {

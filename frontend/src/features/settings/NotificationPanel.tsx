@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { apiFetch, errorMessage, isAbortError } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import { TIMEFRAMES, type EmaNotification, type NotificationDirection, type NotificationEvent, type NotificationInput } from '../../lib/useEmaNotifications';
+import { useVisibility, visibleSymbols } from '../../lib/visibility';
 import styles from '../journal/BulkEditPanel.module.css';
 import own from './NotificationPanel.module.css';
 
@@ -66,7 +67,10 @@ export function NotificationPanel({ open, brokers, notification, nonce, onSave, 
   const key = `${nonce}:${notification?.id ?? 'new'}`;
   const [synced, setSynced] = useState<string | null>(null);
   const [fields, setFields] = useState<Fields>(() => fieldsOf(notification, brokers));
-  const [symbols, setSymbols] = useState<string[]>([]);
+  const [allSymbols, setSymbols] = useState<string[]>([]);
+  const visibility = useVisibility();
+  // Hidden symbols (spec 024) leave the chips; a rule that already names one keeps it server-side.
+  const symbols = visibleSymbols(visibility, fields.broker, allSymbols);
   const [busy, setBusy] = useState(false);
   if (open && synced !== key) {
     setSynced(key);

@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage, isAbortError } from '../../lib/api';
+import { isVisible, useVisibility } from '../../lib/visibility';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { dateRangeBounds } from './utils/dateRange';
@@ -12,7 +13,9 @@ interface ClosedPositionsProps {
 }
 
 export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsProps) {
-  const [trades, setTrades] = useState<Trade[]>([]);
+  const [allTrades, setTrades] = useState<Trade[]>([]);
+  const visibility = useVisibility();
+  const trades = useMemo(() => allTrades.filter(t => isVisible(visibility, t.broker, t.symbol)), [allTrades, visibility]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -61,7 +64,7 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
   if (trades.length === 0) {
     return (
       <div className={styles.empty}>
-        {filters.dateRange ? 'No trades in the selected period' : 'No closed trades'}
+        {allTrades.length > 0 ? 'Every trade belongs to a broker or symbol hidden in Settings' : filters.dateRange ? 'No trades in the selected period' : 'No closed trades'}
       </div>
     );
   }

@@ -15,6 +15,7 @@ import { LightweightChart } from './LightweightChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useLocalStorage } from '../../lib/useLocalStorage';
+import { isBrokerVisible, isSymbolVisible, useVisibility } from '../../lib/visibility';
 import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { ChartHandle, DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
@@ -70,11 +71,28 @@ export function ChartPage() {
   const initSymbol = searchParams.get('symbol') ?? stored.symbol;
   const initTimeframe = searchParams.get('timeframe') ?? stored.timeframe;
 
-  const [brokers, setBrokers] = useState<string[]>([]);
-  const [symbols, setSymbols] = useState<string[]>([]);
+  const [allBrokers, setBrokers] = useState<string[]>([]);
+  const [allSymbols, setSymbols] = useState<string[]>([]);
   const [broker, setBroker] = useState(initBroker);
   const [symbol, setSymbol] = useState(initSymbol);
   const [timeframe, setTimeframe] = useState(initTimeframe);
+
+  // Hidden brokers / symbols (spec 024) leave the selectors; the current selection stays listed,
+  // marked as hidden, until the operator picks another one (AC 5).
+  const visibility = useVisibility();
+  // The fetch effects read the visibility through a ref so a save does not refetch the lists.
+  const visibilityRef = useRef(visibility);
+  useEffect(() => { visibilityRef.current = visibility; }, [visibility]);
+  const brokerHidden = !!broker && !isBrokerVisible(visibility, broker);
+  const symbolHidden = !!broker && !!symbol && !isSymbolVisible(visibility, broker, symbol);
+  const brokers = useMemo(() => {
+    const list = allBrokers.filter(b => isBrokerVisible(visibility, b));
+    return brokerHidden && allBrokers.includes(broker) ? [...list, broker] : list;
+  }, [allBrokers, visibility, broker, brokerHidden]);
+  const symbols = useMemo(() => {
+    const list = allSymbols.filter(s => isSymbolVisible(visibility, broker, s));
+    return symbolHidden && allSymbols.includes(symbol) ? [...list, symbol] : list;
+  }, [allSymbols, visibility, broker, symbol, symbolHidden]);
 
   // Persist the current selection whenever it changes.
   useEffect(() => {
@@ -206,8 +224,9 @@ export function ChartPage() {
         const list = data.map(b => b.broker);
         setBrokers(list);
         setBalances(Object.fromEntries(data.map(b => [b.broker, b.balance])));
-        // pick the first broker if none is selected or the stored one is gone
-        if (list.length > 0 && !list.includes(broker)) setBroker(list[0]);
+        // pick the first visible broker if none is selected or the stored one is gone
+        const pick = list.find(b => isBrokerVisible(visibilityRef.current, b)) ?? list[0];
+        if (pick && !list.includes(broker)) setBroker(pick);
       })
       .catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -226,7 +245,8 @@ export function ChartPage() {
     apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(broker)}`, { signal: ac.signal })
       .then(list => {
         setSymbols(list);
-        setSymbol(prev => list.includes(prev) ? prev : list.includes('EURUSD') ? 'EURUSD' : list[0] ?? '');
+        const visible = list.filter(s => isSymbolVisible(visibilityRef.current, broker, s));
+        setSymbol(prev => list.includes(prev) ? prev : visible.includes('EURUSD') ? 'EURUSD' : visible[0] ?? list[0] ?? '');
       })
       .catch(() => {});
     return () => ac.abort();
@@ -483,6 +503,8 @@ export function ChartPage() {
         symbols={symbols}
         broker={broker}
         symbol={symbol}
+        brokerHidden={brokerHidden}
+        symbolHidden={symbolHidden}
         timeframe={timeframe}
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
@@ -506,6 +528,8 @@ export function ChartPage() {
         symbols={symbols}
         broker={broker}
         symbol={symbol}
+        brokerHidden={brokerHidden}
+        symbolHidden={symbolHidden}
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
       />

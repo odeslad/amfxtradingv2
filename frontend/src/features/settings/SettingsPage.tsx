@@ -11,7 +11,7 @@ import { DevicesPanel } from './DevicesPanel';
 import { VisibilityTab } from './VisibilityTab';
 import { SymbolsPanel } from './SymbolsPanel';
 import { usePushDevices } from '../../lib/usePushDevices';
-import { EMPTY_VISIBILITY, setVisibility as publishVisibility, type Visibility } from '../../lib/visibility';
+import { EMPTY_VISIBILITY, isBrokerVisible, setVisibility as publishVisibility, useVisibility, type Visibility } from '../../lib/visibility';
 import styles from './SettingsPage.module.css';
 
 type Tab = 'mirror' | 'display' | 'notifications' | 'visibility';
@@ -144,6 +144,9 @@ export function SettingsPage() {
   };
 
   const brokers = mirror.map(m => m.broker);
+  // The notification panel lists the saved visibility, not the unsaved form.
+  const savedVisibility = useVisibility();
+  const notificationBrokers = brokers.filter(b => isBrokerVisible(savedVisibility, b));
   const savable = tab === 'mirror' || tab === 'display' || tab === 'visibility';
 
   return (
@@ -204,7 +207,7 @@ export function SettingsPage() {
 
       <NotificationPanel
         open={panel !== null}
-        brokers={brokers}
+        brokers={notificationBrokers}
         notification={panel?.notification ?? null}
         nonce={panel?.nonce ?? 0}
         onSave={saveNotification}

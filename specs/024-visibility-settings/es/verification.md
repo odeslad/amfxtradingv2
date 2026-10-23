@@ -5,6 +5,7 @@
 | 1 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `npx prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel prisma/schema.prisma --script` | ✅ pasa | 0,25 | 0,25 |
 | 2 [backend] | build + backend local contra producción | `npm run build` · backend local (`PORT=3001`, bridges apagados, BD por el túnel) · script llamando a `GET` / `PUT /settings` con un JWT forjado | ✅ pasa | 0,5 | 0,5 |
 | 3 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy al backend local (3001, BD de producción por el túnel) | ✅ pasa | 2 | 1,5 |
+| 4 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · mismo stack local que la tarea 3 | ✅ pasa | 1,5 | 1 |
 
 ## Evidencia
 
@@ -43,3 +44,12 @@ móvil en ventana estrecha. Layout móvil ajustado a petición del usuario: el b
 fila que el toggle en vez de a ancho completo debajo. La comprobación en iPhone queda para la validación en
 producción (tarea 5). Detalle de desarrollo anotado: Vite debe arrancarse desde PowerShell, Git Bash
 reescribe `VITE_API_BASE=/__api` como ruta de Windows y la app carga en blanco.
+
+### Tarea 4
+
+Build y lint limpios. Validado por el usuario en la app local el 23-10-2026 con un broker y símbolos
+ocultos: filas y opciones de filtro de Accounts / Positions / Orders / History, selectores y panel de
+filtros del gráfico con la selección oculta marcada "· hidden", listas manuales de New Trade (mirror sin
+tocar), selector de broker de Stats, select de broker y chips del panel de notificaciones; Mirror, Devices,
+alertas y toasts sin cambios; volver a mostrar el broker recupera las filas sin recargar. Los efectos de
+carga del gráfico leen la visibilidad por una ref para que guardar no vuelva a pedir las listas.

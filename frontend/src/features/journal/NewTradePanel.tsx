@@ -4,6 +4,7 @@ import { apiFetch } from '../../lib/api';
 import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
+import { useVisibility, visibleSymbols } from '../../lib/visibility';
 import styles from './NewTradePanel.module.css';
 
 interface NewTradePanelProps {
@@ -40,7 +41,10 @@ interface SetupLevels {
 export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
   const [mode, setMode] = useState<Mode>('manual');
   const [mirrorBrokers, setMirrorBrokers] = useState<MirrorBroker[]>([]);
-  const [brokers, setBrokers] = useState<string[]>([]);
+  const [allBrokers, setBrokers] = useState<string[]>([]);
+  const visibility = useVisibility();
+  // Hidden brokers / symbols (spec 024) leave the manual lists; mirror targets are untouched.
+  const brokers = allBrokers.filter(b => !visibility.hiddenBrokers.includes(b));
   const [action, setAction] = useState<CommandAction>('buy');
   const [broker, setBroker] = useState('');
   const [symbol, setSymbol] = useState('');
@@ -49,7 +53,8 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [price, setPrice] = useState('');
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
-  const [symbols, setSymbols] = useState<string[]>([]);
+  const [allSymbols, setSymbols] = useState<string[]>([]);
+  const symbols = mode === 'manual' && broker ? visibleSymbols(visibility, broker, allSymbols) : allSymbols;
   const [submitting, setSubmitting] = useState(false);
   const [timeframe, setTimeframe] = useState('H1');
   const [setup, setSetup] = useState<SetupLevels | null>(null);

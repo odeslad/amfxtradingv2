@@ -8,13 +8,15 @@ interface ChartFiltersPanelProps {
   symbols: string[];
   broker: string;
   symbol: string;
+  brokerHidden?: boolean;
+  symbolHidden?: boolean;
   onBrokerChange: (v: string) => void;
   onSymbolChange: (v: string) => void;
 }
 
 export const ChartFiltersPanel = memo(function ChartFiltersPanel({
   open, onClose,
-  brokers, symbols, broker, symbol,
+  brokers, symbols, broker, symbol, brokerHidden, symbolHidden,
   onBrokerChange, onSymbolChange,
 }: ChartFiltersPanelProps) {
   return (
@@ -31,7 +33,7 @@ export const ChartFiltersPanel = memo(function ChartFiltersPanel({
             <label className={styles.label}>Broker</label>
             <select className={styles.input} value={broker} onChange={e => onBrokerChange(e.target.value)}>
               <option value="">Select broker</option>
-              {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}</option>)}
+              {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}{brokerHidden && b === broker ? ' · hidden' : ''}</option>)}
             </select>
           </div>
 
@@ -39,7 +41,7 @@ export const ChartFiltersPanel = memo(function ChartFiltersPanel({
             <label className={styles.label}>Symbol</label>
             <select className={styles.input} value={symbol} onChange={e => onSymbolChange(e.target.value)} disabled={!broker}>
               <option value="">Select symbol</option>
-              {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+              {symbols.map(s => <option key={s} value={s}>{s}{symbolHidden && s === symbol ? ' · hidden' : ''}</option>)}
             </select>
           </div>
         </div>

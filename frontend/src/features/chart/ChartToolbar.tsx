@@ -12,6 +12,8 @@ interface ChartToolbarProps {
   symbols: string[];
   broker: string;
   symbol: string;
+  brokerHidden?: boolean;
+  symbolHidden?: boolean;
   timeframe: string;
   onBrokerChange: (v: string) => void;
   onSymbolChange: (v: string) => void;
@@ -30,7 +32,7 @@ interface ChartToolbarProps {
 }
 
 export const ChartToolbar = memo(function ChartToolbar({
-  brokers, symbols, broker, symbol, timeframe,
+  brokers, symbols, broker, symbol, brokerHidden, symbolHidden, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
   onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
@@ -40,12 +42,12 @@ export const ChartToolbar = memo(function ChartToolbar({
         <div className={styles.symbolSelects}>
           <select className={styles.select} value={broker} onChange={e => onBrokerChange(e.target.value)}>
             <option value="">Broker</option>
-            {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}</option>)}
+            {brokers.map(b => <option key={b} value={b}>{b.toUpperCase()}{brokerHidden && b === broker ? ' · hidden' : ''}</option>)}
           </select>
 
           <select className={styles.select} value={symbol} onChange={e => onSymbolChange(e.target.value)} disabled={!broker}>
             <option value="">Symbol</option>
-            {symbols.map(s => <option key={s} value={s}>{s}</option>)}
+            {symbols.map(s => <option key={s} value={s}>{s}{symbolHidden && s === symbol ? ' · hidden' : ''}</option>)}
           </select>
         </div>
 

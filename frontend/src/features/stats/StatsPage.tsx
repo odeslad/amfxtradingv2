@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
+import { isBrokerVisible, useVisibility } from '../../lib/visibility';
 import { dateRangeBounds } from '../journal/utils/dateRange';
 import { fmt, fmtPnl } from '../journal/utils/position';
 import { StatsFilters, type StatsFilterValues } from './StatsFilters';
@@ -25,7 +26,9 @@ export function StatsPage() {
   const [storedFilters, setFilters] = useLocalStorage<StatsFilterValues>('stats.filters', DEFAULT_FILTERS);
   const filters = useMemo(() => ({ ...DEFAULT_FILTERS, ...storedFilters }), [storedFilters]);
 
-  const [brokers, setBrokers] = useState<string[]>([]);
+  const [allBrokers, setBrokers] = useState<string[]>([]);
+  const visibility = useVisibility();
+  const brokers = useMemo(() => allBrokers.filter(b => isBrokerVisible(visibility, b)), [allBrokers, visibility]);
   const [brokersError, setBrokersError] = useState('');
   const [result, setResult] = useState<StatsResult | null>(null);
 

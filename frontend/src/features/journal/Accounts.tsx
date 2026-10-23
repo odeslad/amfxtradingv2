@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { apiFetch, errorMessage } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
 import { useSort, type SortColumn } from '../../lib/useSort';
+import { useVisibility, visibleBrokers } from '../../lib/visibility';
 import { fmt, currencySymbol } from './utils/position';
 import { AccountCard } from './AccountCard';
 import styles from './JournalPage.module.css';
@@ -90,12 +91,14 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
 
   useWs(handleWsMessage);
 
+  const visibility = useVisibility();
+  const visible = useMemo(() => visibleBrokers(visibility, balances), [visibility, balances]);
   const columns = useMemo(() => buildColumns(dayPnl), [dayPnl]);
-  const { sorted, sort, toggle } = useSort(balances, columns, { key: 'broker', dir: 'asc' });
+  const { sorted, sort, toggle } = useSort(visible, columns, { key: 'broker', dir: 'asc' });
 
   if (loading) return <div className={styles.empty}>Loading...</div>;
   if (error) return <div className={styles.empty}>{error}</div>;
-  if (balances.length === 0) return <div className={styles.empty}>No accounts</div>;
+  if (visible.length === 0) return <div className={styles.empty}>{balances.length === 0 ? 'No accounts' : 'Every account is hidden in Settings'}</div>;
 
   return (
     <>

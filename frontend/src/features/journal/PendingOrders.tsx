@@ -6,6 +6,7 @@ import { type OrderFilterValues } from './utils/orderFilters';
 import { OrderCard } from './OrderCard';
 import { ColorBadge } from './ColorBadge';
 import { posKey, setLiveColor, useLivePositions } from './useLivePositions';
+import { isVisible, useVisibility } from '../../lib/visibility';
 import styles from './JournalPage.module.css';
 
 interface PendingOrdersProps {
@@ -20,7 +21,11 @@ export function PendingOrders({ filters, onOptionsChange, onGroupChange, onEdit,
   const navigate = useNavigate();
   // The live feed is subscribed here, not by the page: only this tab renders per update.
   const live = useLivePositions();
-  const orders = useMemo(() => live.positions.filter(p => isPending(p.type)), [live.positions]);
+  const visibility = useVisibility();
+  const orders = useMemo(
+    () => live.positions.filter(p => isPending(p.type) && isVisible(visibility, p.broker ?? '', p.symbol)),
+    [live.positions, visibility],
+  );
   const colors = live.colors;
   const onColorChange = setLiveColor;
 

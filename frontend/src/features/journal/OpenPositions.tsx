@@ -6,6 +6,7 @@ import { addToast } from '../../lib/toast';
 import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide, isPending } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useBalances } from '../../lib/useBalances';
+import { isVisible, useVisibility } from '../../lib/visibility';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
@@ -30,7 +31,12 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
   const navigate = useNavigate();
   // The live feed is subscribed here, not by the page: only this tab renders per update.
   const live = useLivePositions();
-  const positions = useMemo(() => live.positions.filter(p => !isPending(p.type)), [live.positions]);
+  const visibility = useVisibility();
+  // Hidden brokers / symbols (spec 024) leave the list here, so the filter options and group never see them.
+  const positions = useMemo(
+    () => live.positions.filter(p => !isPending(p.type) && isVisible(visibility, p.broker ?? '', p.symbol)),
+    [live.positions, visibility],
+  );
   const colors = live.colors;
   const onColorChange = setLiveColor;
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);

@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "2.21"
+#property version   "2.22"
 #property strict
 
 input string BROKER_NAME = "ftmo";
@@ -28,7 +28,7 @@ void LoadConfig() {
 int OnInit() {
    LoadConfig();
    EventSetTimer(1);
-   Print("[CMD] HttpBridgeCommands v2.21 | broker: ", g_brokerName, " | ready");
+   Print("[CMD] HttpBridgeCommands v2.22 | broker: ", g_brokerName, " | ready");
    return INIT_SUCCEEDED;
 }
 
@@ -147,9 +147,12 @@ void ExecuteCommand(string json) {
          Print("[CMD] ERROR: modify failed | ticket not found: ", ticket, " id=", cmdId);
          result = "{\"status\":\"error\",\"message\":\"ticket not found\",\"id\":\"" + cmdId + "\"}";
       } else {
-         bool ok = OrderModify(ticket, OrderOpenPrice(), sl, tp, 0, clrNONE);
+         // A pending order moves to the received price; a market position keeps its open price.
+         bool   isPending = (OrderType() >= OP_BUYLIMIT);
+         double newPrice  = (isPending && price > 0) ? price : OrderOpenPrice();
+         bool ok = OrderModify(ticket, newPrice, sl, tp, 0, clrNONE);
          if (ok) {
-            Print("[CMD] OK: modify executed | ticket=", ticket, " sl=", DoubleToString(sl, 5), " tp=", DoubleToString(tp, 5));
+            Print("[CMD] OK: modify executed | ticket=", ticket, " price=", DoubleToString(newPrice, 5), " sl=", DoubleToString(sl, 5), " tp=", DoubleToString(tp, 5));
             result = ResultOk(-1, cmdId);
          } else {
             int err = GetLastError();

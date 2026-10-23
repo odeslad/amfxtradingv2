@@ -86,7 +86,7 @@ Los archivos viven en la carpeta `bridge\` dentro del directorio de datos de MT4
 | `lots`   | number | Tamaño de la posición en lotes |
 | `sl`     | number | Stop Loss en precio (0 = sin SL) |
 | `tp`     | number | Take Profit en precio (0 = sin TP) |
-| `price`  | number | Precio límite (solo para órdenes pendientes) |
+| `price`  | number | Precio límite (solo para órdenes pendientes; en `modify`, nuevo precio de la orden pendiente, opcional) |
 | `id`     | string | Identificador único del comando |
 | `magic`  | int    | Número mágico para identificar la orden en MT4 |
 
@@ -113,7 +113,7 @@ Para `close` y `modify`, el campo `ticket` es obligatorio:
 | `buystop`    | Orden stop de compra | `price` del comando |
 | `sellstop`   | Orden stop de venta | `price` del comando |
 | `close`      | Cerrar posición abierta o eliminar orden pendiente | BID/ASK actual |
-| `modify`     | Modificar SL/TP de una posición existente | — |
+| `modify`     | Modificar SL/TP de una posición o de una orden pendiente; con `price` > 0, una orden pendiente se mueve a ese precio (v2.22) | `price` del comando (solo pendientes) |
 
 ---
 

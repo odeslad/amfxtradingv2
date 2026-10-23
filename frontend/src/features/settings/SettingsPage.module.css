@@ -348,6 +348,7 @@
 
   .tabBarRight {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: stretch;
     padding: 6px 0;
     border-bottom: 1px solid var(--border);

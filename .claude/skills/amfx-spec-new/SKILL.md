@@ -50,6 +50,8 @@ Work in three phases. **Approval gates are strict**: after drafting each documen
 
 Explore the affected layers (structure, conventions, relevant code, `.claude/CLAUDE.md` design system and backend architecture sections) before writing. Include: approach, per-layer changes, data flow between layers (EA ↔ bridge ↔ backend ↔ WS/API ↔ frontend) when the spec spans several, files to touch, DB schema/migration changes, and risks. Propose alternatives with pros/cons when relevant. If a change breaks the EA ↔ backend contract, say so explicitly.
 
+**Mockup (mandatory when the spec touches `frontend`)**: the design is not approvable without a visual mockup the user can review — a Design artifact (`Artifact` quickstart with `intent: "design"`, the project's Bloomberg-dark design system from `.claude/CLAUDE.md`) with **desktop and mobile** artboards of every new or changed screen, panel and state (empty, loading, confirm). Iterate on the canvas with the user's feedback; when they approve, record the artifact URL and the list of artboards in a `## Mockup` section of `design.md` (both languages). Frontend tasks implement the approved mockup; a deviation during implementation goes back to the canvas first.
+
 ## 3. tasks.md
 
 ```markdown

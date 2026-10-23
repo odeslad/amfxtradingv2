@@ -7,6 +7,7 @@
 | 3 | `npm run build` + sondeos al backend local contra la base de datos de producción | ✅ | 1 | 1 |
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 | 5 | `npm run build` + `npm run lint` + app local contra el backend local (usuario) | ✅ | 2 | 1,5 |
+| 6 | `npm run build` + `npm run lint` + app local contra el backend local (usuario) | ✅ | 1 | 0,75 |
 
 ## Tarea 1 — Migración y modelos (db)
 
@@ -40,3 +41,10 @@
 - `npm run build` y `npx eslint` limpios.
 - App local (Vite 5174 contra el backend local 3001 sobre la base de datos de producción, sesión en incógnito), comprobada por el usuario el 23-10-2026: regla creada (EURUSD H1, aproximación ≤ 3 p, cada 15 min), edición con el panel relleno, pausar / reanudar, estado terminada con fin pasado, borrado con confirmación, tarjetas móviles. Arreglado en la revisión: la columna Ends pintaba la fecha con el formateador UTC del libro, dos horas distinta de la hora local tecleada → formateador local. El toast de disparo se comprueba en producción (tarea 7).
 - Est vs Real: 2 vs 1,5 SP.
+
+## Tarea 6 — Panel de dispositivos (frontend)
+
+- `lib/usePushDevices.ts`: lista desde `GET /push`, quitar (`DELETE /push/:id`), el endpoint de suscripción de este navegador hasheado con `crypto.subtle` como hace el servidor, `thisDeviceSubscribed`, recarga tras suscribir. `DevicesPanel.tsx` + `.module.css`: caja "This device · notifications off" con **Enable this device** (`usePush().subscribe`; los casos no soportado / bloqueado explican qué hacer), los dispositivos suscritos con etiqueta, desde, último push, "this device", y Remove con confirmación en el segundo clic. `SettingsPage`: **Devices · n** en la barra con punto naranja mientras este navegador no está suscrito. `AlertsPanel` del gráfico: el botón de activar se sustituye por una pista a Settings → Notifications → Devices.
+- `npm run build` y `npx eslint` limpios (un `set-state-in-effect` reescrito como promesa iniciada en el efecto).
+- App local contra el backend local, comprobada por el usuario el 23-10-2026: botón Devices y punto, panel con las dos suscripciones existentes ("Unknown device": suscritas antes de guardar el user agent), Remove con confirmación, pista del gráfico. El flujo Enable necesita las claves VAPID de producción y se comprueba en la tarea 7.
+- Est vs Real: 1 vs 0,75 SP.

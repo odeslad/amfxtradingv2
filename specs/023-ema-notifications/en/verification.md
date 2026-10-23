@@ -7,6 +7,7 @@
 | 3 | `npm run build` + local backend probes against the production database | ✅ | 1 | 1 |
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
 | 5 | `npm run build` + `npm run lint` + local app against the local backend (user) | ✅ | 2 | 1.5 |
+| 6 | `npm run build` + `npm run lint` + local app against the local backend (user) | ✅ | 1 | 0.75 |
 
 ## Task 1 — Migration and models (db)
 
@@ -40,3 +41,10 @@
 - `npm run build` and `npx eslint` clean.
 - Local app (Vite 5174 against the local backend 3001 on the production database, incognito session), checked by the user on 2026-10-23: rule created (EURUSD H1, approach ≤ 3 p, every 15 min), edit with the panel filled in, pause / resume, ended state with a past end, delete with confirmation, mobile cards. Fixed on review: the Ends column rendered the date with the book's UTC formatter, two hours off the typed local time → local formatter. The fire toast is checked in production (task 7).
 - Est vs Actual: 2 vs 1.5 SP.
+
+## Task 6 — Devices panel (frontend)
+
+- `lib/usePushDevices.ts`: list from `GET /push`, remove (`DELETE /push/:id`), this browser's subscription endpoint hashed with `crypto.subtle` like the server, `thisDeviceSubscribed`, reload after a subscribe. `DevicesPanel.tsx` + `.module.css`: "This device · notifications off" box with **Enable this device** (`usePush().subscribe`; the unsupported / denied cases explain what to do), the subscribed devices with label, since, last push, "this device", and Remove with a second-click confirm. `SettingsPage`: **Devices · n** in the bar with an orange dot while this browser is not subscribed. Chart `AlertsPanel`: the enable button is replaced by a hint to Settings → Notifications → Devices.
+- `npm run build` and `npx eslint` clean (one `set-state-in-effect` rewritten as a promise started in the effect).
+- Local app against the local backend, checked by the user on 2026-10-23: Devices button and dot, panel with the two existing subscriptions ("Unknown device": subscribed before the user agent was stored), Remove with confirmation, chart hint. The Enable flow needs the VAPID keys of production and is checked in task 7.
+- Est vs Actual: 1 vs 0.75 SP.

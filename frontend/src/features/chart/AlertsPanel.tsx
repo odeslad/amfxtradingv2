@@ -33,7 +33,7 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
   const [price, setPrice] = useState('');
   const [direction, setDirection] = useState<'above' | 'below'>('above');
   const [saving, setSaving] = useState(false);
-  const { status: pushStatus, busy: pushBusy, subscribe } = usePush();
+  const { status: pushStatus } = usePush();
 
   // EMA-cross alert form
   const [emaTf, setEmaTf] = useState('H1');
@@ -117,17 +117,7 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
 
         {pushStatus !== 'subscribed' && (
           <div className={styles.pushBanner}>
-            {pushStatus === 'unsupported' ? (
-              <span className={styles.pushNote}>
-                Push not supported. On iPhone, install this app to your home screen first.
-              </span>
-            ) : pushStatus === 'denied' ? (
-              <span className={styles.pushNote}>Notifications blocked. Enable them in your browser settings.</span>
-            ) : (
-              <button type="button" className={styles.enablePushBtn} onClick={subscribe} disabled={pushBusy}>
-                {pushBusy ? 'Enabling…' : 'Enable push notifications'}
-              </button>
-            )}
+            <span className={styles.pushNote}>Push is off on this device. Enable it in Settings → Notifications → Devices.</span>
           </div>
         )}
 

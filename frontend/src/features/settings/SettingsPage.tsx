@@ -7,6 +7,8 @@ import { MirrorTab, type AccountInfo, type MirrorBroker } from './MirrorTab';
 import { DisplayTab, type DisplaySettingsForm } from './DisplayTab';
 import { NotificationsTab } from './NotificationsTab';
 import { NotificationPanel } from './NotificationPanel';
+import { DevicesPanel } from './DevicesPanel';
+import { usePushDevices } from '../../lib/usePushDevices';
 import styles from './SettingsPage.module.css';
 
 type Tab = 'mirror' | 'display' | 'notifications';
@@ -36,6 +38,8 @@ export function SettingsPage() {
   const [panel, setPanel] = useState<{ notification: EmaNotification | null; nonce: number } | null>(null);
   const [deleting, setDeleting] = useState<EmaNotification | null>(null);
   const [confirming, setConfirming] = useState(false);
+  const pushDevices = usePushDevices();
+  const [devicesOpen, setDevicesOpen] = useState(false);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -114,7 +118,17 @@ export function SettingsPage() {
             </button>
           )}
           {tab === 'notifications' && (
-            <button type="button" className={styles.newBtn} onClick={() => setPanel({ notification: null, nonce: Date.now() })}>+ New notification</button>
+            <>
+              <button
+                type="button"
+                className={`${styles.devicesBtn} ${pushDevices.thisDeviceSubscribed ? '' : styles.devicesBtnAttention}`}
+                onClick={() => setDevicesOpen(true)}
+              >
+                Devices · {pushDevices.devices.length}
+                {!pushDevices.thisDeviceSubscribed && <span className={styles.dot} aria-hidden="true" />}
+              </button>
+              <button type="button" className={styles.newBtn} onClick={() => setPanel({ notification: null, nonce: Date.now() })}>+ New notification</button>
+            </>
           )}
         </div>
       </div>
@@ -137,6 +151,16 @@ export function SettingsPage() {
         nonce={panel?.nonce ?? 0}
         onSave={saveNotification}
         onClose={() => setPanel(null)}
+      />
+
+      <DevicesPanel
+        open={devicesOpen}
+        devices={pushDevices.devices}
+        currentHash={pushDevices.currentHash}
+        thisDeviceSubscribed={pushDevices.thisDeviceSubscribed}
+        onRemove={pushDevices.remove}
+        onChanged={pushDevices.reload}
+        onClose={() => setDevicesOpen(false)}
       />
 
       <ConfirmPanel

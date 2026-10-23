@@ -6,6 +6,7 @@ import { Toaster } from '../../components/Toaster';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
 import { useBuildInfo } from '../../lib/useBuildInfo';
+import { loadVisibility } from '../../lib/visibility';
 import styles from './AppLayout.module.css';
 
 const NAV = [
@@ -19,6 +20,12 @@ const NAV = [
 export function AppLayout() {
   const { user, logout } = useAuth();
   const build = useBuildInfo();
+
+  useEffect(() => {
+    const ac = new AbortController();
+    loadVisibility(ac.signal);
+    return () => ac.abort();
+  }, []);
 
   useEffect(() => subscribe((data) => {
     if (typeof data !== 'object' || data === null) return;

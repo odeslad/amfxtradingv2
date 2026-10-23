@@ -41,6 +41,8 @@
   border-bottom-color: var(--blue);
 }
 
+.tabShort { display: none; }
+
 .tabBarRight {
   display: flex;
   align-items: center;
@@ -324,10 +326,13 @@
 @media (max-width: 768px) {
   .tab {
     flex: 1;
-    padding: 12px 8px;
-    font-size: var(--text-lg);
-    letter-spacing: var(--tracking-normal);
+    padding: 12px 4px;
+    font-size: var(--text-md);
+    letter-spacing: var(--tracking-tight);
   }
+
+  .tabLong { display: none; }
+  .tabShort { display: inline; }
 
   .tabBar {
     flex-wrap: wrap;

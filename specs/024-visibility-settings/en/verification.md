@@ -4,6 +4,7 @@
 |---|---|---|---|---|---|
 | 1 [db] | `prisma generate` + build + `migrate diff` against production | `npx prisma generate` · `npm run build` · `npx prisma migrate diff --from-url <production via tunnel> --to-schema-datamodel prisma/schema.prisma --script` | ✅ pass | 0.25 | 0.25 |
 | 2 [backend] | build + local backend against production | `npm run build` · local backend (`PORT=3001`, bridges off, DB through the tunnel) · script calling `GET` / `PUT /settings` with a forged JWT | ✅ pass | 0.5 | 0.5 |
+| 3 [frontend] | build + lint + local app | `npm run build` · `npm run lint` · Vite on 5174 proxied to the local backend (3001, production DB through the tunnel) | ✅ pass | 2 | 1.5 |
 
 ## Evidence
 
@@ -32,3 +33,13 @@ restored               200 {"hiddenBrokers":[],"hiddenSymbols":{}}
 ```
 
 Duplicates removed, symbols upper-cased, an empty symbol list dropped, an unknown broker kept (AC 2).
+
+### Task 3
+
+Build and lint clean (one lint fix: the search box resets on close instead of in an effect). Checked by
+the user in the local app on 2026-10-23: Visibility tab table and toggles, Symbols panel with search,
+Show all / Hide all and checkbox rows, Save followed by a reload keeping the hidden set, mobile rows in a
+narrow window. Mobile layout adjusted on the user's feedback: the Symbols button sits on the same row as
+the toggle instead of a full-width row under it. The iPhone check is left for the production validation
+(task 5). Dev gotcha recorded: Vite must be started from PowerShell, Git Bash rewrites
+`VITE_API_BASE=/__api` into a Windows path and the app loads blank.

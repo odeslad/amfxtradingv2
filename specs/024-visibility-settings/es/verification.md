@@ -4,6 +4,7 @@
 |---|---|---|---|---|---|
 | 1 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `npx prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel prisma/schema.prisma --script` | ✅ pasa | 0,25 | 0,25 |
 | 2 [backend] | build + backend local contra producción | `npm run build` · backend local (`PORT=3001`, bridges apagados, BD por el túnel) · script llamando a `GET` / `PUT /settings` con un JWT forjado | ✅ pasa | 0,5 | 0,5 |
+| 3 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy al backend local (3001, BD de producción por el túnel) | ✅ pasa | 2 | 1,5 |
 
 ## Evidencia
 
@@ -32,3 +33,13 @@ restaurado             200 {"hiddenBrokers":[],"hiddenSymbols":{}}
 ```
 
 Duplicados eliminados, símbolos en mayúsculas, lista vacía descartada, broker desconocido conservado (CA 2).
+
+### Tarea 3
+
+Build y lint limpios (un arreglo de lint: el buscador se vacía al cerrar en vez de en un efecto). Comprobado
+por el usuario en la app local el 23-10-2026: tabla y toggles de la pestaña Visibility, panel Symbols con
+buscador, Show all / Hide all y filas con casilla, Save seguido de recarga conservando lo oculto, filas de
+móvil en ventana estrecha. Layout móvil ajustado a petición del usuario: el botón Symbols va en la misma
+fila que el toggle en vez de a ancho completo debajo. La comprobación en iPhone queda para la validación en
+producción (tarea 5). Detalle de desarrollo anotado: Vite debe arrancarse desde PowerShell, Git Bash
+reescribe `VITE_API_BASE=/__api` como ruta de Windows y la app carga en blanco.

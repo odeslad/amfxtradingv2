@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { errorMessage, isAbortError } from '../../lib/api';
 import {
-  fmtEur, fmtLots, fmtPips, fmtR, previewTrade, SLOTS, toLocalInput,
+  fmtEur, fmtLots, fmtPips, fmtR, parseBookInput, previewTrade, SLOTS, toBookInput,
   type BookScheme, type BookTrade, type Direction, type Slot, type TradeInput, type TradePreview,
 } from '../../lib/book';
 import { addToast } from '../../lib/toast';
@@ -38,8 +38,8 @@ const fieldsOf = (scheme: BookScheme | null, trade: BookTrade | null): Fields =>
   direction: trade?.direction ?? 'buy',
   entry: trade ? String(trade.entry) : '',
   sl: trade ? String(trade.sl) : '',
-  openTime: trade ? toLocalInput(trade.openTime) : '',
-  closeTime: trade ? toLocalInput(trade.closeTime) : '',
+  openTime: trade ? toBookInput(trade.openTime) : '',
+  closeTime: trade ? toBookInput(trade.closeTime) : '',
   closePrice: trade?.closePrice !== null && trade?.closePrice !== undefined ? String(trade.closePrice) : '',
   lots: trade ? String(trade.lots) : '',
   note: trade?.note ?? '',
@@ -68,8 +68,10 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
   const closePrice = num(fields.closePrice);
   const lots = num(fields.lots);
   const ready = entry !== null && sl !== null && entry > 0 && sl > 0 && entry !== sl;
+  const openTime = parseBookInput(fields.openTime);
+  const closeTime = parseBookInput(fields.closeTime);
   const closed = fields.closeTime.trim() !== '' || closePrice !== null;
-  const closeComplete = fields.closeTime.trim() !== '' && closePrice !== null;
+  const closeComplete = closeTime !== null && closePrice !== null;
 
   // Preview after each change, debounced, through the same arithmetic the save uses.
   useEffect(() => {
@@ -77,25 +79,26 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
     const controller = new AbortController();
     const timer = setTimeout(() => {
       previewTrade({
-        slot: fields.slot, direction: fields.direction, entry, sl, openTime: fields.openTime || new Date().toISOString(),
-        closeTime: closeComplete ? fields.closeTime : null, closePrice: closeComplete ? closePrice : null, lots, tradeId: trade?.id,
+        slot: fields.slot, direction: fields.direction, entry, sl, openTime: openTime ?? new Date().toISOString(),
+        closeTime: closeComplete ? closeTime : null, closePrice: closeComplete ? closePrice : null, lots, tradeId: trade?.id,
       }, { signal: controller.signal })
         .then(p => { setPreview(p); setPreviewError(null); })
         .catch(err => { if (!isAbortError(err)) setPreviewError(errorMessage(err)); });
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, ready, fields.slot, fields.direction, entry, sl, fields.openTime, fields.closeTime, closePrice, closeComplete, lots, trade?.id]);
+  }, [open, ready, fields.slot, fields.direction, entry, sl, openTime, closeTime, closePrice, closeComplete, lots, trade?.id]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!scheme || !ready) { addToast('Entrada y SL son obligatorios y distintos', 'error'); return; }
-    if (!fields.openTime) { addToast('La apertura es obligatoria', 'error'); return; }
+    if (openTime === null) { addToast('La apertura es obligatoria, en formato dd/mm/aaaa hh:mm', 'error'); return; }
+    if (fields.closeTime.trim() !== '' && closeTime === null) { addToast('El cierre debe ser dd/mm/aaaa hh:mm', 'error'); return; }
     if (closed && !closeComplete) { addToast('Para cerrar la operación hacen falta hora y precio de cierre', 'error'); return; }
     setBusy(true);
     try {
       await onSave({
-        schemeId: scheme.id, slot: fields.slot, direction: fields.direction, entry, sl, openTime: fields.openTime,
-        closeTime: closeComplete ? fields.closeTime : null, closePrice: closeComplete ? closePrice : null,
+        schemeId: scheme.id, slot: fields.slot, direction: fields.direction, entry, sl, openTime,
+        closeTime: closeComplete ? closeTime : null, closePrice: closeComplete ? closePrice : null,
         lots, note: fields.note.trim() || null,
       }, trade?.id ?? null);
       addToast(trade ? `Operación ${trade.ticket} guardada` : 'Operación creada', 'success');
@@ -125,8 +128,8 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
             </label>
             <label className={styles.field}><span className={styles.label}>Entrada</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.entry} onChange={e => set('entry')(e.target.value)} required /></label>
             <label className={styles.field}><span className={styles.label}>SL</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.sl} onChange={e => set('sl')(e.target.value)} required /></label>
-            <label className={styles.field}><span className={styles.label}>Apertura</span><input className={styles.input} type="datetime-local" value={fields.openTime} onChange={e => set('openTime')(e.target.value)} required /></label>
-            <label className={styles.field}><span className={styles.label}>Cierre <em className={styles.hint}>vacío = en curso</em></span><input className={styles.input} type="datetime-local" value={fields.closeTime} onChange={e => set('closeTime')(e.target.value)} /></label>
+            <label className={styles.field}><span className={styles.label}>Apertura</span><input className={styles.input} type="text" inputMode="numeric" placeholder="dd/mm/aaaa hh:mm" value={fields.openTime} onChange={e => set('openTime')(e.target.value)} required /></label>
+            <label className={styles.field}><span className={styles.label}>Cierre <em className={styles.hint}>vacío = en curso</em></span><input className={styles.input} type="text" inputMode="numeric" placeholder="dd/mm/aaaa hh:mm" value={fields.closeTime} onChange={e => set('closeTime')(e.target.value)} /></label>
             <label className={styles.field}><span className={styles.label}>Precio de cierre</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.closePrice} onChange={e => set('closePrice')(e.target.value)} /></label>
             <label className={styles.field}><span className={styles.label}>Lotes <em className={styles.hint}>vacío = propuesta 1 %</em></span><input className={styles.input} type="number" step="0.01" inputMode="decimal" value={fields.lots} onChange={e => set('lots')(e.target.value)} placeholder={preview ? fmtLots(preview.proposedLots) : ''} /></label>
           </div>

@@ -133,13 +133,22 @@ export const fmtDateTime = (iso: string | null | undefined): string => {
   const d = new Date(iso);
   return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 };
+// dd/mm/yyyy hh:mm, the format the operator writes and reads (24 h, no locale).
 export const fmtShort = (iso: string | null | undefined): string => {
   if (!iso) return '—';
   const d = new Date(iso);
-  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+  return `${pad(d.getUTCDate())}/${pad(d.getUTCMonth() + 1)}/${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
 };
-// Input value for datetime-local from an ISO string (UTC, no shift).
-export const toLocalInput = (iso: string | null | undefined): string => (iso ? fmtDateTime(iso).replace(' ', 'T') : '');
+export const toBookInput = (iso: string | null | undefined): string => (iso ? fmtShort(iso) : '');
+// "dd/mm/yyyy hh:mm" (minutes optional) → "YYYY-MM-DD HH:MM" for the API; null when not a valid date.
+export const parseBookInput = (text: string): string | null => {
+  const m = /^\s*(\d{1,2})\/(\d{1,2})\/(\d{4})\s+(\d{1,2})(?::(\d{2}))?\s*$/.exec(text);
+  if (!m) return null;
+  const [day, month, year, hour, minute] = [Number(m[1]), Number(m[2]), Number(m[3]), Number(m[4]), Number(m[5] ?? '0')];
+  const d = new Date(Date.UTC(year, month - 1, day, hour, minute));
+  const valid = d.getUTCFullYear() === year && d.getUTCMonth() === month - 1 && d.getUTCDate() === day && hour < 24 && minute < 60;
+  return valid ? `${year}-${pad(month)}-${pad(day)} ${pad(hour)}:${pad(minute)}` : null;
+};
 
 export const resultLabel = (r: EffectiveResult): string => (r === 'Pierde' || r === 'Empate' || r === 'Pendiente' ? r : `Gana ${r}`);
 export type ResultTone = 'green' | 'red' | 'gold' | 'muted';

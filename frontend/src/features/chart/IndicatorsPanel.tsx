@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, memo } from 'react';
 import type { Ema } from './chart.types';
 import styles from './IndicatorsPanel.module.css';
 
@@ -66,7 +66,7 @@ function nextColor(emas: Ema[]): string {
   return DEFAULT_COLORS[emas.length % DEFAULT_COLORS.length];
 }
 
-export function IndicatorsPanel({ open, onClose, emas, onEmasChange, onSave }: IndicatorsPanelProps) {
+export const IndicatorsPanel = memo(function IndicatorsPanel({ open, onClose, emas, onEmasChange, onSave }: IndicatorsPanelProps) {
   const [newPeriod, setNewPeriod] = useState('20');
   const [newStyle, setNewStyle] = useState<Ema['style']>('solid');
   const [newWidth, setNewWidth] = useState<Ema['width']>(1);
@@ -210,4 +210,4 @@ export function IndicatorsPanel({ open, onClose, emas, onEmasChange, onSave }: I
       </div>
     </>
   );
-}
+});

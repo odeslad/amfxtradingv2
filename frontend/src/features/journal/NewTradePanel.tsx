@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, memo } from 'react';
 import { Link } from 'react-router-dom';
 import { apiFetch } from '../../lib/api';
 import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
@@ -37,7 +37,7 @@ interface SetupLevels {
 }
 
 
-export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
+export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
   const [mode, setMode] = useState<Mode>('manual');
   const [mirrorBrokers, setMirrorBrokers] = useState<MirrorBroker[]>([]);
   const [brokers, setBrokers] = useState<string[]>([]);
@@ -421,4 +421,4 @@ export function NewTradePanel({ open, onClose, initialBroker, initialSymbol, ini
       </div>
     </>
   );
-}
+});

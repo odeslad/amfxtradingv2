@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
 import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommand } from '../../lib/commands';
@@ -13,7 +13,7 @@ interface ClosePositionPanelProps {
 
 // Confirmation panel to close a single position from the chart. Reuses the
 // BulkEditPanel styles so it matches the edit-group panel.
-export function ClosePositionPanel({ open, position, onClose }: ClosePositionPanelProps) {
+export const ClosePositionPanel = memo(function ClosePositionPanel({ open, position, onClose }: ClosePositionPanelProps) {
   const [submitting, setSubmitting] = useState(false);
 
   const [prevOpen, setPrevOpen] = useState(open);
@@ -68,4 +68,4 @@ export function ClosePositionPanel({ open, position, onClose }: ClosePositionPan
       </div>
     </>
   );
-}
+});

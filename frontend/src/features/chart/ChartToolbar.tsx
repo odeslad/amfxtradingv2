@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
@@ -28,7 +29,7 @@ interface ChartToolbarProps {
   isFullscreen?: boolean;
 }
 
-export function ChartToolbar({
+export const ChartToolbar = memo(function ChartToolbar({
   brokers, symbols, broker, symbol, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
   onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
@@ -198,4 +199,4 @@ export function ChartToolbar({
       </div>
     </div>
   );
-}
+});

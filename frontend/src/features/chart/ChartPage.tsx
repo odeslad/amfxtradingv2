@@ -16,7 +16,7 @@ import { ChartErrorBoundary } from './ChartErrorBoundary';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
-import type { DrawMode } from './LightweightChart';
+import type { ChartHandle, DrawMode } from './LightweightChart';
 import { IndicatorsPanel } from './IndicatorsPanel';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
 import { ClosePositionPanel } from '../journal/ClosePositionPanel';
@@ -48,6 +48,10 @@ interface Candle {
   low: number;
   close: number;
 }
+
+// One string per positions list: setPositions only when something visible changed (spec 019).
+const positionsSignature = (list: Position[]): string =>
+  list.map(p => `${p.ticket}|${p.type}|${p.lots}|${p.openPrice}|${p.sl}|${p.tp}|${p.profit}`).join(';');
 
 const TF_KEYS: Record<string, { time: string; open: string; high: string; low: string }> = {
   M5:  { time: 'm5_time',  open: 'm5_open',  high: 'm5_high',  low: 'm5_low'  },
@@ -82,7 +86,11 @@ export function ChartPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [candles, setCandles] = useState<Candle[]>([]);
-  const [liveCandle, setLiveCandle] = useState<Candle | null>(null);
+  // Live candle: pushed into the chart through its handle, never page state (spec 019).
+  const chartRef = useRef<ChartHandle>(null);
+  const liveCandleRef = useRef<Candle | null>(null);
+  // Price shown by the alerts panel; fed only while the panel is open.
+  const [panelPrice, setPanelPrice] = useState<number | null>(null);
   const [indicatorsOpen, setIndicatorsOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
@@ -98,6 +106,13 @@ export function ChartPage() {
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [positions, setPositions] = useState<Position[]>([]);
+  const positionsSigRef = useRef('');
+  const acceptPositions = useCallback((list: Position[]) => {
+    const sig = positionsSignature(list);
+    if (sig === positionsSigRef.current) return;
+    positionsSigRef.current = sig;
+    setPositions(list);
+  }, []);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [closePosition, setClosePosition] = useState<Position | null>(null);
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
@@ -279,7 +294,8 @@ export function ChartPage() {
     if (m.broker !== broker) return;
 
     if (m.type === 'positions') {
-      setPositions((m.positions ?? []).map(p => ({
+      if (positionsMode === 'none') return;
+      acceptPositions((m.positions ?? []).map(p => ({
         ...p,
         broker: p.broker ?? m.broker,
         brokerOffset: p.brokerOffset ?? m.brokerOffset,
@@ -293,14 +309,17 @@ export function ChartPage() {
     if (!keys) return;
     const last = m.ticks.findLast((t) => t.symbol === symbol);
     if (!last) return;
-    setLiveCandle({
+    const candle: Candle = {
       time: last[keys.time],
       open: last[keys.open],
       high: last[keys.high],
       low: last[keys.low],
       close: last.bid,
-    });
-  }, [broker, symbol, timeframe, user, refreshAlerts]));
+    };
+    liveCandleRef.current = candle;
+    chartRef.current?.updateLive(candle);
+    if (alertsOpen) setPanelPrice(candle.close);
+  }, [broker, symbol, timeframe, user, refreshAlerts, alertsOpen, positionsMode, acceptPositions]));
 
   // Selection changed: reset everything bound to it during render, before the
   // loading effects below start their requests.
@@ -308,7 +327,6 @@ export function ChartPage() {
   const [prevSelectionKey, setPrevSelectionKey] = useState(selectionKey);
   if (selectionKey !== prevSelectionKey) {
     setPrevSelectionKey(selectionKey);
-    setLiveCandle(null);
     setCandles([]);
     setDrawings(null);
     setHasMore(true);
@@ -323,12 +341,12 @@ export function ChartPage() {
   }
 
   useEffect(() => {
-    if (positionsMode === 'none' || !broker) return;
+    if (positionsMode === 'none' || !broker) { positionsSigRef.current = ''; return; }
     const ac = new AbortController();
     apiFetch<{ broker: string; brokerOffset?: number; currency?: string; positions: Position[] }[]>('/positions/live', { signal: ac.signal })
       .then(brokers => {
         const entry = brokers.find(b => b.broker === broker);
-        setPositions((entry?.positions ?? []).map(p => ({
+        acceptPositions((entry?.positions ?? []).map(p => ({
           ...p,
           broker: p.broker ?? broker,
           brokerOffset: p.brokerOffset ?? entry?.brokerOffset,
@@ -337,11 +355,14 @@ export function ChartPage() {
       })
       .catch(() => {});
     return () => ac.abort();
-  }, [positionsMode, broker]);
+  }, [positionsMode, broker, acceptPositions]);
 
   useEffect(() => {
     if (!broker || !symbol) return;
     hasMoreRef.current = true;
+    // Selection changed: drop the previous live candle before the new history loads.
+    liveCandleRef.current = null;
+    chartRef.current?.updateLive(null);
     const ac = new AbortController();
     apiFetch<RawCandle[]>(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=2000`, { signal: ac.signal })
       .then(data => {
@@ -415,6 +436,29 @@ export function ChartPage() {
     );
   }, [positionsMode, positions, symbol]);
 
+  // Stable handlers so the memoised panels and toolbar skip renders (spec 019).
+  const openIndicators = useCallback(() => setIndicatorsOpen(true), []);
+  const closeIndicators = useCallback(() => setIndicatorsOpen(false), []);
+  const openFilters = useCallback(() => setFiltersOpen(true), []);
+  const closeFilters = useCallback(() => setFiltersOpen(false), []);
+  const closeAlerts = useCallback(() => setAlertsOpen(false), []);
+  const toggleDrawMode = useCallback((mode: DrawMode) => setDrawMode(prev => (prev === mode ? null : mode)), []);
+  const clearDrawMode = useCallback(() => setDrawMode(null), []);
+  const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev]), []);
+  const openNewTrade = useCallback(() => setNewTradeOpen(true), []);
+  const closeNewTrade = useCallback(() => setNewTradeOpen(false), []);
+  const clearEdit = useCallback(() => setEditPosition(null), []);
+  const clearClose = useCallback(() => setClosePosition(null), []);
+  const editPositions = useMemo(() => (editPosition ? [editPosition] : []), [editPosition]);
+
+  const toggleAlerts = useCallback(() => {
+    setAlertsOpen(prev => {
+      if (!prev) setPanelPrice(liveCandleRef.current?.close ?? null);
+      return !prev;
+    });
+    setAlertFlash(false);
+  }, []);
+
   const handleEditPosition = useCallback((ticket: number) => {
     const pos = positions.find(p => p.ticket === ticket);
     if (pos) setEditPosition(pos);
@@ -443,21 +487,21 @@ export function ChartPage() {
         onBrokerChange={setBroker}
         onSymbolChange={setSymbol}
         onTimeframeChange={setTimeframe}
-        onIndicators={() => setIndicatorsOpen(true)}
-        onFilters={() => setFiltersOpen(true)}
+        onIndicators={openIndicators}
+        onFilters={openFilters}
         drawMode={drawMode}
-        onDrawMode={mode => setDrawMode(prev => (prev === mode ? null : mode))}
-        onAlerts={() => { setAlertsOpen(prev => !prev); setAlertFlash(false); }}
+        onDrawMode={toggleDrawMode}
+        onAlerts={toggleAlerts}
         alertsActive={alertsOpen}
         alertsFlashing={alertFlash}
-        onPositions={() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev])}
+        onPositions={cyclePositions}
         positionsMode={positionsMode}
         onFullscreen={toggleFullscreen}
         isFullscreen={isFullscreen}
       />
       <ChartFiltersPanel
         open={filtersOpen}
-        onClose={() => setFiltersOpen(false)}
+        onClose={closeFilters}
         brokers={brokers}
         symbols={symbols}
         broker={broker}
@@ -467,12 +511,12 @@ export function ChartPage() {
       />
       <AlertsPanel
         open={alertsOpen}
-        onClose={() => setAlertsOpen(false)}
+        onClose={closeAlerts}
         broker={broker}
         symbol={symbol}
         brokers={brokers}
         symbols={symbols}
-        currentPrice={liveCandle?.close ?? null}
+        currentPrice={panelPrice}
         alerts={alerts}
         onCreate={createAlert}
         onToggle={toggleAlert}
@@ -484,7 +528,7 @@ export function ChartPage() {
       />
       <IndicatorsPanel
         open={indicatorsOpen}
-        onClose={() => setIndicatorsOpen(false)}
+        onClose={closeIndicators}
         emas={emas}
         onEmasChange={setEmas}
         onSave={saveEmas}
@@ -492,24 +536,24 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} liveCandle={liveCandle} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={() => setDrawMode(null)} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsMode !== 'none'} onNewTrade={() => setNewTradeOpen(true)} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }
       </div>
-      <NewTradePanel open={newTradeOpen} onClose={() => setNewTradeOpen(false)} initialBroker={broker} initialSymbol={symbol} initialTimeframe={timeframe} />
+      <NewTradePanel open={newTradeOpen} onClose={closeNewTrade} initialBroker={broker} initialSymbol={symbol} initialTimeframe={timeframe} />
 
       <BulkEditPanel
         open={!!editPosition}
-        positions={editPosition ? [editPosition] : []}
-        onClose={() => setEditPosition(null)}
+        positions={editPositions}
+        onClose={clearEdit}
       />
 
       <ClosePositionPanel
         open={!!closePosition}
         position={closePosition}
-        onClose={() => setClosePosition(null)}
+        onClose={clearClose}
       />
     </div>
   );

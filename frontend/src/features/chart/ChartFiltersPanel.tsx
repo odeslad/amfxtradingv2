@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import styles from './ChartFiltersPanel.module.css';
 
 interface ChartFiltersPanelProps {
@@ -11,7 +12,7 @@ interface ChartFiltersPanelProps {
   onSymbolChange: (v: string) => void;
 }
 
-export function ChartFiltersPanel({
+export const ChartFiltersPanel = memo(function ChartFiltersPanel({
   open, onClose,
   brokers, symbols, broker, symbol,
   onBrokerChange, onSymbolChange,
@@ -45,4 +46,4 @@ export function ChartFiltersPanel({
       </div>
     </>
   );
-}
+});

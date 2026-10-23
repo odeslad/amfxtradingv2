@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useImperativeHandle, type Ref } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   createChart, CandlestickSeries, LineSeries, LineStyle, TickMarkType, CrosshairMode,
@@ -12,6 +12,12 @@ import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type D
 
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
 import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
+
+// Imperative handle: the live candle is pushed straight into the series from the
+// WebSocket handler, so the page does not re-render per tick (spec 019).
+export interface ChartHandle {
+  updateLive(candle: Candle | null): void;
+}
 
 export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck' | 'text';
 
@@ -54,7 +60,7 @@ interface LightweightChartProps {
   broker: string;
   symbol: string;
   timeframe: string;
-  liveCandle?: Candle | null;
+  ref?: Ref<ChartHandle>;
   onLoadMore?: () => void;
   emas: Ema[];
 }
@@ -191,7 +197,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, liveCandle, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -230,6 +236,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
   const trendlineManagerRef = useRef<DrawingManager | null>(null);
   const priceLinesRef = useRef<Map<string, IPriceLine>>(new Map());
   const markersRef = useRef<ISeriesMarkersPluginApi<Time> | null>(null);
+  const markersKeyRef = useRef('');
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
   const draggableRef = useRef<DraggableLevel[]>([]);
   const dragStateRef = useRef<DragState | null>(null);
@@ -605,7 +612,14 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
 
     chart.subscribeCrosshairMove((param) => {
       const bar = param.seriesData.get(series) as { open: number; high: number; low: number; close: number } | undefined;
-      setHoverOhlc(bar && bar.open !== undefined ? bar : null);
+      const next = bar && bar.open !== undefined ? { open: bar.open, high: bar.high, low: bar.low, close: bar.close } : null;
+      // The chart raises this on every data update too: keep the state when the
+      // hovered OHLC did not change, so a tick under a still cursor renders nothing.
+      setHoverOhlc(prev => {
+        if (prev === next) return prev;
+        if (prev && next && prev.open === next.open && prev.high === next.high && prev.low === next.low && prev.close === next.close) return prev;
+        return next;
+      });
     });
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
@@ -636,6 +650,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       trendlineManagerRef.current = null;
       markersRef.current?.detach();
       markersRef.current = null;
+      markersKeyRef.current = '';
+      priceLinesRef.current = new Map();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -733,8 +749,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     syncEmaSeries();
   }, [emas, syncEmaSeries]);
 
-  useEffect(() => {
-    if (!seriesRef.current || !liveCandle) return;
+  const updateLive = useCallback((liveCandle: Candle | null) => {
+    if (liveCandle === null) { liveCandleTimeRef.current = null; return; }
+    if (!seriesRef.current) return;
 
     const data = candlesRef.current;
     if (data.length < 2) return;
@@ -763,14 +780,17 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
     } catch {
       // skip silently
     }
-  }, [liveCandle]);
+  }, []);
+
+  useImperativeHandle(ref, () => ({ updateLive }), [updateLive]);
 
   useEffect(() => {
     const series = seriesRef.current;
     if (!series) return;
 
-    for (const line of priceLinesRef.current.values()) series.removePriceLine(line);
-    priceLinesRef.current = new Map();
+    // Reconcile the price lines: existing ones are updated in place so they keep
+    // their identity (no flicker, drag keeps working); the rest are removed below.
+    const seen = new Set<string>();
 
     const levels: Omit<PositionLabel, 'top' | 'visible'>[] = [];
     const markers: SeriesMarker<Time>[] = [];
@@ -784,13 +804,17 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       const entryColor = isBuy ? '#4caf84' : '#e05c5c';
 
       const addLine = (id: string, price: number, color: string, text: string) => {
-        priceLinesRef.current.set(id, series.createPriceLine({
+        const opts = {
           price,
           color,
-          lineWidth: selectedLevelIdRef.current === id ? 2 : 1,
+          lineWidth: (selectedLevelIdRef.current === id ? 2 : 1) as 1 | 2,
           lineStyle: selectedLevelIdRef.current === id ? LineStyle.Solid : LineStyle.Dashed,
           axisLabelVisible: false,
-        }));
+        };
+        const existing = priceLinesRef.current.get(id);
+        if (existing) existing.applyOptions(opts);
+        else priceLinesRef.current.set(id, series.createPriceLine(opts));
+        seen.add(id);
         levels.push({ id, ticket: p.ticket, price, color, text });
       };
 
@@ -852,9 +876,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, liveCandl
       }
     }
 
+    for (const [id, line] of priceLinesRef.current) {
+      if (!seen.has(id)) { series.removePriceLine(line); priceLinesRef.current.delete(id); }
+    }
+
     markers.sort((a, b) => (a.time as number) - (b.time as number));
-    markersRef.current?.detach();
-    markersRef.current = createSeriesMarkers(series, markers);
+    // The markers plugin is rebuilt only when the set of entry arrows changes.
+    const markersKey = markers.map(m => `${m.time}|${m.shape}`).join(',');
+    if (markersKey !== markersKeyRef.current) {
+      markersKeyRef.current = markersKey;
+      markersRef.current?.detach();
+      markersRef.current = createSeriesMarkers(series, markers);
+    }
 
     if (selectedLevelIdRef.current && !draggable.some(l => l.id === selectedLevelIdRef.current)) {
       selectedLevelIdRef.current = null;

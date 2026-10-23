@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
 import { errorMessage } from '../../lib/api';
 import { modifyCommand, sendCommands } from '../../lib/commands';
@@ -11,7 +11,7 @@ interface BulkEditPanelProps {
   onClose: () => void;
 }
 
-export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) {
+export const BulkEditPanel = memo(function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) {
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -92,4 +92,4 @@ export function BulkEditPanel({ open, positions, onClose }: BulkEditPanelProps) 
       </div>
     </>
   );
-}
+});

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, memo } from 'react';
 import { usePush } from '../../lib/usePush';
 import { errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
@@ -26,7 +26,7 @@ interface AlertsPanelProps {
   onDeleteEma: (id: number) => Promise<void>;
 }
 
-export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma }: AlertsPanelProps) {
+export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma }: AlertsPanelProps) {
   const [tab, setTab] = useState<'price' | 'ema'>('price');
   const [formBroker, setFormBroker] = useState(broker);
   const [formSymbol, setFormSymbol] = useState(symbol);
@@ -280,4 +280,4 @@ export function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, c
       </div>
     </>
   );
-}
+});

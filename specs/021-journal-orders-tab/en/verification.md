@@ -8,6 +8,7 @@
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 2 | 1.75 |
 | 5 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1.25 |
 | 6 | both documents agree; backend `npm run build` untouched | ✅ | 0.25 | 0.25 |
+| 7 | manual (deploys checked by the operator + user validation on production) | ✅ | 0.75 | 1.5 |
 
 ## Task 1 — `modify` moves a pending order to the received price (ea)
 
@@ -48,3 +49,11 @@
 - `backend/docs/architecture.md` (commands section) and `.claude/CLAUDE.md` (Comandos) now state that `modify` takes `ticket`, `sl`, `tp` and an optional `price` that the backend forwards and the EA 2.22+ applies to pending orders only; a market position keeps its open price. No code change: `routes/commands.ts` already validated and forwarded `price` on `modify`.
 - Both documents say the same; backend `npm run build` untouched (no source change).
 - Est vs Actual: 0.25 vs 0.25 SP.
+
+## Task 7 — Push, deploys and production validation (infra)
+
+- Pushed `master` (`0b760e1..45ea60b`, 8 commits) on 2026-10-23 at 09:02 UTC. The three pipelines ran at once and none failed on the shared checkout: backend build 194 (`/version`, docs-only change), frontend bundle with the Orders tab and the edit panel served at 09:03, EA pipeline green (`compile-ea.ps1` on the VPS: `Result: 0 errors, 0 warnings`, `.ex4` distributed to the 12 terminals at 09:02:44). The app footer shows build 181.194.32 (frontend.backend.ea commit counts).
+- **Incident.** Moving a price still answered MT4 error 1 ("no changes"): the terminals kept running the EA loaded on 2026-10-15. MT4 does not reload an EA when its `.ex4` is replaced on disk — the design's assumption was wrong. The operator then ran `ea/scripts/restart-mt4.ps1` over SSH, against the project note that says not to: it stopped the 12 terminals and the ones it started (session 0) died, leaving every pipe "listening" for about 8 minutes (09:09–09:17 UTC). Recovery: `schtasks /run /tn AMFX-Watchdog` relaunched the 12 terminals in Administrator's session one every 20 s (`startup.log`: "12/12 running (12 started now)"), pipes back to 11/12 connected (solidary isa was already down). Positions and orders live at the brokers and were not affected; ticks and account snapshots were missing during the gap. Recorded in the project memory.
+- User validation on production (https://v2.amfxtrading.com/journal), 2026-10-23: price edit of one order and of a group executed by the EA 2.22; Positions without the pending section; Orders with filters, colour, group Cancel, mobile cards and + New Trade from the tab. Validated by the user.
+- Agreed deviation (pending the user's answer): the EA workflow should reload the terminals after distributing (stop them and let AMFX-Watchdog start them in the interactive session), so a deployed EA is actually loaded.
+- Est vs Actual: 0.75 vs 1.5 SP (+0.75: the terminal reload incident and its recovery).

@@ -8,6 +8,7 @@
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 2 | 1,75 |
 | 5 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1,25 |
 | 6 | ambos documentos coinciden; `npm run build` del backend intacto | ✅ | 0,25 | 0,25 |
+| 7 | manual (despliegues comprobados por el operador + validación del usuario en producción) | ✅ | 0,75 | 1,5 |
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -48,3 +49,11 @@
 - `backend/docs/architecture.md` (sección de comandos) y `.claude/CLAUDE.md` (Comandos) indican ahora que `modify` lleva `ticket`, `sl`, `tp` y un `price` opcional que el backend reenvía y el EA 2.22+ aplica solo a órdenes pendientes; una posición de mercado conserva su precio de apertura. Sin cambio de código: `routes/commands.ts` ya validaba y reenviaba `price` en `modify`.
 - Ambos documentos dicen lo mismo; `npm run build` del backend intacto (sin cambios de fuente).
 - Est vs Real: 0,25 vs 0,25 SP.
+
+## Tarea 7 — Push, despliegues y validación en producción (infra)
+
+- Push de `master` (`0b760e1..45ea60b`, 8 commits) el 23-10-2026 a las 09:02 UTC. Los tres pipelines corrieron a la vez y ninguno falló sobre el checkout compartido: backend build 194 (`/version`, cambio solo de documentación), bundle del frontend con la pestaña Orders y el panel de edición servido a las 09:03, pipeline del EA en verde (`compile-ea.ps1` en el VPS: `Result: 0 errors, 0 warnings`, `.ex4` distribuido a los 12 terminales a las 09:02:44). El pie de la app muestra build 181.194.32 (contadores de commits frontend.backend.ea).
+- **Incidente.** Mover un precio seguía respondiendo el error 1 de MT4 ("sin cambios"): los terminales seguían ejecutando el EA cargado el 15-10-2026. MT4 no recarga un EA cuando se sustituye su `.ex4` en disco; la suposición del diseño era errónea. El operador ejecutó entonces `ea/scripts/restart-mt4.ps1` por SSH, contra la nota del proyecto que dice no hacerlo: paró los 12 terminales y los que arrancó (sesión 0) murieron, dejando todos los pipes en "listening" unos 8 minutos (09:09–09:17 UTC). Recuperación: `schtasks /run /tn AMFX-Watchdog` relanzó los 12 terminales en la sesión de Administrator uno cada 20 s (`startup.log`: "12/12 running (12 started now)"), pipes de vuelta a 11/12 conectados (solidary isa ya estaba caído). Posiciones y órdenes viven en el broker y no se vieron afectadas; faltaron ticks e instantáneas de cuenta durante el hueco. Registrado en la memoria del proyecto.
+- Validación del usuario en producción (https://v2.amfxtrading.com/journal), 23-10-2026: edición de precio de una orden y de un grupo ejecutada por el EA 2.22; Positions sin la sección de pendientes; Orders con filtros, color, Cancel de grupo, tarjetas móviles y + New Trade desde la pestaña. Validado por el usuario.
+- Desviación acordada (pendiente de la respuesta del usuario): el workflow del EA debe recargar los terminales tras distribuir (pararlos y dejar que AMFX-Watchdog los arranque en la sesión interactiva), para que un EA desplegado quede realmente cargado.
+- Est vs Real: 0,75 vs 1,5 SP (+0,75: el incidente de recarga de terminales y su recuperación).

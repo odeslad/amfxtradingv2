@@ -61,15 +61,20 @@ export function Accounts({ onSelectBroker }: AccountsProps) {
       .finally(() => setLoading(false));
   }, []);
 
+  // Daily P&L poll, paused while the browser tab is hidden (spec 019).
   useEffect(() => {
     const fetchDayPnl = () => {
       apiFetch<Record<string, number>>('/balances/daily-pnl')
         .then(setDayPnl)
         .catch(() => {});
     };
-    fetchDayPnl();
-    const id = setInterval(fetchDayPnl, DAY_PNL_POLL_MS);
-    return () => clearInterval(id);
+    let id: number | null = null;
+    const stop = () => { if (id !== null) { clearInterval(id); id = null; } };
+    const start = () => { stop(); fetchDayPnl(); id = window.setInterval(fetchDayPnl, DAY_PNL_POLL_MS); };
+    const onVisibility = () => (document.hidden ? stop() : start());
+    if (!document.hidden) start();
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVisibility); };
   }, []);
 
   const handleWsMessage = useCallback((data: unknown) => {

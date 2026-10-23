@@ -1,17 +1,14 @@
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type Position, fmt, fmtDistance, fmtLocalTime, TYPE_LABEL, isBuySide, orderDistancePips } from './utils/position';
+import { type Position, fmt, fmtDistance, fmtLocalTime, TYPE_LABEL, isBuySide, isPending, orderDistancePips } from './utils/position';
 import { type FilterOptions } from './FiltersPanel';
 import { type OrderFilterValues } from './utils/orderFilters';
 import { OrderCard } from './OrderCard';
 import { ColorBadge } from './ColorBadge';
-import { posKey } from './useLivePositions';
+import { posKey, setLiveColor, useLivePositions } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
 interface PendingOrdersProps {
-  orders: Position[];                   // pending orders only (types 2–5)
-  colors: Map<string, string>;
-  onColorChange: (broker: string, ticket: number, color: string) => void;
   filters: OrderFilterValues;
   onOptionsChange: (options: FilterOptions) => void;
   onGroupChange: (group: Position[] | null) => void;
@@ -19,15 +16,26 @@ interface PendingOrdersProps {
   onCancel: (p: Position) => void;
 }
 
-export function PendingOrders({ orders, colors, onColorChange, filters, onOptionsChange, onGroupChange, onEdit, onCancel }: PendingOrdersProps) {
+export function PendingOrders({ filters, onOptionsChange, onGroupChange, onEdit, onCancel }: PendingOrdersProps) {
   const navigate = useNavigate();
+  // The live feed is subscribed here, not by the page: only this tab renders per update.
+  const live = useLivePositions();
+  const orders = useMemo(() => live.positions.filter(p => isPending(p.type)), [live.positions]);
+  const colors = live.colors;
+  const onColorChange = setLiveColor;
 
-  useEffect(() => {
+  const options = useMemo(() => {
     const brokers = [...new Set(orders.map(p => p.broker ?? '').filter(Boolean))].sort();
     const symbols = [...new Set(orders.map(p => p.symbol).filter(Boolean))].sort();
     const activeColors = [...new Set(orders.map(p => colors.get(posKey(p.broker!, p.ticket)) ?? '').filter(Boolean))];
-    onOptionsChange({ brokers, symbols, colors: activeColors });
-  }, [orders, colors, onOptionsChange]);
+    return { brokers, symbols, colors: activeColors, key: `${brokers.join(',')}|${symbols.join(',')}|${activeColors.join(',')}` };
+  }, [orders, colors]);
+  const optionsKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (options.key === optionsKeyRef.current) return;
+    optionsKeyRef.current = options.key;
+    onOptionsChange({ brokers: options.brokers, symbols: options.symbols, colors: options.colors });
+  }, [options, onOptionsChange]);
 
   const handleOpenChart = useCallback((p: Position) => {
     const params = new URLSearchParams({ broker: p.broker ?? '', symbol: p.symbol, timeframe: 'H1' });
@@ -51,9 +59,13 @@ export function PendingOrders({ orders, colors, onColorChange, filters, onOption
     return filtered.every(p => p.symbol === symbol && p.type === type) ? filtered : null;
   }, [filtered]);
 
+  const groupKey = group ? group.map(p => `${p.broker}:${p.ticket}`).join(',') : '';
+  const groupKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    if (groupKey === groupKeyRef.current) return;
+    groupKeyRef.current = groupKey;
     onGroupChange(group);
-  }, [group, onGroupChange]);
+  }, [groupKey, group, onGroupChange]);
 
   if (orders.length === 0) {
     return <div className={styles.empty}>No pending orders</div>;

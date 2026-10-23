@@ -1,9 +1,9 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
-import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide, isPending } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useBalances } from '../../lib/useBalances';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
@@ -11,7 +11,7 @@ import { PositionCard } from './PositionCard';
 import { ColorBadge } from './ColorBadge';
 import { ConfirmPanel } from './ConfirmPanel';
 import { BulkEditPanel } from './BulkEditPanel';
-import { posKey } from './useLivePositions';
+import { posKey, setLiveColor, useLivePositions } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
 export interface BulkGroup {
@@ -21,28 +21,37 @@ export interface BulkGroup {
 }
 
 interface OpenPositionsProps {
-  positions: Position[];                // open market positions only
-  colors: Map<string, string>;
-  onColorChange: (broker: string, ticket: number, color: string) => void;
   filters: FilterValues;
   onOptionsChange: (options: FilterOptions) => void;
   onBulkChange: (group: BulkGroup | null) => void;
 }
 
-export function OpenPositions({ positions, colors, onColorChange, filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
+export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPositionsProps) {
   const navigate = useNavigate();
+  // The live feed is subscribed here, not by the page: only this tab renders per update.
+  const live = useLivePositions();
+  const positions = useMemo(() => live.positions.filter(p => !isPending(p.type)), [live.positions]);
+  const colors = live.colors;
+  const onColorChange = setLiveColor;
   const [confirmClose, setConfirmClose] = useState<Position | null>(null);
   const [closing, setClosing] = useState(false);
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const { pnlMode } = useDisplaySettings();
   const balances = useBalances();
 
-  useEffect(() => {
+  // Filter options: reported to the page only when their content changes (spec 019).
+  const options = useMemo(() => {
     const brokers = [...new Set(positions.map(p => p.broker ?? '').filter(Boolean))].sort();
     const symbols = [...new Set(positions.map(p => p.symbol).filter(Boolean))].sort();
     const activeColors = [...new Set(positions.map(p => colors.get(posKey(p.broker!, p.ticket)) ?? '').filter(Boolean))];
-    onOptionsChange({ brokers, symbols, colors: activeColors });
-  }, [positions, colors, onOptionsChange]);
+    return { brokers, symbols, colors: activeColors, key: `${brokers.join(',')}|${symbols.join(',')}|${activeColors.join(',')}` };
+  }, [positions, colors]);
+  const optionsKeyRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (options.key === optionsKeyRef.current) return;
+    optionsKeyRef.current = options.key;
+    onOptionsChange({ brokers: options.brokers, symbols: options.symbols, colors: options.colors });
+  }, [options, onOptionsChange]);
 
   const handleOpenChart = useCallback((p: Position) => {
     const params = new URLSearchParams({ broker: p.broker ?? '', symbol: p.symbol, timeframe: 'H1' });
@@ -85,9 +94,14 @@ export function OpenPositions({ positions, colors, onColorChange, filters, onOpt
       : null;
   }, [filtered]);
 
+  // The page's group changes when a ticket enters or leaves, or an SL / TP moves; not when profit does.
+  const bulkKey = bulkGroup ? `${bulkGroup.symbol}|${bulkGroup.type}|${bulkGroup.positions.map(p => `${p.ticket}:${p.sl}:${p.tp}`).join(',')}` : '';
+  const bulkKeyRef = useRef<string | null>(null);
   useEffect(() => {
+    if (bulkKey === bulkKeyRef.current) return;
+    bulkKeyRef.current = bulkKey;
     onBulkChange(bulkGroup);
-  }, [bulkGroup, onBulkChange]);
+  }, [bulkKey, bulkGroup, onBulkChange]);
 
   if (positions.length === 0) {
     return <div className={styles.empty}>No open positions</div>;

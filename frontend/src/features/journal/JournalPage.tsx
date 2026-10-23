@@ -16,8 +16,8 @@ import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
-import { type Position, TYPE_LABEL, fmt, isPending } from './utils/position';
-import { useLivePositions, posKey } from './useLivePositions';
+import { type Position, TYPE_LABEL, fmt } from './utils/position';
+import { useLivePositionsFeed, useLivePositionsByKeys, posKey } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
 type Tab = 'accounts' | 'open' | 'orders' | 'closed';
@@ -60,9 +60,8 @@ export function JournalPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const live = useLivePositions();
-  const openPositions = useMemo(() => live.positions.filter(p => !isPending(p.type)), [live.positions]);
-  const pendingOrders = useMemo(() => live.positions.filter(p => isPending(p.type)), [live.positions]);
+  // The feed runs here; the tabs subscribe to it themselves (spec 019).
+  useLivePositionsFeed();
 
   const [openOptions, setOpenOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
   const [orderOptions, setOrderOptions] = useState<FilterOptions>(DEFAULT_OPTIONS);
@@ -77,10 +76,8 @@ export function JournalPage() {
   // The panels hold ticket keys, not copies, so they follow the live feed while open.
   const [editKeys, setEditKeys] = useState<string[] | null>(null);
   const [cancelKeys, setCancelKeys] = useState<string[] | null>(null);
-  const liveByKeys = useCallback((keys: string[] | null): Position[] | null =>
-    keys ? pendingOrders.filter(p => keys.includes(posKey(p.broker!, p.ticket))) : null, [pendingOrders]);
-  const editOrders = useMemo(() => liveByKeys(editKeys), [liveByKeys, editKeys]);
-  const cancelOrders = useMemo(() => liveByKeys(cancelKeys), [liveByKeys, cancelKeys]);
+  const editOrders = useLivePositionsByKeys(editKeys);
+  const cancelOrders = useLivePositionsByKeys(cancelKeys);
   const setEditOrders = useCallback((orders: Position[] | null) => setEditKeys(orders ? orders.map(p => posKey(p.broker!, p.ticket)) : null), []);
   const setCancelOrders = useCallback((orders: Position[] | null) => setCancelKeys(orders ? orders.map(p => posKey(p.broker!, p.ticket)) : null), []);
   const [cancelling, setCancelling] = useState(false);
@@ -272,9 +269,6 @@ export function JournalPage() {
         </div>
         <div className={tab === 'open' ? styles.tabPanel : styles.tabPanelHidden}>
           <OpenPositions
-            positions={openPositions}
-            colors={live.colors}
-            onColorChange={live.setColor}
             filters={filters}
             onOptionsChange={setOpenOptions}
             onBulkChange={handleBulkChange}
@@ -282,9 +276,6 @@ export function JournalPage() {
         </div>
         <div className={tab === 'orders' ? styles.tabPanel : styles.tabPanelHidden}>
           <PendingOrders
-            orders={pendingOrders}
-            colors={live.colors}
-            onColorChange={live.setColor}
             filters={orderFilters}
             onOptionsChange={setOrderOptions}
             onGroupChange={handleOrderGroupChange}

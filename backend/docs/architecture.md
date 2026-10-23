@@ -133,7 +133,7 @@ Every router except `/auth` and `/health` sits behind `requireAuth`: the JWT tra
 | `/trades` | `GET` | Closed trades (broker, symbol, from, to, limit, offset) |
 | `/positions` | `GET /live`, `PATCH /color` | Open positions from the stores; colour per ticket |
 | `/balances` | `GET`, `GET /daily-pnl` | Daily balance rows; today's P&L per broker |
-| `/settings` | `GET`, `PUT` | EA mirror settings per broker and display settings |
+| `/settings` | `GET`, `PUT` | EA mirror settings per broker, display settings and `visibility` (brokers and per-broker symbols hidden from the frontend; purely visual, spec 024) |
 | `/symbols` | `GET` | Symbols with a tick per broker |
 | `/candles` | `GET` | Closed candles (`before` / `after` paging, up to 5 000) |
 | `/chart-indicators` | `GET`, `PUT` | The user's EMA list for the chart |
@@ -232,7 +232,7 @@ Managed with **Prisma**; see `prisma/schema.prisma`. Migrations are hand-written
 | `balance_operations` | file watcher | deposits/withdrawals from `history.json`, `createMany({ skipDuplicates })` by ticket |
 | `balances` | file watcher | one `upsert` per broker and UTC `day`, `timestamp` refreshed on every poll |
 | `settings_mirror` | `/settings` | EA mirror settings per broker |
-| `settings_display` | `/settings` | display settings (single row) |
+| `settings_display` | `/settings` | display settings (single row) plus `hiddenBrokers` / `hiddenSymbols` (visibility, spec 024) |
 | `position_colors` | `/positions/color` | colour per broker and ticket |
 | `users` | — | created out of band; bcrypt password hash |
 | `price_alerts`, `ema_cross_alerts` | `/alerts`, `/ema-alerts`, evaluators | per user; `triggeredAt` set when fired |

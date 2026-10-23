@@ -304,7 +304,7 @@ Express con 17 routers (`/auth`, `/commands`, `/trades`, `/positions`, `/balance
 
 ### Modelos BD
 
-`Candle` · `Trade` · `Balance` (snapshot diario por broker y día UTC) · `BalanceOperation` · `SettingsMirror` · `SettingsDisplay` · `PositionColor` · `User` · `PriceAlert` · `EmaCrossAlert` · `EmaNotification` · `EmaNotificationEvent` (reglas permanentes de cruce de EMAs configuradas en Settings, spec 023, y sus disparos) · `PushSubscription` · `Drawing` · `ChartIndicators` · `BookScheme` · `BookTrade` (libro de esquemas, spec 020: backtest manual del operador, sin vínculo con la operativa). Migraciones SQL escritas a mano en `backend/prisma/migrations/`; `prisma migrate diff` contra producción debe salir vacío.
+`Candle` · `Trade` · `Balance` (snapshot diario por broker y día UTC) · `BalanceOperation` · `SettingsMirror` · `SettingsDisplay` (display global + `hiddenBrokers` / `hiddenSymbols`: visibilidad solo visual del frontend, spec 024) · `PositionColor` · `User` · `PriceAlert` · `EmaCrossAlert` · `EmaNotification` · `EmaNotificationEvent` (reglas permanentes de cruce de EMAs configuradas en Settings, spec 023, y sus disparos) · `PushSubscription` · `Drawing` · `ChartIndicators` · `BookScheme` · `BookTrade` (libro de esquemas, spec 020: backtest manual del operador, sin vínculo con la operativa). Migraciones SQL escritas a mano en `backend/prisma/migrations/`; `prisma migrate diff` contra producción debe salir vacío.
 
 ### Feature flags y entorno
 

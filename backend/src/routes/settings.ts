@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import type { Prisma } from '@prisma/client';
 import { db } from '../db/client';
 import { asyncRoute } from '../middleware/asyncRoute';
 import { BadRequest } from '../middleware/errors';
@@ -22,6 +23,20 @@ interface DisplayInput {
   trendlineColor?: string;
   trendlineStyle?: (typeof TRENDLINE_STYLES)[number];
   trendlineWidth?: number;
+}
+
+interface Visibility {
+  hiddenBrokers: string[];
+  hiddenSymbols: Record<string, string[]>;
+}
+
+interface DisplayRow {
+  pnlMode: string;
+  trendlineColor: string;
+  trendlineStyle: string;
+  trendlineWidth: number;
+  hiddenBrokers: string[];
+  hiddenSymbols: Prisma.JsonValue;
 }
 
 function parseMirror(value: unknown): MirrorItem[] {
@@ -49,14 +64,40 @@ function parseDisplay(value: unknown): DisplayInput {
   };
 }
 
-const router = Router();
+function parseStringList(value: unknown, key: string, upper = false): string[] {
+  if (!Array.isArray(value)) throw new BadRequest(`${key} must be an array`);
+  const items = value.map((item, i) => {
+    const text = nonEmptyString(item, `${key}[${i}]`).trim();
+    return upper ? text.toUpperCase() : text;
+  });
+  return Array.from(new Set(items));
+}
 
-router.get('/', asyncRoute(async (_req, res) => {
-  const [mirror, display] = await Promise.all([
-    db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
-    db.settingsDisplay.findFirst({ where: { key: 'global' } }),
-  ]);
-  res.json({
+function parseVisibility(value: unknown): Visibility {
+  const row = bodyRecord(value);
+  const symbolsRow = bodyRecord(row.hiddenSymbols ?? {});
+  const hiddenSymbols: Record<string, string[]> = {};
+  for (const [broker, symbols] of Object.entries(symbolsRow)) {
+    const list = parseStringList(symbols, `visibility.hiddenSymbols.${broker}`, true);
+    if (list.length > 0) hiddenSymbols[broker] = list;
+  }
+  return {
+    hiddenBrokers: parseStringList(row.hiddenBrokers ?? [], 'visibility.hiddenBrokers'),
+    hiddenSymbols,
+  };
+}
+
+function readHiddenSymbols(value: Prisma.JsonValue | undefined): Record<string, string[]> {
+  if (value === undefined || value === null || typeof value !== 'object' || Array.isArray(value)) return {};
+  const out: Record<string, string[]> = {};
+  for (const [broker, symbols] of Object.entries(value)) {
+    if (Array.isArray(symbols)) out[broker] = symbols.filter((s): s is string => typeof s === 'string');
+  }
+  return out;
+}
+
+function toResponse(mirror: unknown[], display: DisplayRow | null) {
+  return {
     mirror,
     display: {
       pnlMode: display?.pnlMode ?? 'net',
@@ -64,7 +105,25 @@ router.get('/', asyncRoute(async (_req, res) => {
       trendlineStyle: display?.trendlineStyle ?? 'dashed',
       trendlineWidth: display?.trendlineWidth ?? 1,
     },
-  });
+    visibility: {
+      hiddenBrokers: display?.hiddenBrokers ?? [],
+      hiddenSymbols: readHiddenSymbols(display?.hiddenSymbols),
+    },
+  };
+}
+
+function loadSettings() {
+  return Promise.all([
+    db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
+    db.settingsDisplay.findFirst({ where: { key: 'global' } }),
+  ]);
+}
+
+const router = Router();
+
+router.get('/', asyncRoute(async (_req, res) => {
+  const [mirror, display] = await loadSettings();
+  res.json(toResponse(mirror, display));
 }));
 
 router.put('/', asyncRoute(async (req, res) => {
@@ -72,6 +131,7 @@ router.put('/', asyncRoute(async (req, res) => {
   const body = bodyRecord(req.body);
   const mirror = body.mirror !== undefined ? parseMirror(body.mirror) : undefined;
   const display = body.display !== undefined ? parseDisplay(body.display) : undefined;
+  const visibility = body.visibility !== undefined ? parseVisibility(body.visibility) : undefined;
 
   const ops: Promise<unknown>[] = [];
 
@@ -85,22 +145,28 @@ router.put('/', asyncRoute(async (req, res) => {
     ));
   }
 
-  if (display !== undefined) {
+  if (display !== undefined || visibility !== undefined) {
+    const displayFields = display === undefined ? {} : {
+      pnlMode: display.pnlMode,
+      ...(display.trendlineColor !== undefined ? { trendlineColor: display.trendlineColor } : {}),
+      ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
+      ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
+    };
+    const visibilityFields = visibility === undefined ? {} : {
+      hiddenBrokers: visibility.hiddenBrokers,
+      hiddenSymbols: visibility.hiddenSymbols,
+    };
     ops.push(
       db.settingsDisplay.upsert({
         where: { key: 'global' },
-        update: {
-          pnlMode: display.pnlMode,
-          ...(display.trendlineColor !== undefined ? { trendlineColor: display.trendlineColor } : {}),
-          ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
-          ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
-        },
+        update: { ...displayFields, ...visibilityFields },
         create: {
           key: 'global',
-          pnlMode: display.pnlMode,
-          trendlineColor: display.trendlineColor ?? '#8c8c8c',
-          trendlineStyle: display.trendlineStyle ?? 'dashed',
-          trendlineWidth: display.trendlineWidth ?? 1,
+          pnlMode: display?.pnlMode ?? 'net',
+          trendlineColor: display?.trendlineColor ?? '#8c8c8c',
+          trendlineStyle: display?.trendlineStyle ?? 'dashed',
+          trendlineWidth: display?.trendlineWidth ?? 1,
+          ...visibilityFields,
         },
       })
     );
@@ -108,20 +174,8 @@ router.put('/', asyncRoute(async (req, res) => {
 
   await Promise.all(ops);
 
-  const [updatedMirror, updatedDisplay] = await Promise.all([
-    db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
-    db.settingsDisplay.findFirst({ where: { key: 'global' } }),
-  ]);
-
-  res.json({
-    mirror: updatedMirror,
-    display: {
-      pnlMode: updatedDisplay?.pnlMode ?? 'net',
-      trendlineColor: updatedDisplay?.trendlineColor ?? '#8c8c8c',
-      trendlineStyle: updatedDisplay?.trendlineStyle ?? 'dashed',
-      trendlineWidth: updatedDisplay?.trendlineWidth ?? 1,
-    },
-  });
+  const [updatedMirror, updatedDisplay] = await loadSettings();
+  res.json(toResponse(updatedMirror, updatedDisplay));
 }));
 
 export default router;

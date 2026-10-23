@@ -95,8 +95,11 @@ export function useLivePositionsFeed(): void {
     apiFetch<LiveBrokerPositions[]>('/positions/live', { signal: ac.signal })
       .then((brokers) => {
         const colors = new Map(snapshot.colors);
-        const fresh = brokers
-          .filter(({ broker }) => !wsBrokersRef.current.has(broker))
+        // The store outlives the page: the brokers this snapshot brings replace their rows,
+        // never pile on top of the ones a previous visit left behind.
+        const restBrokers = brokers.filter(({ broker }) => !wsBrokersRef.current.has(broker));
+        const replaced = new Set(restBrokers.map(({ broker }) => broker));
+        const fresh = restBrokers
           .flatMap(({ broker, currency, brokerOffset, positions: ps }) => {
             signatures.set(broker, signature(ps));
             return ps.map(p => {
@@ -105,8 +108,9 @@ export function useLivePositionsFeed(): void {
               return pos;
             });
           });
-        if (fresh.length === 0 && colors.size === snapshot.colors.size) return;
-        const positions = [...(snapshot.positions as LivePosition[]), ...fresh].sort(byBrokerThenTime);
+        const kept = (snapshot.positions as LivePosition[]).filter(p => !replaced.has(p.broker ?? ''));
+        if (kept.length === snapshot.positions.length && fresh.length === 0 && colors.size === snapshot.colors.size) return;
+        const positions = [...kept, ...fresh].sort(byBrokerThenTime);
         publish({ positions, colors });
       })
       .catch(() => {});

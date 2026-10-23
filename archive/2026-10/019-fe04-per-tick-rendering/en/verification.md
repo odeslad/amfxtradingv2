@@ -52,3 +52,18 @@ Measurement deviation: the React DevTools Profiler could not be driven from the 
 - `useLivePositions.ts` rewritten as an external store (`useSyncExternalStore`): `useLivePositionsFeed()` mounted by `JournalPage` runs the REST snapshot + WS merge into a module snapshot with a per-broker signature gate and `openedAt` precomputed by a shared `normalize`; `useLivePositions()` subscribes a component to positions + colours; `useLivePositionsByKeys(keys)` gives an edit / cancel panel its live rows with a cached selector; `setLiveColor` updates the colour map. `OpenPositions` and `PendingOrders` subscribe themselves and filter market / pending; their `onOptionsChange` fires only when the options key changes and `onBulkChange` / `onGroupChange` only when the tickets or SL / TP change (AC 9). `Accounts`: the daily P&L poll stops while the tab is hidden and restarts with one immediate request when shown (AC 10).
 - After: `JournalPage` 2.8 renders/s in the first 10 s (load) and 0 renders/s for the next 40 s; Positions and Orders keep updating live, colours and the group badge work, the order panels show the moving distance. Validated by the user.
 - Est vs Actual: 0.75 vs 1 SP (+0.25: the 021 structure put the feed in the page, so the store was needed to reach 0 renders/s).
+
+## Task 7 — Push and production validation (infra)
+
+- Pushed `1a7777e..5fdb863` on 2026-10-23 at 15:53 UTC (frontend pipeline only); bundle with the changes served at 15:55, app footer build 188.198.33. User validation on production: chart live candle, legend, pair / timeframe changes, alerts panel price, positions lines and labels stable with SL drag, panels after a broker / symbol change; Journal Positions and Orders live with colours, filters, group badge and order panels; Accounts Day P&L. Validated by the user.
+- Est vs Actual: 0.5 vs 0.25 SP.
+
+## Task 8 — Close (specs)
+
+- Frontend build clean once more; Est vs Actual recorded; `Status: closed`; folder moved to `archive/2026-10/`.
+- Est vs Actual: 0.25 vs 0.25 SP.
+
+| **Total** | | | **5** | **3.75** |
+|---|---|---|---|---|
+
+Calibration: under the estimate because the measurement took one console counter instead of Profiler sessions and task 5 fell away with the scanner; the only overrun was the journal, where the 021 structure needed an external store to reach 0 renders/s.

@@ -1,6 +1,6 @@
 # 019 · FE-04 — Per-tick rendering
 
-> Status: **approved**
+> Status: **closed**
 > Origin: [frontend audit 2026-10-08](../../../reports/2026-10-08-frontend.md), improvement 4 (diagnoses D, E)
 
 ## Context

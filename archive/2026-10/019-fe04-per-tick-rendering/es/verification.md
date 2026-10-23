@@ -52,3 +52,18 @@ Desviación de medida: el Profiler de React DevTools no se podía manejar desde 
 - `useLivePositions.ts` reescrito como almacén externo (`useSyncExternalStore`): `useLivePositionsFeed()` montado por `JournalPage` ejecuta la instantánea REST + la fusión WS en una instantánea de módulo con filtro de firma por broker y `openedAt` precalculado por un `normalize` compartido; `useLivePositions()` suscribe un componente a posiciones + colores; `useLivePositionsByKeys(claves)` da a un panel de editar / cancelar sus filas en vivo con un selector cacheado; `setLiveColor` actualiza el mapa de colores. `OpenPositions` y `PendingOrders` se suscriben ellos mismos y filtran mercado / pendientes; su `onOptionsChange` solo dispara cuando cambia la clave de opciones y `onBulkChange` / `onGroupChange` solo cuando cambian los tickets o el SL / TP (CA 9). `Accounts`: el sondeo del P&L diario se detiene con la pestaña oculta y se reanuda con una petición inmediata al mostrarla (CA 10).
 - Después: `JournalPage` 2,8 renders/s en los primeros 10 s (carga) y 0 renders/s en los 40 s siguientes; Positions y Orders siguen actualizándose en vivo, colores e insignia de grupo funcionan, los paneles de orden muestran la distancia moviéndose. Validado por el usuario.
 - Est vs Real: 0,75 vs 1 SP (+0,25: la estructura de la 021 puso el flujo en la página, así que hizo falta el almacén para llegar a 0 renders/s).
+
+## Tarea 7 — Push y validación en producción (infra)
+
+- Push `1a7777e..5fdb863` el 23-10-2026 a las 15:53 UTC (solo pipeline del frontend); bundle con los cambios servido a las 15:55, build 188.198.33 en el pie de la app. Validación del usuario en producción: vela viva del gráfico, leyenda, cambios de par / timeframe, precio del panel de alertas, líneas y etiquetas de posiciones estables con arrastre de SL, paneles tras cambiar broker / par; Positions y Orders del Journal en vivo con colores, filtros, insignia de grupo y paneles de orden; Day P&L de Accounts. Validado por el usuario.
+- Est vs Real: 0,5 vs 0,25 SP.
+
+## Tarea 8 — Cierre (specs)
+
+- Build del frontend limpio de nuevo; Est vs Real registrado; `Estado: cerrada`; carpeta movida a `archive/2026-10/`.
+- Est vs Real: 0,25 vs 0,25 SP.
+
+| **Total** | | | **5** | **3,75** |
+|---|---|---|---|---|
+
+Calibración: por debajo de la estimación porque la medida fue un contador en consola en vez de sesiones de Profiler y la tarea 5 cayó con el scanner; el único exceso fue el journal, donde la estructura de la 021 necesitó un almacén externo para llegar a 0 renders/s.

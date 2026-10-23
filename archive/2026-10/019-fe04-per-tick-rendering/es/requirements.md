@@ -1,6 +1,6 @@
 # 019 · FE-04 — Render por tick
 
-> Status: **approved**
+> Estado: **cerrada**
 > Origin: [auditoría frontend 2026-10-08](../../../reports/2026-10-08-frontend.md), mejora 4 (diagnósticos D, E)
 
 ## Contexto

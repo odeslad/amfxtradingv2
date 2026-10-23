@@ -193,7 +193,7 @@ Sends a trading command to the EA by writing `command.json` to the bridge folder
 | `409 Conflict` | A command is already pending (previous not yet processed) |
 | `500 Internal Server Error` | Failed to write to bridge folder |
 
-`action` is one of `buy`, `sell`, `buylimit`, `selllimit`, `buystop`, `sellstop`, `close`, `modify`. With `lotsMode: "risk_pct"` the backend sizes the order from the stop distance (`services/sizing.ts`, forex pairs only) and refuses with `400`/`503` when it cannot.
+`action` is one of `buy`, `sell`, `buylimit`, `selllimit`, `buystop`, `sellstop`, `close`, `modify`. With `lotsMode: "risk_pct"` the backend sizes the order from the stop distance (`services/sizing.ts`, forex pairs only) and refuses with `400`/`503` when it cannot. `modify` takes `ticket`, `sl`, `tp` and an optional `price`: the backend forwards it as is and the EA (2.22+) moves a **pending order** to that price, while a market position keeps its open price whatever the command carries.
 
 ## WebSocket
 

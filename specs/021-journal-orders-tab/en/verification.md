@@ -7,6 +7,7 @@
 | 3 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1 |
 | 4 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 2 | 1.75 |
 | 5 | `npm run build` + `npm run lint` + local app against production (user) | ✅ | 1.5 | 1.25 |
+| 6 | both documents agree; backend `npm run build` untouched | ✅ | 0.25 | 0.25 |
 
 ## Task 1 — `modify` moves a pending order to the received price (ea)
 
@@ -41,3 +42,9 @@
 - `npm run build` and `npm run lint` clean.
 - Local app against production, checked by the user on 2026-10-23: the panel follows the live quote (+100.3 → +99.2 while open), the new distance moves with the typed price, a sell limit typed below the bid shows "A sell limit must sit above the bid (1.12008)" with the button disabled, the price field no longer stretches the form (a `flex: 1` inherited from the positions panel). SL edit sent and confirmed; moving the price needs the EA 2.22 that ships in task 7 (the 2.21 keeps the open price and MT4 answers error 1, no change), so that check is part of the production validation. Validated by the user.
 - Est vs Actual: 1.5 vs 1.25 SP.
+
+## Task 6 — Docs: `modify` with an optional `price` (backend)
+
+- `backend/docs/architecture.md` (commands section) and `.claude/CLAUDE.md` (Comandos) now state that `modify` takes `ticket`, `sl`, `tp` and an optional `price` that the backend forwards and the EA 2.22+ applies to pending orders only; a market position keeps its open price. No code change: `routes/commands.ts` already validated and forwarded `price` on `modify`.
+- Both documents say the same; backend `npm run build` untouched (no source change).
+- Est vs Actual: 0.25 vs 0.25 SP.

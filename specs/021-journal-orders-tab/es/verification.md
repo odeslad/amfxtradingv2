@@ -7,6 +7,7 @@
 | 3 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1 |
 | 4 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 2 | 1,75 |
 | 5 | `npm run build` + `npm run lint` + app local contra producción (usuario) | ✅ | 1,5 | 1,25 |
+| 6 | ambos documentos coinciden; `npm run build` del backend intacto | ✅ | 0,25 | 0,25 |
 
 ## Tarea 1 — `modify` mueve una orden pendiente al precio recibido (ea)
 
@@ -41,3 +42,9 @@
 - `npm run build` y `npm run lint` limpios.
 - App local contra producción, comprobada por el usuario el 23-10-2026: el panel sigue la cotización en vivo (+100,3 → +99,2 abierto), la nueva distancia se mueve con el precio tecleado, una sell limit tecleada bajo el bid muestra "A sell limit must sit above the bid (1.12008)" con el botón deshabilitado, el campo de precio ya no estira el formulario (un `flex: 1` heredado del panel de posiciones). Edición de SL enviada y confirmada; mover el precio necesita el EA 2.22 que sale en la tarea 7 (el 2.21 conserva el precio de apertura y MT4 responde error 1, sin cambios), así que esa comprobación forma parte de la validación en producción. Validado por el usuario.
 - Est vs Real: 1,5 vs 1,25 SP.
+
+## Tarea 6 — Documentación: `modify` con `price` opcional (backend)
+
+- `backend/docs/architecture.md` (sección de comandos) y `.claude/CLAUDE.md` (Comandos) indican ahora que `modify` lleva `ticket`, `sl`, `tp` y un `price` opcional que el backend reenvía y el EA 2.22+ aplica solo a órdenes pendientes; una posición de mercado conserva su precio de apertura. Sin cambio de código: `routes/commands.ts` ya validaba y reenviaba `price` en `modify`.
+- Ambos documentos dicen lo mismo; `npm run build` del backend intacto (sin cambios de fuente).
+- Est vs Real: 0,25 vs 0,25 SP.

@@ -49,6 +49,9 @@ export default defineConfig(({ command }) => ({
             '/__api': {
               target: process.env.DEV_API_TARGET ?? 'http://localhost:3000',
               changeOrigin: true,   // a remote target behind Cloudflare needs its own Host header
+              // The production API sets Domain=.amfxtrading.com; through the proxy the browser
+              // keeps that cookie only as host-only for local.amfxtrading.com.
+              cookieDomainRewrite: '',
               ws: true,
               rewrite: (path: string) => path.replace(/^\/__api/, ''),
             },

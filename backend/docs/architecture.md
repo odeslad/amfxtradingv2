@@ -210,12 +210,13 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 | `ticks` | `{ broker, ticks: [ …tick ] }` | pipe, every 100 ms, only when `FEATURE_WS_BROADCAST` is on |
 | `positions` | `{ broker, currency, brokerOffset, positions: [ …open positions with current bid/ask and colour ] }` | pipe, every 1 s |
 | `account` | `{ broker, account }` | pipe every 1 s, and `account.json` every 30 s |
+| `candle` | `{ broker, symbol, timeframe, time, open, high, low, close }` | a candle closed on the tick stream (`<tf>_time` changed, spec 025): stored at once unless the EA's file already wrote it, `time` in seconds |
 | `command_result` | `{ id, status, ticket?, error?, late? }` | command bridge |
 | `alert` | `{ broker, symbol, price, direction }` | price alert, only to its owner |
 | `ema_alert` | `{ broker, symbol, timeframe, direction }` | EMA alert, only to its owner |
 | `ema_notification` | `{ notificationId, broker, symbol, timeframe, kind, direction, gapPips, emaFast, emaSlow, note }` | A standing EMA notification rule fired (spec 023), only to its owner |
 
-A tick carries `symbol`, `bid`, `ask`, `time`, `broker_offset` and the open/high/low/time of the current M5, M15, H1, H4 and D1 candles, so the frontend builds the live candle itself; only closed candles are persisted.
+A tick carries `symbol`, `bid`, `ask`, `time`, `broker_offset` and the open/high/low/time of the current M5, M15, H1, H4 and D1 candles, so the frontend builds the live candle itself; only closed candles are persisted. When a tick's `<tf>_time` advances, the previous bar (its OHLC from the last tick, close = that tick's bid) is upserted into `candles` without overwriting a row the EA already wrote, and broadcast as `candle`; the EA's `candles_<SYM>_<TF>.json` keeps authority because the watcher upserts the file's last two closed bars with their values.
 
 ## Libro de esquemas (book)
 

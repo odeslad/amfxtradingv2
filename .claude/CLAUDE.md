@@ -292,11 +292,11 @@ Un `PipeReader` + un `FileWatcher` **por broker**, configurados en `brokers.json
 
 ### WebSocket `/ws`
 
-Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
+Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `candle` (vela cerrada detectada en el tick por el cambio de `<tf>_time`, guardada al momento sin pisar la del EA, spec 025) · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
 
 ### Velas activas y alertas
 
-Las velas activas **no se persisten**: cada tick trae OHLC de todos los TF (`m5_open/high/low`, `h1_time`, …) y el frontend construye la vela en curso; a `candles` solo van las cerradas (`slice(0, -1)`). Las alertas de precio se evalúan en cada tick (cruce del bid con el nivel); las de EMA, al cierre de vela (cambio de `<tf>_time`) cuando las EMAs convergen dentro del umbral. Al dispararse: BD + WS + Web Push.
+Las velas activas **no se persisten**: cada tick trae OHLC de todos los TF (`m5_open/high/low`, `h1_time`, …) y el frontend construye la vela en curso; a `candles` solo van las cerradas (`slice(0, -1)`). Al cambiar `<tf>_time` en el tick, el backend guarda la vela que acaba de cerrar desde el último tick (cierre = bid) y la emite como `candle`; el fichero del EA conserva la autoridad porque el watcher hace upsert de sus dos últimas velas cerradas. Las alertas de precio se evalúan en cada tick (cruce del bid con el nivel); las de EMA, al cierre de vela (cambio de `<tf>_time`) cuando las EMAs convergen dentro del umbral. Al dispararse: BD + WS + Web Push.
 
 ### HTTP y auth
 

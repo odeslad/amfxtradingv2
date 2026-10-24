@@ -100,6 +100,10 @@ export function createWss(server: Server) {
     broadcastAccount(broker: string, account: unknown) {
       broadcast('account', { broker, account });
     },
+    // A candle closed on the tick stream (spec 025); `time` in seconds like the REST candles.
+    broadcastCandle(broker: string, candle: { symbol: string; timeframe: string; time: number; open: number; high: number; low: number; close: number }) {
+      broadcast('candle', { broker, ...candle });
+    },
     broadcastCommandResult(id: string, status: string, ticket?: number, error?: string, late?: boolean) {
       broadcast('command_result', { id, status, ticket, error, ...(late ? { late: true } : {}) });
     },

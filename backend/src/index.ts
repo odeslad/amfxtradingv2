@@ -7,6 +7,7 @@ import { PipeReader } from './bridge/pipe-reader';
 import { FileWatcher, type BridgeTrade } from './bridge/file-watcher';
 import { createWss } from './ws/ws';
 import { upsertCandles } from './services/candles';
+import { createCandleCloseState, persistClosedCandle, trackCandleCloses } from './services/candle-close';
 import { syncTrades } from './services/trades';
 import { syncBalanceOperations, BALANCE_OPERATION_TYPES } from './services/balance-operations';
 import { saveDailyBalances } from './services/account';
@@ -33,11 +34,20 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
 
   let currency = '';
   let brokerOffset = 0;
+  const candleCloses = createCandleCloseState();
 
   pipe?.on('ticks', (batch) => {
     if (batch.length > 0) brokerOffset = batch[0].broker_offset ?? brokerOffset;
     for (const tick of batch) setTick(brokerName, tick.symbol, tick.bid, tick.ask);
     if (features.wsBroadcast) wss.broadcastTicks(brokerName, batch);
+    // A closed candle is stored and announced at the rollover, a poll before the EA's file (spec 025).
+    for (const candle of trackCandleCloses(candleCloses, brokerName, batch)) {
+      persistClosedCandle(brokerName, candle)
+        .then(() => { if (features.wsBroadcast) wss.broadcastCandle(brokerName, { ...candle, time: candle.time / 1000 }); })
+        .catch((err: unknown) => {
+          console.error(`[CANDLE-CLOSE:${brokerName}] ${candle.symbol} ${candle.timeframe}:`, err instanceof Error ? err.message : String(err));
+        });
+    }
     if (features.alerts) {
       evaluateAlerts(brokerName, batch);
       evaluateEmaAlerts(brokerName, batch);

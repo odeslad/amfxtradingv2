@@ -4,7 +4,7 @@ import { db } from '../db/client';
 import { asyncRoute } from '../middleware/asyncRoute';
 import { BadRequest } from '../middleware/errors';
 import {
-  bodyRecord, nonEmptyString, finiteNumber, oneOf, optionalOneOf, optionalString, optionalInteger,
+  bodyRecord, nonEmptyString, finiteNumber, oneOf, optionalOneOf, optionalString, optionalInteger, optionalBoolean,
 } from '../middleware/parse';
 
 const LOTS_MODES = ['fixed', 'risk_pct'] as const;
@@ -23,6 +23,7 @@ interface DisplayInput {
   trendlineColor?: string;
   trendlineStyle?: (typeof TRENDLINE_STYLES)[number];
   trendlineWidth?: number;
+  rectLabels?: boolean;
 }
 
 interface Visibility {
@@ -35,6 +36,7 @@ interface DisplayRow {
   trendlineColor: string;
   trendlineStyle: string;
   trendlineWidth: number;
+  rectLabels: boolean;
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -61,6 +63,7 @@ function parseDisplay(value: unknown): DisplayInput {
     trendlineColor: optionalString(row.trendlineColor, 'display.trendlineColor'),
     trendlineStyle: optionalOneOf(row.trendlineStyle, 'display.trendlineStyle', TRENDLINE_STYLES),
     trendlineWidth: optionalInteger(row.trendlineWidth, 'display.trendlineWidth', { min: 1 }),
+    rectLabels: optionalBoolean(row.rectLabels, 'display.rectLabels'),
   };
 }
 
@@ -104,6 +107,7 @@ function toResponse(mirror: unknown[], display: DisplayRow | null) {
       trendlineColor: display?.trendlineColor ?? '#8c8c8c',
       trendlineStyle: display?.trendlineStyle ?? 'dashed',
       trendlineWidth: display?.trendlineWidth ?? 1,
+      rectLabels: display?.rectLabels ?? true,
     },
     visibility: {
       hiddenBrokers: display?.hiddenBrokers ?? [],
@@ -151,6 +155,7 @@ router.put('/', asyncRoute(async (req, res) => {
       ...(display.trendlineColor !== undefined ? { trendlineColor: display.trendlineColor } : {}),
       ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
       ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
+      ...(display.rectLabels !== undefined ? { rectLabels: display.rectLabels } : {}),
     };
     const visibilityFields = visibility === undefined ? {} : {
       hiddenBrokers: visibility.hiddenBrokers,
@@ -166,6 +171,7 @@ router.put('/', asyncRoute(async (req, res) => {
           trendlineColor: display?.trendlineColor ?? '#8c8c8c',
           trendlineStyle: display?.trendlineStyle ?? 'dashed',
           trendlineWidth: display?.trendlineWidth ?? 1,
+          rectLabels: display?.rectLabels ?? true,
           ...visibilityFields,
         },
       })

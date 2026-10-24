@@ -6,6 +6,7 @@
 | 2 [frontend] | build + lint + app local sobre la API de producción | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` (ticks reales) | ✅ pasa | 1,5 | 1,5 |
 | 3 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel` | ✅ pasa | 0,25 | 0,25 |
 | 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pasa (de punta a punta en la tarea 7) | 0,25 | 0,25 |
+| 5 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa (toggle 🕐 tarea 7) | 2,5 | 2,5 |
 
 ## Evidencia
 
@@ -40,3 +41,15 @@ ALTER TABLE "settings_display" ADD COLUMN "rectLabels" BOOLEAN NOT NULL DEFAULT 
 `/settings` acepta un `display.rectLabels` opcional y lo devuelve (por defecto `true`); la suite y el
 lint del backend siguen en verde. El toggle no llega al backend desplegado antes del push, así que se
 comprueba en producción en la tarea 7.
+
+### Tarea 5
+
+Validado por el usuario en la app local el 24-10-2026: rectángulo con ocho anclas y la cruz central, cada
+lado y esquina redimensionando su borde, cursor de mano sobre los dibujos y cursores de redimensión / mover
+en un rectángulo seleccionado, precios superior / inferior y etiqueta de pips a 9 px en blanco con contorno
+negro, anillo naranja en marcadores y símbolos seleccionados, texto seleccionado en naranja sin marco.
+Iterado con el usuario (números más pequeños, pips abajo a la izquierda, blanco con contorno). El cursor
+necesitó una regla CSS en el contenedor del gráfico (`--draw-cursor` con `!important`): el canvas de dibujos
+ignora los eventos de puntero y lightweight-charts pone su propio cursor en sus elementos internos. El
+toggle Rectangle labels no surte efecto contra el backend desplegado todavía; se valida en producción en la
+tarea 7.

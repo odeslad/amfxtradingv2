@@ -29,7 +29,7 @@ interface Balance {
   currency: string;
 }
 
-const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1 };
+const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1, rectLabels: true };
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('mirror');

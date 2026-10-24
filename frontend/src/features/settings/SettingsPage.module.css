@@ -436,6 +436,11 @@
     width: 100%;
   }
 
+  .displayRowInline {
+    flex-direction: row;
+    align-items: center;
+  }
+
   .page {
     max-width: 100%;
     overflow-x: hidden;

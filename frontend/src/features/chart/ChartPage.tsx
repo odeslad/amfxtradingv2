@@ -191,16 +191,18 @@ export function ChartPage() {
   }, []);
 
   useEffect(() => {
-    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number } }>('/settings')
+    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number; rectLabels?: boolean } }>('/settings')
       .then(data => {
         const color = data.display?.trendlineColor;
         const style = data.display?.trendlineStyle;
         const width = data.display?.trendlineWidth;
-        if (color || style || width) {
+        const rectLabels = data.display?.rectLabels;
+        if (color || style || width || rectLabels !== undefined) {
           setTrendlineAppearance(prev => ({
             color: color ?? prev.color,
             style: (style as TrendlineAppearance['style']) ?? prev.style,
             width: width ?? prev.width,
+            rectLabels: rectLabels ?? prev.rectLabels,
           }));
         }
       })

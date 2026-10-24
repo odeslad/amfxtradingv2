@@ -112,6 +112,7 @@ const SYMBOL_SIZE = 11;
 const TEXT_FONT = '11px "DM Mono", monospace';
 const TEXT_COLOR = '#e8e8e8';
 const TEXT_HEIGHT = 12;
+const RECT_PRICE_FONT = '9px "DM Mono", monospace';
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -119,9 +120,21 @@ export interface TrendlineAppearance {
   color: string;
   style: TrendlineStyle;
   width: number;
+  rectLabels?: boolean;   // Settings > Display; prices and pips around rectangles (spec 025)
 }
 
-type Handle = 'start' | 'end' | 'line' | 'point';
+// Rectangles (spec 025): a corner resizes freely, a side handle one edge, `move` (the
+// centre cross) and `line` (an edge) shift the whole shape. Lines keep start / end.
+type RectHandle = 'nw' | 'ne' | 'sw' | 'se' | 'n' | 's' | 'e' | 'w' | 'move';
+type Handle = 'start' | 'end' | 'line' | 'point' | RectHandle;
+
+const RECT_HANDLE_CURSOR: Record<RectHandle, string> = {
+  nw: 'nwse-resize', se: 'nwse-resize', ne: 'nesw-resize', sw: 'nesw-resize',
+  n: 'ns-resize', s: 'ns-resize', e: 'ew-resize', w: 'ew-resize', move: 'move',
+};
+const SIDE_HANDLE_SIZE = 8;
+const MOVE_CROSS_SIZE = 10;
+const SELECTION_RING_GAP = 4;
 type Point = { x: number; y: number };
 type Logical = { logical: number; price: number };
 
@@ -323,17 +336,42 @@ export class DrawingManager {
         }
         continue;
       }
+      if (d.kind === 'rect') {
+        this.normalizeRect(d);
+        const px = this.segPixels(d);
+        if (!px) continue;
+        for (const [handle, p] of this.rectHandlePoints(px)) {
+          if (Math.hypot(pos.x - p.x, pos.y - p.y) < r) return { id: d.id, handle };
+        }
+        if (this.onRectEdge(pos, px, r / 2)) return { id: d.id, handle: 'line' };
+        continue;
+      }
       const px = this.segPixels(d);
       if (!px) continue;
       if (Math.hypot(pos.x - px.x1, pos.y - px.y1) < r) return { id: d.id, handle: 'start' };
       if (Math.hypot(pos.x - px.x2, pos.y - px.y2) < r) return { id: d.id, handle: 'end' };
-      if (d.kind === 'rect') {
-        if (this.onRectEdge(pos, px, r / 2)) return { id: d.id, handle: 'line' };
-      } else if (this.distToSegment(pos, px) < r / 2) {
-        return { id: d.id, handle: 'line' };
-      }
+      if (this.distToSegment(pos, px) < r / 2) return { id: d.id, handle: 'line' };
     }
     return null;
+  }
+
+  // Stored so that (logical1, price1) is the top-left corner and (logical2, price2) the
+  // bottom-right; every rectangle handle then has a fixed meaning.
+  private normalizeRect(d: RectDrawing) {
+    if (d.logical1 > d.logical2) [d.logical1, d.logical2] = [d.logical2, d.logical1];
+    if (d.price1 < d.price2) [d.price1, d.price2] = [d.price2, d.price1];
+  }
+
+  // Corners first, then the side midpoints, then the centre: the order of the hit test.
+  private rectHandlePoints(px: { x1: number; y1: number; x2: number; y2: number }): Array<[RectHandle, Point]> {
+    const left = Math.min(px.x1, px.x2), right = Math.max(px.x1, px.x2);
+    const top = Math.min(px.y1, px.y2), bottom = Math.max(px.y1, px.y2);
+    const mx = (left + right) / 2, my = (top + bottom) / 2;
+    return [
+      ['nw', { x: left, y: top }], ['ne', { x: right, y: top }], ['sw', { x: left, y: bottom }], ['se', { x: right, y: bottom }],
+      ['n', { x: mx, y: top }], ['s', { x: mx, y: bottom }], ['w', { x: left, y: my }], ['e', { x: right, y: my }],
+      ['move', { x: mx, y: my }],
+    ];
   }
 
   private onRectEdge(p: Point, px: { x1: number; y1: number; x2: number; y2: number }, tol: number): boolean {
@@ -381,7 +419,7 @@ export class DrawingManager {
         this.rulerEnd = logical;
         this.rulerFixed = true;
         this.isRulerMode = false;
-        this.canvas.style.cursor = '';
+        this.setCursor('');
         this.onDone?.();
       }
       this.redraw();
@@ -439,7 +477,7 @@ export class DrawingManager {
     const hit = this.hitTest(pos, touch);
     if (hit) {
       // Ctrl + drag on the body duplicates and drags the copy
-      if (ctrlKey && (hit.handle === 'line' || hit.handle === 'point')) {
+      if (ctrlKey && (hit.handle === 'line' || hit.handle === 'point' || hit.handle === 'move')) {
         const src = this.drawings.find(d => d.id === hit.id);
         if (src) {
           const copy = { ...src, id: `dr-${Date.now()}` } as Drawing;
@@ -476,7 +514,7 @@ export class DrawingManager {
     this.drawStart = null;
     this.isDrawing = false;
     this.drawKind = null;
-    this.canvas.style.cursor = '';
+    this.setCursor('');
     this.scheduleRaf();
     this.redraw();
     this.notifyCount();
@@ -510,6 +548,12 @@ export class DrawingManager {
       if (d.kind === 'marker' || d.kind === 'symbol' || d.kind === 'text') {
         d.logical = logical.logical;
         d.price = logical.price;
+      } else if (d.kind === 'rect' && this.dragHandle !== 'line' && this.dragHandle !== 'move') {
+        const h = this.dragHandle;
+        if (h === 'nw' || h === 'sw' || h === 'w') d.logical1 = logical.logical;
+        if (h === 'ne' || h === 'se' || h === 'e') d.logical2 = logical.logical;
+        if (h === 'nw' || h === 'ne' || h === 'n') d.price1 = logical.price;
+        if (h === 'sw' || h === 'se' || h === 's') d.price2 = logical.price;
       } else if (this.dragHandle === 'start') {
         d.logical1 = logical.logical;
         d.price1 = shiftKey && d.kind === 'line' ? d.price2 : logical.price;
@@ -536,7 +580,31 @@ export class DrawingManager {
     const wasDragging = this.dragHandle !== null;
     this.dragHandle = null;
     this.dragLastLogical = null;
-    if (wasDragging) this.onChange?.();
+    if (!wasDragging) return;
+    // A corner dragged past the opposite one swaps the sides: keep the handles meaningful.
+    const d = this.drawings.find(x => x.id === this.selectedId);
+    if (d && d.kind === 'rect') { this.normalizeRect(d); this.redraw(); }
+    this.onChange?.();
+  }
+
+  // The drawing canvas ignores pointer events and lightweight-charts sets its own cursor
+  // on its inner elements, so the container carries `--draw-cursor` and a stylesheet rule
+  // with `!important` applies it to everything inside while it is set.
+  private setCursor(cursor: string) {
+    const host = this.canvas.parentElement;
+    if (!host) return;
+    if (cursor) {
+      host.style.setProperty('--draw-cursor', cursor);
+      host.dataset.drawCursor = '';
+    } else {
+      host.style.removeProperty('--draw-cursor');
+      delete host.dataset.drawCursor;
+    }
+  }
+
+  private cursorFor(handle: Handle): string {
+    if (handle === 'line' || handle === 'point' || handle === 'start' || handle === 'end') return 'pointer';
+    return RECT_HANDLE_CURSOR[handle];
   }
 
   private setSelected(id: string | null) {
@@ -665,7 +733,8 @@ export class DrawingManager {
   private onMouseMove(e: MouseEvent) {
     if (!this.isDrawing && !this.isRulerMode && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
       const hit = this.hitTest(this.toCanvas(e.clientX, e.clientY), false);
-      this.canvas.style.cursor = hit ? 'pointer' : '';
+      // Resize / move cursors only once the shape is selected, like the drag itself.
+      this.setCursor(hit ? (hit.id === this.selectedId ? this.cursorFor(hit.handle) : 'pointer') : '');
     }
     const consumed = this.handleMove(e.clientX, e.clientY, e.shiftKey);
     if (consumed) {
@@ -722,7 +791,7 @@ export class DrawingManager {
     if (e.key === 'Escape' && (this.isRulerMode || this.rulerStart)) {
       const wasMeasuring = this.isRulerMode;
       this.isRulerMode = false;
-      this.canvas.style.cursor = '';
+      this.setCursor('');
       this.clearRuler();
       if (wasMeasuring) this.onDone?.();
     }
@@ -730,7 +799,7 @@ export class DrawingManager {
       this.drawStart = null;
       this.isDrawing = false;
       this.drawKind = null;
-      this.canvas.style.cursor = '';
+      this.setCursor('');
       this.redraw();
       this.onDone?.();
     }
@@ -756,14 +825,16 @@ export class DrawingManager {
         if (d.kind === 'marker' || d.kind === 'symbol' || d.kind === 'text') {
           const p = this.logicalToPixel({ logical: d.logical, price: d.price });
           if (!p) continue;
-          if (d.kind === 'marker') this.paintMarker(p, d.direction);
-          else if (d.kind === 'symbol') this.paintSymbol(p, d.variant);
+          if (d.kind === 'marker') this.paintMarker(p, d.direction, selected);
+          else if (d.kind === 'symbol') this.paintSymbol(p, d.variant, selected);
           else this.paintText(p, d.text, selected);
         } else {
           const px = this.segPixels(d);
           if (!px) continue;
-          if (d.kind === 'rect') this.paintRect(px, selected, false, d.color);
-          else this.paintLine(px, selected, false, d.color);
+          if (d.kind === 'rect') {
+            this.paintRect(px, selected, false, d.color);
+            this.paintRectPrices(px, d.price1, d.price2);
+          } else this.paintLine(px, selected, false, d.color);
         }
       }
 
@@ -772,8 +843,11 @@ export class DrawingManager {
         const p1 = this.logicalToPixel(this.drawStart);
         if (p1) {
           const px = { x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: this.cursorPixel.y };
-          if (this.drawKind === 'rect') this.paintRect(px, false, true);
-          else this.paintLine(px, false, true);
+          if (this.drawKind === 'rect') {
+            this.paintRect(px, false, true);
+            const end = this.pixelToLogical(this.cursorPixel);
+            if (end) this.paintRectPrices(px, this.drawStart.price, end.price);
+          } else this.paintLine(px, false, true);
         }
       }
 
@@ -837,14 +911,93 @@ export class DrawingManager {
     ctx.strokeRect(x, y, w, h);
     ctx.setLineDash([]);
 
-    if (selected || preview) {
-      const handleColor = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
-      this.paintHandle(px.x1, px.y1, handleColor);
-      this.paintHandle(px.x2, px.y2, handleColor);
+    if (preview) {
+      this.paintHandle(px.x1, px.y1, HANDLE_COLOR);
+      this.paintHandle(px.x2, px.y2, HANDLE_COLOR);
+      return;
+    }
+    if (!selected) return;
+
+    for (const [handle, p] of this.rectHandlePoints(px)) {
+      if (handle === 'move') this.paintMoveCross(p);
+      else if (handle.length === 2) this.paintHandle(p.x, p.y, HANDLE_ACTIVE_COLOR);
+      else this.paintSideHandle(p);
     }
   }
 
-  private paintMarker(p: Point, direction: MarkerDirection) {
+  // Top edge price above the top-right corner, bottom edge price below the bottom-right
+  // one and the height in pips below the bottom-left one (spec 025).
+  private paintRectPrices(px: { x1: number; y1: number; x2: number; y2: number }, priceA: number, priceB: number) {
+    if (this.appearance.rectLabels === false) return;
+    const ctx = this.ctx;
+    const right = Math.max(px.x1, px.x2);
+    const top = Math.min(px.y1, px.y2);
+    const bottom = Math.max(px.y1, px.y2);
+    const high = Math.max(priceA, priceB);
+    const low = Math.min(priceA, priceB);
+    const decimals = Math.max(0, Math.round(-Math.log10(this.pipSize))) + 1;
+    const pips = (high - low) / this.pipSize;
+
+    const left = Math.min(px.x1, px.x2);
+    // Kept clear of the corner handles so they never sit on the numbers.
+    const inset = HANDLE_RADIUS + 6;
+    ctx.font = RECT_PRICE_FONT;
+    ctx.fillStyle = TEXT_COLOR;
+    // Black outline so the numbers stay legible over candles and EMA lines.
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    const label = (text: string, x: number, y: number) => { ctx.strokeText(text, x, y); ctx.fillText(text, x, y); };
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'bottom';
+    label(high.toFixed(decimals), right - inset, top - 3);
+    ctx.textBaseline = 'top';
+    label(low.toFixed(decimals), right - inset, bottom + 3);
+    ctx.textAlign = 'left';
+    label(`${pips.toFixed(1)} p`, left + inset, bottom + 3);
+    ctx.lineJoin = 'miter';
+  }
+
+  private paintSideHandle(p: Point) {
+    const ctx = this.ctx;
+    const s = SIDE_HANDLE_SIZE;
+    ctx.fillStyle = 'rgba(13,13,13,0.8)';
+    ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s);
+    ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.strokeRect(p.x - s / 2, p.y - s / 2, s, s);
+  }
+
+  // Four-arrow cross at the centre: the grab point that moves the whole rectangle.
+  private paintMoveCross(p: Point) {
+    const ctx = this.ctx;
+    const s = MOVE_CROSS_SIZE;
+    const a = 3;
+    ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
+    ctx.lineWidth = 1.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(p.x - s, p.y); ctx.lineTo(p.x + s, p.y);
+    ctx.moveTo(p.x, p.y - s); ctx.lineTo(p.x, p.y + s);
+    ctx.moveTo(p.x - s + a, p.y - a); ctx.lineTo(p.x - s, p.y); ctx.lineTo(p.x - s + a, p.y + a);
+    ctx.moveTo(p.x + s - a, p.y - a); ctx.lineTo(p.x + s, p.y); ctx.lineTo(p.x + s - a, p.y + a);
+    ctx.moveTo(p.x - a, p.y - s + a); ctx.lineTo(p.x, p.y - s); ctx.lineTo(p.x + a, p.y - s + a);
+    ctx.moveTo(p.x - a, p.y + s - a); ctx.lineTo(p.x, p.y + s); ctx.lineTo(p.x + a, p.y + s - a);
+    ctx.stroke();
+    ctx.lineCap = 'butt';
+  }
+
+  // 1 px orange ring with a little clearance around a selected marker or symbol.
+  private paintSelectionRing(p: Point, halfW: number, halfH: number) {
+    const ctx = this.ctx;
+    const g = SELECTION_RING_GAP;
+    ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+    ctx.strokeRect(Math.round(p.x - halfW - g) + 0.5, Math.round(p.y - halfH - g) + 0.5, Math.round(2 * (halfW + g)), Math.round(2 * (halfH + g)));
+  }
+
+  private paintMarker(p: Point, direction: MarkerDirection, selected = false) {
     const ctx = this.ctx;
     const color = direction === 'buy' ? MARKER_BUY_COLOR : MARKER_SELL_COLOR;
     const s = MARKER_SIZE;
@@ -864,6 +1017,9 @@ export class DrawingManager {
     ctx.lineTo(p.x + s * 0.55, baseY);
     ctx.closePath();
     ctx.fill();
+
+    // The glyph spans from the tip (p.y ∓ s) to the tail (p.y ± 0.6 s).
+    if (selected) this.paintSelectionRing({ x: p.x, y: up ? p.y - s * 0.2 : p.y + s * 0.2 }, s * 0.55, s * 0.8);
   }
 
   private withAlpha(color: string, alpha: number): string {
@@ -878,9 +1034,10 @@ export class DrawingManager {
     return color;
   }
 
-  private paintSymbol(p: Point, variant: SymbolVariant) {
+  private paintSymbol(p: Point, variant: SymbolVariant, selected = false) {
     const ctx = this.ctx;
     const s = SYMBOL_SIZE / 2;
+    if (selected) this.paintSelectionRing(p, s, s);
     ctx.lineWidth = 2;
     ctx.lineCap = 'round';
     ctx.beginPath();
@@ -903,18 +1060,10 @@ export class DrawingManager {
   private paintText(p: Point, text: string, selected: boolean) {
     const ctx = this.ctx;
     ctx.font = TEXT_FONT;
-    ctx.fillStyle = TEXT_COLOR;
+    // Selection is the colour alone, no frame (spec 025).
+    ctx.fillStyle = selected ? HANDLE_ACTIVE_COLOR : TEXT_COLOR;
     ctx.textBaseline = 'middle';
     ctx.fillText(text, p.x, p.y);
-
-    if (selected) {
-      const w = ctx.measureText(text).width;
-      ctx.strokeStyle = HANDLE_ACTIVE_COLOR;
-      ctx.lineWidth = 1;
-      ctx.setLineDash([3, 3]);
-      ctx.strokeRect(p.x - 4, p.y - TEXT_HEIGHT / 2 - 3, w + 8, TEXT_HEIGHT + 6);
-      ctx.setLineDash([]);
-    }
   }
 
   private paintRuler() {
@@ -997,7 +1146,7 @@ export class DrawingManager {
     this.drawStart = null;
     this.onDone = onDone ?? null;
     this.setSelected(null);
-    this.canvas.style.cursor = 'crosshair';
+    this.setCursor('crosshair');
     this.redraw();
   }
 
@@ -1008,7 +1157,7 @@ export class DrawingManager {
     this.isRulerMode = false;
     // keep a completed measurement on screen; discard a half-made one
     if (!this.rulerFixed && this.rulerStart) this.clearRuler();
-    this.canvas.style.cursor = '';
+    this.setCursor('');
     this.redraw();
   }
 
@@ -1022,7 +1171,7 @@ export class DrawingManager {
     this.isRulerMode = true;
     this.onDone = onDone ?? null;
     this.setSelected(null);
-    this.canvas.style.cursor = 'crosshair';
+    this.setCursor('crosshair');
     this.redraw();
   }
 

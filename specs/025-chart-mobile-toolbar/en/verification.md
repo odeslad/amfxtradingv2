@@ -4,6 +4,8 @@
 |---|---|---|---|---|---|
 | 1 [backend] | build + vitest + local backend | `npm run build` · `npm test` (103 tests, 4 new in `candle-close.test.ts`) · `npm run lint` · local backend on 3001, bridges off, production DB through the tunnel → `/health` 200 | ✅ pass | 1 | 0.75 |
 | 2 [frontend] | build + lint + local app on the production API | `npm run build` · `npm run lint` · Vite on 5174 proxied to `api-v2` (real ticks) | ✅ pass | 1.5 | 1.5 |
+| 3 [db] | `prisma generate` + build + `migrate diff` against production | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <production via tunnel> --to-schema-datamodel` | ✅ pass | 0.25 | 0.25 |
+| 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pass (end to end in task 7) | 0.25 | 0.25 |
 
 ## Evidence
 
@@ -24,3 +26,15 @@ included). The `candle` message cannot be seen until the backend deploys (task 5
 testing: the dev proxy now rewrites the session cookie to host-only (`cookieDomainRewrite`), since
 Chrome dropped the production `Domain=.amfxtrading.com` cookie arriving through the proxy and every
 request bounced to the login; logout also clears the host-only scope on the backend.
+
+### Tasks 3–4
+
+AC 17 was added during implementation at the user's request. The production diff prints exactly:
+
+```
+ALTER TABLE "settings_display" ADD COLUMN "rectLabels" BOOLEAN NOT NULL DEFAULT true;
+```
+
+`/settings` takes an optional `display.rectLabels` and returns it (default `true`); the backend suite
+and lint stay green. The toggle cannot reach the deployed backend before the push, so it is checked on
+production in task 7.

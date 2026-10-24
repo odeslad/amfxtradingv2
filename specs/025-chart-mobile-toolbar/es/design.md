@@ -73,6 +73,17 @@ ticks sintética.
 - `paintText`: seleccionado → `fillStyle = HANDLE_ACTIVE_COLOR`, sin marco punteado.
 - Táctil: `HIT_RADIUS_TOUCH` sigue en 22 (objetivo de 44 px); las anclas nuevas lo comparten.
 
+### Etiquetas del rectángulo (CA 16, 17) — `DrawingTools.ts`, Settings
+
+`paintRectPrices` escribe, a 9 px en `--text` con contorno negro de 3 px, el precio superior sobre la
+esquina superior derecha, el inferior bajo la inferior derecha y la altura en pips (`(máx − mín) /
+pipSize`, un decimal) bajo la inferior izquierda, apartados de las anclas; los precios usan los decimales
+de `pipSize` + 1. Se pinta en todo rectángulo y en la previsualización al dibujar. El flag `rectLabels`
+viaja en el `TrendlineAppearance` que el gráfico ya recibe de `/settings` (`false` omite las etiquetas).
+Datos: la migración `20261026000000_rect_labels` añade `settings_display.rectLabels BOOLEAN NOT NULL
+DEFAULT true`; `PUT /settings` acepta un `display.rectLabels` opcional y ambos verbos lo devuelven; la
+pestaña Display gana una fila con toggle.
+
 ### Barra (CA 1–7) — `ChartToolbar.tsx` + `.module.css`
 
 - Marcado reagrupado: `.tools` conserva el select de timeframe y los cinco botones diarios (posiciones,

@@ -17,7 +17,7 @@ while the backend already holds its OHLC from the ticks.
 
 ## Affected layers
 
-- backend · frontend
+- db · backend · frontend
 
 ## User stories
 
@@ -74,6 +74,13 @@ while the backend already holds its OHLC from the ticks.
   watcher later reads it, its values overwrite the tick-built row.
 - AC 15. WHEN a price alert is created, toggled, deleted or fires THEN its marker on the price scale
   appears, changes or disappears at once, without scrolling, zooming or changing the symbol.
+- AC 16. WHEN a rectangle is on the chart THEN its top-right corner shows the price of its top edge and
+  its bottom-right corner the price of its bottom edge, and its bottom-left corner the height in pips
+  (`24.5 p`), in 9 px white (`--text`) with a black outline, outside the shape and clear of the handles, updated
+  live while it is drawn or resized.
+- AC 17. WHEN the operator turns off **Rectangle labels** in Settings > Display and saves THEN the chart
+  draws rectangles without the prices and pips of AC 16; the setting is stored with the display settings
+  (default on) and applies on every device.
 
 ## Out of scope
 

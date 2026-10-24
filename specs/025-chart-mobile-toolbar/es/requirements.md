@@ -18,7 +18,7 @@ cuando el backend ya tiene su OHLC por los ticks.
 
 ## Capas afectadas
 
-- backend · frontend
+- db · backend · frontend
 
 ## Historias de usuario
 
@@ -81,6 +81,13 @@ cuando el backend ya tiene su OHLC por los ticks.
 - CA 15. CUANDO se crea, activa / desactiva, borra o dispara una alerta de precio ENTONCES su marcador en
   la escala de precio aparece, cambia o desaparece al momento, sin desplazar, hacer zoom ni cambiar de
   símbolo.
+- CA 16. CUANDO hay un rectángulo en el gráfico ENTONCES su esquina superior derecha muestra el precio de
+  su borde superior, la inferior derecha el precio de su borde inferior y la inferior izquierda la
+  altura en pips (`24.5 p`), a 9 px en blanco (`--text`) con contorno negro, fuera de la forma y sin tocar las anclas,
+  actualizado en vivo al dibujarlo o redimensionarlo.
+- CA 17. CUANDO el operador desactiva **Rectangle labels** en Settings > Display y guarda ENTONCES el
+  gráfico dibuja los rectángulos sin los precios y pips del CA 16; el ajuste se guarda con los ajustes de
+  visualización (activo por defecto) y aplica en todos los dispositivos.
 
 ## Fuera de alcance
 

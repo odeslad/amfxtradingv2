@@ -64,6 +64,7 @@ model SettingsDisplay {
   trendlineColor String   @default("#8c8c8c")
   trendlineStyle String   @default("dashed")
   trendlineWidth Int      @default(1)
+  rectLabels     Boolean  @default(true)
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")
   updatedAt      DateTime @updatedAt

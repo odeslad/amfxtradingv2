@@ -4,6 +4,8 @@
 |---|---|---|---|---|---|
 | 1 [backend] | build + vitest + backend local | `npm run build` · `npm test` (103 tests, 4 nuevos en `candle-close.test.ts`) · `npm run lint` · backend local en el 3001, bridges apagados, BD de producción por el túnel → `/health` 200 | ✅ pasa | 1 | 0,75 |
 | 2 [frontend] | build + lint + app local sobre la API de producción | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` (ticks reales) | ✅ pasa | 1,5 | 1,5 |
+| 3 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel` | ✅ pasa | 0,25 | 0,25 |
+| 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pasa (de punta a punta en la tarea 7) | 0,25 | 0,25 |
 
 ## Evidencia
 
@@ -25,3 +27,16 @@ backend (tarea 5). Arreglo colateral encontrado al probar: el proxy de desarroll
 sesión a solo-host (`cookieDomainRewrite`), porque Chrome descartaba la cookie `Domain=.amfxtrading.com`
 de producción al llegar por el proxy y toda petición rebotaba al login; el logout borra también el ámbito
 solo-host en el backend.
+
+### Tareas 3–4
+
+El CA 17 se añadió durante la implementación a petición del usuario. El diff contra producción imprime
+exactamente:
+
+```
+ALTER TABLE "settings_display" ADD COLUMN "rectLabels" BOOLEAN NOT NULL DEFAULT true;
+```
+
+`/settings` acepta un `display.rectLabels` opcional y lo devuelve (por defecto `true`); la suite y el
+lint del backend siguen en verde. El toggle no llega al backend desplegado antes del push, así que se
+comprueba en producción en la tarea 7.

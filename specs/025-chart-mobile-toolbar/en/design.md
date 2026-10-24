@@ -70,6 +70,17 @@ row the EA will write. A backend test (vitest) covers the tracker with a synthet
 - `paintText`: selected → `fillStyle = HANDLE_ACTIVE_COLOR`, no dashed frame.
 - Touch: `HIT_RADIUS_TOUCH` stays 22 (a 44 px target); the new handles share it.
 
+### Rectangle labels (AC 16, 17) — `DrawingTools.ts`, Settings
+
+`paintRectPrices` writes, in 9 px `--text` with a 3 px black outline, the top price above the top-right
+corner, the bottom price below the bottom-right one and the height in pips (`(high − low) / pipSize`,
+one decimal) below the bottom-left one, inset past the corner handles; prices use `pipSize` decimals
++ 1. Drawn for every rectangle and for the preview while drawing. The flag `rectLabels` rides on the
+existing `TrendlineAppearance` the chart already receives from `/settings` (`false` skips the labels).
+Data: migration `20261026000000_rect_labels` adds `settings_display.rectLabels BOOLEAN NOT NULL DEFAULT
+true`; `PUT /settings` takes an optional `display.rectLabels` and both verbs return it; the Display tab
+gets a toggle row.
+
 ### Toolbar (AC 1–7) — `ChartToolbar.tsx` + `.module.css`
 
 - Markup regrouped: `.tools` keeps the timeframe select and the five everyday buttons (positions,

@@ -1,6 +1,6 @@
 # 024 — Hide brokers and symbols from Settings
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

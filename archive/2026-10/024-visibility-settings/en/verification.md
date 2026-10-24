@@ -6,6 +6,12 @@
 | 2 [backend] | build + local backend against production | `npm run build` · local backend (`PORT=3001`, bridges off, DB through the tunnel) · script calling `GET` / `PUT /settings` with a forged JWT | ✅ pass | 0.5 | 0.5 |
 | 3 [frontend] | build + lint + local app | `npm run build` · `npm run lint` · Vite on 5174 proxied to the local backend (3001, production DB through the tunnel) | ✅ pass | 2 | 1.5 |
 | 4 [frontend] | build + lint + local app | `npm run build` · `npm run lint` · same local stack as task 3 | ✅ pass | 1.5 | 1 |
+| 5 [infra] | manual (user validation on production) | one push of `master` (db + backend + frontend), pipelines watched via `/version` and the bundle hash | ✅ pass | 0.5 | 0.75 |
+| 6 [specs] | manual | this file, `Status: closed`, `git mv` to `archive/2026-10/` | ✅ pass | 0.25 | 0.25 |
+
+**Total**: Est 5 SP · Actual 4.25 SP. Calibration: the two frontend tasks came in under estimate (the
+Settings tab reused the 023 patterns), the deploy task ran over because of two follow-up fixes found
+during the production check.
 
 ## Evidence
 
@@ -53,3 +59,18 @@ filters panel with the current hidden selection marked "· hidden", New Trade ma
 untouched), Stats broker selector, notification panel broker select and symbol chips; Mirror, Devices,
 alerts and toasts unchanged; showing the broker again brings the rows back without a reload. The chart's
 fetch effects read the visibility through a ref so a save never refetches the lists.
+
+### Task 5
+
+Pushed as one mixed push (db + backend + frontend ×2); both pipelines went through, backend version 200,
+frontend bundle with the Visibility tab. Validated by the user on production on 2026-10-23 on desktop and
+iPhone against AC 1–8 (final build 192.200.33). Two follow-ups shipped during the check:
+
+- `a85a8cd` fix(frontend): the Journal's live positions store (spec 019) appended the REST snapshot on
+  every visit, duplicating tickets with stale prices and scrambling the order. Not caused by 024.
+- `11c73bd` fix(frontend): on mobile the Settings bar did not wrap, so the Save button was pushed past
+  the clipped page edge whenever "Unsaved changes" showed (also affected Mirror and Display).
+
+### Task 6
+
+Closed and archived under `archive/2026-10/`.

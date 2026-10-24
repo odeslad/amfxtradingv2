@@ -1,6 +1,6 @@
 # 024 — Ocultar brokers y símbolos desde Settings
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

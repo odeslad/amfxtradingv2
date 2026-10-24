@@ -6,6 +6,12 @@
 | 2 [backend] | build + backend local contra producción | `npm run build` · backend local (`PORT=3001`, bridges apagados, BD por el túnel) · script llamando a `GET` / `PUT /settings` con un JWT forjado | ✅ pasa | 0,5 | 0,5 |
 | 3 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy al backend local (3001, BD de producción por el túnel) | ✅ pasa | 2 | 1,5 |
 | 4 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · mismo stack local que la tarea 3 | ✅ pasa | 1,5 | 1 |
+| 5 [infra] | manual (validación del usuario en producción) | un push de `master` (db + backend + frontend), pipelines vigiladas por `/version` y el hash del bundle | ✅ pasa | 0,5 | 0,75 |
+| 6 [specs] | manual | este fichero, `Estado: cerrada`, `git mv` a `archive/2026-10/` | ✅ pasa | 0,25 | 0,25 |
+
+**Total**: Est 5 SP · Real 4,25 SP. Calibración: las dos tareas de frontend salieron por debajo de la
+estimación (la pestaña de Settings reutilizó los patrones de la 023); la de despliegue se pasó por dos
+arreglos encontrados durante la comprobación en producción.
 
 ## Evidencia
 
@@ -53,3 +59,18 @@ filtros del gráfico con la selección oculta marcada "· hidden", listas manual
 tocar), selector de broker de Stats, select de broker y chips del panel de notificaciones; Mirror, Devices,
 alertas y toasts sin cambios; volver a mostrar el broker recupera las filas sin recargar. Los efectos de
 carga del gráfico leen la visibilidad por una ref para que guardar no vuelva a pedir las listas.
+
+### Tarea 5
+
+Subido en un único push mixto (db + backend + frontend ×2); las dos pipelines pasaron, backend versión 200,
+bundle del frontend con la pestaña Visibility. Validado por el usuario en producción el 23-10-2026 en
+escritorio e iPhone contra los CA 1–8 (build final 192.200.33). Dos arreglos salieron durante la comprobación:
+
+- `a85a8cd` fix(frontend): el almacén de posiciones en vivo del Journal (spec 019) añadía el snapshot REST en
+  cada visita, duplicando tickets con precios rancios y desordenando las filas. No causado por la 024.
+- `11c73bd` fix(frontend): en móvil la barra de Settings no envolvía, así que el botón Save quedaba fuera del
+  borde recortado de la página en cuanto aparecía "Unsaved changes" (afectaba también a Mirror y Display).
+
+### Tarea 6
+
+Cerrada y archivada en `archive/2026-10/`.

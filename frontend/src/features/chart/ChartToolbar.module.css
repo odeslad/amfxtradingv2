@@ -146,16 +146,27 @@
   flex-shrink: 0;
 }
 
+/* Desktop: the drawing tools sit inline in the row as before (spec 025). */
+.drawTools {
+  display: contents;
+}
+
+.drawToggle {
+  display: none;
+}
+
 @media (min-width: 769px) {
   .symbolSelects {
     display: none;
   }
 }
 
+/* Mobile: one row of everyday tools plus Draw; the drawing tools wrap into a
+   second row only while Draw is open (spec 025). */
 @media (max-width: 768px) {
   .toolbar {
-    height: 48px;
-    padding: 0 8px;
+    height: auto;
+    padding: 4px 8px;
   }
 
   .selects {
@@ -164,17 +175,64 @@
 
   .tools {
     flex: 1;
-    gap: 6px;
+    flex-wrap: wrap;
+    gap: 4px;
+    min-width: 0;
   }
 
   .tfSelect {
     display: block;
-    height: 34px;
+    flex: 1 1 70px;
+    min-width: 70px;
+    height: 44px;
+    font-size: var(--text-lg);
   }
 
   .iconBtn {
-    flex: 1;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 44px;
+  }
+
+  .drawToggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    height: 44px;
+    padding: 0 12px;
+    flex: 0 0 auto;
+    background: transparent;
+    border: 1px solid var(--border-bright);
+    color: var(--muted);
+    font-family: var(--font-sans);
+    font-size: var(--text-2xs);
+    letter-spacing: var(--tracking-wide);
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 0.12s ease, border-color 0.12s ease;
+  }
+
+  .drawToggleOpen {
+    color: var(--orange);
+    border-color: var(--orange);
+  }
+
+  .drawTools {
+    display: none;
+    order: 1;
+    flex: 0 0 100%;
+    justify-content: space-between;
+    gap: 4px;
+  }
+
+  .drawToolsOpen {
+    display: flex;
+  }
+
+  /* Eight tools share the row: at 390 px each is ~43 px wide, always 44 px tall. */
+  .drawTools .iconBtn {
+    flex: 1 1 0;
     width: auto;
-    height: 34px;
+    min-width: 0;
   }
 }

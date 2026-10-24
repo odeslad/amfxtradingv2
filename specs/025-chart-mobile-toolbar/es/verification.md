@@ -7,6 +7,7 @@
 | 3 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel` | ✅ pasa | 0,25 | 0,25 |
 | 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pasa (de punta a punta en la tarea 7) | 0,25 | 0,25 |
 | 5 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa (toggle 🕐 tarea 7) | 2,5 | 2,5 |
+| 6 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · modo dispositivo en la app local | ✅ pasa (iPhone 🕐 tarea 7) | 1,5 | 0,75 |
 
 ## Evidencia
 
@@ -53,3 +54,12 @@ necesitó una regla CSS en el contenedor del gráfico (`--draw-cursor` con `!imp
 ignora los eventos de puntero y lightweight-charts pone su propio cursor en sus elementos internos. El
 toggle Rectangle labels no surte efecto contra el backend desplegado todavía; se valida en producción en la
 tarea 7.
+
+### Tarea 6
+
+Comprobado por el usuario en la app local el 24-10-2026: una fila de 44 px en ancho de móvil (timeframe,
+posiciones, alertas, filtros, indicadores, pantalla completa, Draw), Draw abriendo y cerrando la segunda
+fila de ocho herramientas, la fila sigue abierta tras dibujar, fila de escritorio sin cambios, botones Add
+del panel de alertas con el estilo primario naranja. Las herramientas se reparten la segunda fila (`flex:
+1`) porque ocho botones fijos de 44 px no caben en 390 px. El iPhone en sí se comprueba en producción
+(tarea 7).

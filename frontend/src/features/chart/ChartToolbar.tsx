@@ -1,4 +1,4 @@
-import { memo } from 'react';
+import { memo, useState, type ReactNode } from 'react';
 import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
@@ -31,11 +31,33 @@ interface ChartToolbarProps {
   isFullscreen?: boolean;
 }
 
+interface DrawTool {
+  mode: DrawMode;
+  title: string;
+  label: string;
+  icon: ReactNode;
+}
+
+const DRAW_TOOLS: DrawTool[] = [
+  { mode: 'line', title: 'Trendline (Shift = horizontal, Ctrl+drag = duplicate, Del = delete)', label: 'Trendline', icon: <IconTrendline size={16} /> },
+  { mode: 'rect', title: 'Rectangle', label: 'Rectangle', icon: <IconRect size={16} /> },
+  { mode: 'ruler', title: 'Pip ruler (two clicks to measure, Esc/click to clear)', label: 'Pip ruler', icon: <IconRuler size={16} /> },
+  { mode: 'markerBuy', title: 'Buy marker', label: 'Buy marker', icon: <IconMarkerUp size={16} /> },
+  { mode: 'markerSell', title: 'Sell marker', label: 'Sell marker', icon: <IconMarkerDown size={16} /> },
+  { mode: 'symbolCross', title: 'Cross mark', label: 'Cross mark', icon: <IconCross size={16} /> },
+  { mode: 'symbolCheck', title: 'Check mark', label: 'Check mark', icon: <IconCheck size={16} /> },
+  { mode: 'text', title: 'Text label (double-click to edit)', label: 'Text label', icon: <IconText size={16} /> },
+];
+
 export const ChartToolbar = memo(function ChartToolbar({
   brokers, symbols, broker, symbol, brokerHidden, symbolHidden, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
   onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
+  // Mobile only: the drawing tools live in a second row opened by Draw (spec 025).
+  // Not reset when a drawing ends, so the next one is one tap away.
+  const [drawOpen, setDrawOpen] = useState(false);
+
   return (
     <div className={styles.toolbar}>
       <div className={styles.selects}>
@@ -97,78 +119,22 @@ export const ChartToolbar = memo(function ChartToolbar({
         >
           <IconBell size={16} />
         </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'line' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('line')}
-          title="Trendline (Shift = horizontal, Ctrl+drag = duplicate, Del = delete)"
-          aria-label="Trendline"
-        >
-          <IconTrendline size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'rect' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('rect')}
-          title="Rectangle"
-          aria-label="Rectangle"
-        >
-          <IconRect size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'ruler' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('ruler')}
-          title="Pip ruler (two clicks to measure, Esc/click to clear)"
-          aria-label="Pip ruler"
-        >
-          <IconRuler size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'markerBuy' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('markerBuy')}
-          title="Buy marker"
-          aria-label="Buy marker"
-        >
-          <IconMarkerUp size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'markerSell' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('markerSell')}
-          title="Sell marker"
-          aria-label="Sell marker"
-        >
-          <IconMarkerDown size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'symbolCross' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('symbolCross')}
-          title="Cross mark"
-          aria-label="Cross mark"
-        >
-          <IconCross size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'symbolCheck' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('symbolCheck')}
-          title="Check mark"
-          aria-label="Check mark"
-        >
-          <IconCheck size={16} />
-        </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${drawMode === 'text' ? styles.iconBtnActive : ''}`}
-          onClick={() => onDrawMode?.('text')}
-          title="Text label (double-click to edit)"
-          aria-label="Text label"
-        >
-          <IconText size={16} />
-        </button>
+
+        <div className={`${styles.drawTools} ${drawOpen ? styles.drawToolsOpen : ''}`}>
+          {DRAW_TOOLS.map(t => (
+            <button
+              key={t.mode}
+              type="button"
+              className={`${styles.iconBtn} ${drawMode === t.mode ? styles.iconBtnActive : ''}`}
+              onClick={() => onDrawMode?.(t.mode)}
+              title={t.title}
+              aria-label={t.label}
+            >
+              {t.icon}
+            </button>
+          ))}
+        </div>
+
         <button
           type="button"
           className={styles.iconBtn}
@@ -198,6 +164,14 @@ export const ChartToolbar = memo(function ChartToolbar({
             {isFullscreen ? <IconFullscreenExit size={16} /> : <IconFullscreen size={16} />}
           </button>
         )}
+        <button
+          type="button"
+          className={`${styles.drawToggle} ${drawOpen ? styles.drawToggleOpen : ''}`}
+          onClick={() => setDrawOpen(open => !open)}
+          aria-expanded={drawOpen}
+        >
+          Draw
+        </button>
       </div>
     </div>
   );

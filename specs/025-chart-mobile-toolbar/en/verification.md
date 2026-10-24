@@ -7,6 +7,7 @@
 | 3 [db] | `prisma generate` + build + `migrate diff` against production | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <production via tunnel> --to-schema-datamodel` | ✅ pass | 0.25 | 0.25 |
 | 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pass (end to end in task 7) | 0.25 | 0.25 |
 | 5 [frontend] | build + lint + local app | `npm run build` · `npm run lint` · Vite on 5174 proxied to `api-v2` | ✅ pass (toggle 🕐 task 7) | 2.5 | 2.5 |
+| 6 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · device mode in the local app | ✅ pass (iPhone 🕐 task 7) | 1.5 | 0.75 |
 
 ## Evidence
 
@@ -50,3 +51,11 @@ feedback (smaller numbers, pips moved to the bottom-left, white with outline). T
 rule on the chart container (`--draw-cursor` with `!important`): the drawing canvas ignores pointer
 events and lightweight-charts sets its own cursor on its inner elements. The Rectangle labels toggle
 cannot take effect against the deployed backend yet; it is validated on production in task 7.
+
+### Task 6
+
+Checked by the user in the local app on 2026-10-24: one 44 px row on a phone width (timeframe,
+positions, alerts, filters, indicators, fullscreen, Draw), Draw opening and closing the second row of
+eight tools, the row staying open after a drawing, desktop row unchanged, alerts panel Add buttons in
+the orange primary style. The drawing tools share the second row (`flex: 1`) because eight fixed 44 px
+buttons do not fit in 390 px. The iPhone itself is checked on production (task 7).

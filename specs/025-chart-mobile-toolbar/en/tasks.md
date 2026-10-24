@@ -1,0 +1,12 @@
+# 025 — Chart fixes · Tasks
+
+Each task is one conventional commit. The project must build after every task. Tasks of different layers never share a commit. Deploy order: backend → frontend.
+
+- [ ] 1. [backend] `services/candle-close.ts`: closed candle from the tick rollover, upserted without overwriting the EA and broadcast as `candle`; `upsertCandles` upserts the file's last two candles; `broadcastCandle`; docs · **Verify:** `npm run build` + vitest test of the tracker (seed tick, same-time ticks → nothing, new `<tf>_time` → one candle with the previous OHLC and bid); local backend against production with bridges off: `/health` up · **Est:** 1 SP
+- [ ] 2. [frontend] Chart data: `candle` WS message merged into `candles`, EMA lines extended to the live candle on every tick, rollover lines clipped to the candle pane, alert markers refreshed on every alert change · **Verify:** `npm run build` + `npm run lint`; local app on the Vite proxy to production: scroll the chart right (no line over the price scale), EMAs reach the live candle, delete the last alert (marker gone at once) · **Est:** 1.5 SP
+- [ ] 3. [frontend] `DrawingTools.ts`: rectangle with eight handles, centre cross to move and resize cursors; orange ring on selected markers / symbols; selected text in orange without frame · **Verify:** `npm run build` + `npm run lint`; local app: draw a rectangle, resize from each side and corner, move from the cross, select each marker kind and a text · **Est:** 2 SP
+- [ ] 4. [frontend] `ChartToolbar` two-row mobile layout with the Draw toggle (desktop unchanged) and the alerts panel Add buttons in the primary style · **Verify:** `npm run build` + `npm run lint`; local app at 390 px: row sizes, Draw opens / closes, drawing keeps the row open, chart height follows, desktop row identical · **Est:** 1.5 SP
+- [ ] 5. [infra] Push `master` (backend first, then frontend) and **validate on production**: iPhone toolbar and Draw row, rectangle handles, marker / text selection, alerts panel button, rollover lines when scrolled, EMAs on the live candle, alert marker refresh, and the closed candle appearing at the close on the chart and after a reload · **Verify:** manual (user validation) · **Est:** 0.5 SP
+- [ ] 6. [specs] Record Est vs Actual in `verification.md` (both languages), mark the spec closed and archive it under `archive/2026-10/` · **Verify:** manual · **Est:** 0.25 SP
+
+**Total estimate**: 6.75 SP

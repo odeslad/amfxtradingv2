@@ -202,9 +202,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const alertsRef = useRef(alerts);
-  useEffect(() => { alertsRef.current = alerts; }, [alerts]);
-
   const drawRolloversRef = useRef<() => void>(() => { });
+  // A created, toggled or deleted alert repaints its marker at once (spec 025).
+  useEffect(() => { alertsRef.current = alerts; drawRolloversRef.current(); }, [alerts]);
 
   // Double activation that works on both desktop (dblclick) and touch (two quick
   // taps), since onDoubleClick doesn't fire reliably on touch devices.
@@ -227,6 +227,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const emaSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
+  // Last closed point per EMA, the base of the provisional point on the live candle (spec 025).
+  const emaLastRef = useRef<Map<string, { time: number; value: number }>>(new Map());
   const candlesRef = useRef<Candle[]>([]);
   const emasRef = useRef<Ema[]>(emas);
   const timeframeRef = useRef<string>(timeframe);
@@ -337,7 +339,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
 
       // redraw the overlay (alert triangles) when their Y position shifts
       const list = alertsRef.current;
-      if (series && list && list.length > 0) {
+      if (series && list) {
         const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(a.price) ?? -1) | 0}`).join('|');
         if (sig !== lastAlertSig) {
           lastAlertSig = sig;
@@ -450,6 +452,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     ctx.lineWidth = 1;
     ctx.setLineDash([1, 3]);
 
+    // Lines never cross into the price scale when the chart is scrolled right (spec 025).
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, chart.timeScale().width(), bottom);
+    ctx.clip();
+
     // D1 only shows month-start lines; other TFs show daily/weekly rollovers too
     if (!isDaily) {
       const rolloverTimes = getRolloverTimes(data[0].time, data[data.length - 1].time);
@@ -464,6 +472,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     for (const time of monthStarts) {
       drawLine(time, 'rgba(255,255,255,0.85)');
     }
+    ctx.restore();
     ctx.setLineDash([]);
 
     if (seriesRef.current) drawAlertMarkers(ctx, chart, seriesRef.current);
@@ -514,9 +523,28 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
         return true;
       })
       .sort((a, b) => a.time - b.time);
+    emaLastRef.current.clear();
     for (const ema of currentEmas) {
       const series = emaSeriesRef.current.get(ema.id)!;
-      series.setData(calcEma(filteredCandles, ema.period));
+      const points = calcEma(filteredCandles, ema.period);
+      series.setData(points);
+      const last = points[points.length - 1];
+      if (last) emaLastRef.current.set(ema.id, { time: last.time as number, value: last.value });
+    }
+  }, []);
+
+  // Extends every EMA to the live candle: one EMA step from the last closed value and the live close.
+  const updateLiveEmas = useCallback((liveTime: number, close: number) => {
+    for (const ema of emasRef.current) {
+      const series = emaSeriesRef.current.get(ema.id);
+      const last = emaLastRef.current.get(ema.id);
+      if (!series || !last || liveTime <= last.time) continue;
+      const k = 2 / (ema.period + 1);
+      try {
+        series.update({ time: liveTime as Time, value: close * k + last.value * (1 - k) });
+      } catch {
+        // skip silently, as the candle update does
+      }
     }
   }, []);
 
@@ -780,7 +808,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     } catch {
       // skip silently
     }
-  }, []);
+    updateLiveEmas(liveTime, liveCandle.close);
+  }, [updateLiveEmas]);
 
   useImperativeHandle(ref, () => ({ updateLive }), [updateLive]);
 

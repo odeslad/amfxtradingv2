@@ -299,6 +299,13 @@ export function ChartPage() {
       userId?: number;
       ticks?: ({ symbol: string } & Record<string, number>)[];
       positions?: Position[];
+      symbol?: string;
+      timeframe?: string;
+      time?: number;
+      open?: number;
+      high?: number;
+      low?: number;
+      close?: number;
     };
 
     // A price alert fired (any broker/symbol, for this user): flash + beep.
@@ -312,6 +319,20 @@ export function ChartPage() {
     }
 
     if (m.broker !== broker) return;
+
+    // A candle closed on the tick stream (spec 025): merged like a REST row, so the
+    // chart has it at the rollover instead of a poll later.
+    if (m.type === 'candle') {
+      if (m.symbol !== symbol || m.timeframe !== timeframe || m.time == null) return;
+      const closed: Candle = { time: Math.floor(m.time), open: m.open ?? 0, high: m.high ?? 0, low: m.low ?? 0, close: m.close ?? 0 };
+      setCandles(prev => {
+        const idx = prev.findIndex(c => c.time === closed.time);
+        if (idx !== -1) { const next = prev.slice(); next[idx] = closed; return next; }
+        const next = [...prev, closed];
+        return prev.length > 0 && prev[prev.length - 1].time > closed.time ? next.sort((a, b) => a.time - b.time) : next;
+      });
+      return;
+    }
 
     if (m.type === 'positions') {
       if (positionsMode === 'none') return;

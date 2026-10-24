@@ -57,6 +57,9 @@ router.post('/login', asyncRoute(async (req, res) => {
 
 router.post('/logout', (_req: Request, res: Response): void => {
   res.clearCookie('token', CLEAR_COOKIE_OPTIONS);
+  // A host-only cookie left by a backend run with COOKIE_DOMAIN=none would shadow the
+  // domain one and keep every request at 401; logout clears that scope too.
+  if (CLEAR_COOKIE_OPTIONS.domain) res.clearCookie('token', { ...CLEAR_COOKIE_OPTIONS, domain: undefined });
   res.json({ ok: true });
 });
 

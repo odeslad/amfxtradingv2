@@ -1,6 +1,6 @@
 # 025 — Chart fixes: mobile toolbar, drawings and alerts panel
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

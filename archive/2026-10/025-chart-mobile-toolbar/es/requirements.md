@@ -1,6 +1,6 @@
 # 025 — Arreglos del gráfico: barra móvil, dibujos y panel de alertas
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

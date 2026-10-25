@@ -7,7 +7,14 @@
 | 3 [db] | `prisma generate` + build + `migrate diff` against production | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <production via tunnel> --to-schema-datamodel` | ✅ pass | 0.25 | 0.25 |
 | 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pass (end to end in task 7) | 0.25 | 0.25 |
 | 5 [frontend] | build + lint + local app | `npm run build` · `npm run lint` · Vite on 5174 proxied to `api-v2` | ✅ pass (toggle 🕐 task 7) | 2.5 | 2.5 |
-| 6 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · device mode in the local app | ✅ pass (iPhone 🕐 task 7) | 1.5 | 0.75 |
+| 6 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · device mode in the local app | ✅ pass (iPhone ✅ task 7) | 1.5 | 0.75 |
+| 7 [infra] | manual (user validation on production) | one push of `master` (8 commits, db + backend + frontend); both pipelines green in under a minute | ✅ pass | 0.5 | 0.5 |
+| 8 [specs] | manual | this file, `Status: closed`, `git mv` to `archive/2026-10/` | ✅ pass | 0.25 | 0.25 |
+
+**Total**: Est 7.75 SP · Actual 6.75 SP. Calibration: the toolbar and backend came in under estimate;
+the drawing tools matched it once the cursor fix (a CSS rule, since the library owns its cursor) and the
+label iterations with the user are counted. Not counted: the local login fix and the encoding repair,
+both outside the spec.
 
 ## Evidence
 
@@ -59,3 +66,20 @@ positions, alerts, filters, indicators, fullscreen, Draw), Draw opening and clos
 eight tools, the row staying open after a drawing, desktop row unchanged, alerts panel Add buttons in
 the orange primary style. The drawing tools share the second row (`flex: 1`) because eight fixed 44 px
 buttons do not fit in 390 px. The iPhone itself is checked on production (task 7).
+
+### Task 7
+
+Pushed `b49c496..56512d0`; "Deploy Backend to VPS" and "Deploy Frontend to VPS" both succeeded
+(2026-10-24 19:09 → 19:10 UTC), backend version 204, `/health` 200, migration `20261026000000_rect_labels`
+applied by the deploy. Validated by the user on production, desktop and iPhone, against AC 1–17: mobile
+toolbar and Draw row, rectangle handles, cursors, labels and the Rectangle labels toggle, marker / text
+selection, alerts panel buttons and marker refresh, EMAs on the live candle, clipped rollover lines, and
+the closed candle on the chart at the close and after a reload.
+
+Outside the spec, shipped in the same push: `43b855c` (logout clears the host-only cookie) and
+`6911fe6` (dev proxy keeps session cookies host-only), both from the local login loop found while
+testing task 2.
+
+### Task 8
+
+Closed and archived under `archive/2026-10/`.

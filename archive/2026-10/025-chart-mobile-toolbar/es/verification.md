@@ -7,7 +7,14 @@
 | 3 [db] | `prisma generate` + build + `migrate diff` contra producción | `npx prisma generate` · `npm run build` · `prisma migrate diff --from-url <producción vía túnel> --to-schema-datamodel` | ✅ pasa | 0,25 | 0,25 |
 | 4 [backend] | build + tests + lint | `npm run build` · `npm test` · `npm run lint` | ✅ pasa (de punta a punta en la tarea 7) | 0,25 | 0,25 |
 | 5 [frontend] | build + lint + app local | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa (toggle 🕐 tarea 7) | 2,5 | 2,5 |
-| 6 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · modo dispositivo en la app local | ✅ pasa (iPhone 🕐 tarea 7) | 1,5 | 0,75 |
+| 6 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · modo dispositivo en la app local | ✅ pasa (iPhone ✅ tarea 7) | 1,5 | 0,75 |
+| 7 [infra] | manual (validación del usuario en producción) | un push de `master` (8 commits, db + backend + frontend); las dos pipelines en verde en menos de un minuto | ✅ pasa | 0,5 | 0,5 |
+| 8 [specs] | manual | este fichero, `Estado: cerrada`, `git mv` a `archive/2026-10/` | ✅ pasa | 0,25 | 0,25 |
+
+**Total**: Est 7,75 SP · Real 6,75 SP. Calibración: la barra y el backend salieron por debajo de la
+estimación; las herramientas de dibujo la igualaron contando el arreglo del cursor (una regla CSS, porque
+la librería controla su propio cursor) y las iteraciones de las etiquetas con el usuario. Sin contar: el
+arreglo del login local y la reparación de codificación, ambos fuera de la spec.
 
 ## Evidencia
 
@@ -63,3 +70,20 @@ fila de ocho herramientas, la fila sigue abierta tras dibujar, fila de escritori
 del panel de alertas con el estilo primario naranja. Las herramientas se reparten la segunda fila (`flex:
 1`) porque ocho botones fijos de 44 px no caben en 390 px. El iPhone en sí se comprueba en producción
 (tarea 7).
+
+### Tarea 7
+
+Push `b49c496..56512d0`; "Deploy Backend to VPS" y "Deploy Frontend to VPS" correctos (24-10-2026 19:09 →
+19:10 UTC), backend versión 204, `/health` 200, migración `20261026000000_rect_labels` aplicada por el
+despliegue. Validado por el usuario en producción, escritorio e iPhone, contra los CA 1–17: barra móvil y
+fila Draw, anclas, cursores, etiquetas y toggle Rectangle labels del rectángulo, selección de marcadores /
+texto, botones y refresco de marcadores del panel de alertas, EMAs sobre la vela viva, líneas de rollover
+recortadas y la vela cerrada en el gráfico al cierre y tras recargar.
+
+Fuera de la spec, en el mismo push: `43b855c` (el logout borra la cookie solo-host) y `6911fe6` (el proxy
+de desarrollo mantiene las cookies de sesión solo-host), ambos del bucle de login en local encontrado al
+probar la tarea 2.
+
+### Tarea 8
+
+Cerrada y archivada en `archive/2026-10/`.

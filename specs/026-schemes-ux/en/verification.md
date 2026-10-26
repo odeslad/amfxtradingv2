@@ -4,6 +4,7 @@
 |---|---|---|---|---|---|
 | 1 [frontend] | build + lint + local app at desktop width | `npm run build` · `npm run lint` · Vite on 5174 proxied to `api-v2` | ✅ pass | 2 | 1 |
 | 2 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · Vite on 5174, device mode | ✅ pass | 1.5 | 1 |
+| 3 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · Vite on 5174, device mode | ✅ pass | 2 | 1 |
 
 ## Evidence
 
@@ -22,3 +23,13 @@ Build and lint clean; accepted by the user on 2026-10-26 before moving to task 3
 and 44 px + Nuevo esquema, totals block (title, Neto € / Neto R at 28 px, four labelled counts), the new
 `SchemeCard` collapsed (▸ #N, result text, Inicio / Neto € / Neto R) and expanded (labelled grid, three
 44 px actions), 44 px pagination. Ver operaciones appears with task 3.
+
+### Task 3
+
+Build and lint clean. Validated by the user on 2026-10-26: Ver operaciones opens the full-screen
+`OperationsPanel`; operations in the Positions card format (Posición / Entrada / R summary, tap to expand
+into labelled rows, left swipe for Editar / Eliminar); the trade panel and the confirmation stack on top
+and return to the refreshed list; + Nueva operación at the bottom. The operations panel is separate state
+in `BookPage`, so the stacking chosen in the design held without the fallback. Fixed along the way: the
+numeric column headers of both desktop tables were left-aligned over right-aligned numbers
+(`.table th` overrode `.num`).

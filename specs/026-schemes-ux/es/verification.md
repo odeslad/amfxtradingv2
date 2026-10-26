@@ -4,6 +4,7 @@
 |---|---|---|---|---|---|
 | 1 [frontend] | build + lint + app local en ancho de escritorio | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa | 2 | 1 |
 | 2 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · Vite en el 5174, modo dispositivo | ✅ pasa | 1,5 | 1 |
+| 3 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · Vite en el 5174, modo dispositivo | ✅ pasa | 2 | 1 |
 
 ## Evidencia
 
@@ -23,3 +24,13 @@ ancho completo y + Nuevo esquema de 44 px, bloque de totales (título, Neto € 
 recuentos con etiqueta), la nueva `SchemeCard` cerrada (▸ #N, resultado, Inicio / Neto € / Neto R) y
 abierta (rejilla con etiquetas, tres acciones de 44 px), paginación de 44 px. Ver operaciones llega con la
 tarea 3.
+
+### Tarea 3
+
+Build y lint limpios. Validada por el usuario el 26-10-2026: Ver operaciones abre el `OperationsPanel` a
+pantalla completa; operaciones en formato de card de Positions (resumen Posición / Entrada / R, toque para
+desplegar en filas con etiqueta, deslizar a la izquierda para Editar / Eliminar); el panel de operación y la
+confirmación se apilan encima y vuelven a la lista ya refrescada; + Nueva operación al pie. El panel de
+operaciones es un estado aparte en `BookPage`, así que el apilado del diseño funcionó sin el plan B.
+Arreglado de paso: las cabeceras de las columnas numéricas de las dos tablas de escritorio iban a la
+izquierda sobre números a la derecha (`.table th` pisaba a `.num`).

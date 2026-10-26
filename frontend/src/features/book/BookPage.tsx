@@ -3,6 +3,7 @@ import { errorMessage } from '../../lib/api';
 import { fmtEur, fmtR, fmtR1, PAGE_SIZES, type BookScheme, type BookTrade, type PageSize, type SchemeInput, type TradeInput } from '../../lib/book';
 import { addToast } from '../../lib/toast';
 import { ConfirmPanel } from '../journal/ConfirmPanel';
+import { OperationsPanel } from './OperationsPanel';
 import { SchemePanel } from './SchemePanel';
 import { SchemesTable } from './SchemesTable';
 import { TradePanel } from './TradePanel';
@@ -19,6 +20,9 @@ type Panel =
 export function BookPage() {
   const { data, loading, error, year, page, pageSize, selectYear, setPage, selectPageSize, actions } = useBook();
   const [panel, setPanel] = useState<Panel>(null);
+  // The phone's operations list (spec 026): kept apart from `panel` so the trade and
+  // confirm panels stack on top of it and return to it when they close.
+  const [opsSchemeId, setOpsSchemeId] = useState<number | null>(null);
   const [confirming, setConfirming] = useState(false);
   const close = useCallback(() => setPanel(null), []);
 
@@ -55,6 +59,7 @@ export function BookPage() {
   const to = Math.min(page * pageSize, data.total);
   const deleting = panel?.kind === 'deleteScheme' || panel?.kind === 'deleteTrade' ? panel : null;
   const activeYear: number | 'all' = typeof year === 'number' ? year : 'all';
+  const opsScheme = opsSchemeId === null ? null : data.schemes.find(s => s.id === opsSchemeId) ?? null;
 
   return (
     <div className={styles.page}>
@@ -99,6 +104,7 @@ export function BookPage() {
       ) : (
         <SchemesTable
           schemes={data.schemes}
+          onOpenOperations={s => setOpsSchemeId(s.id)}
           onEditScheme={s => setPanel({ kind: 'scheme', scheme: s, nonce: Date.now() })}
           onDeleteScheme={s => setPanel({ kind: 'deleteScheme', scheme: s })}
           onNewTrade={s => setPanel({ kind: 'trade', scheme: s, trade: null, nonce: Date.now() })}
@@ -126,6 +132,13 @@ export function BookPage() {
         <button type="button" className={styles.pageBtnMobile} disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Siguiente">›</button>
       </nav>
 
+      <OperationsPanel
+        scheme={opsScheme}
+        onNewTrade={s => setPanel({ kind: 'trade', scheme: s, trade: null, nonce: Date.now() })}
+        onEditTrade={(s, t) => setPanel({ kind: 'trade', scheme: s, trade: t, nonce: Date.now() })}
+        onDeleteTrade={(s, t) => setPanel({ kind: 'deleteTrade', scheme: s, trade: t })}
+        onClose={() => setOpsSchemeId(null)}
+      />
       <SchemePanel
         open={panel?.kind === 'scheme'}
         scheme={panel?.kind === 'scheme' ? panel.scheme : null}

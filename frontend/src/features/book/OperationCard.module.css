@@ -1,0 +1,133 @@
+/* The Positions card (journal/PositionCard.module.css), for a scheme operation (spec 026). */
+
+.card {
+  padding: 0 2px;
+  border-left: 2px solid transparent;
+}
+
+.cardExpanded { border-left-color: var(--blue); }
+
+.swipeRow {
+  position: relative;
+  overflow: hidden;
+  border-top: 1px solid var(--border-bright);
+}
+
+.actions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  z-index: 2;
+  pointer-events: none;
+}
+
+.actionsInner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px 0 16px;
+  height: 100%;
+  background: var(--bg);
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+  pointer-events: auto;
+}
+
+.actionsInnerOpen { transform: translateX(0); }
+
+.editBtn,
+.deleteBtn {
+  height: 34px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  transition: background 0.12s ease;
+}
+
+.editBtn {
+  color: var(--orange);
+  border-color: var(--orange);
+}
+
+.deleteBtn {
+  color: var(--red);
+  border-color: var(--red);
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: auto auto 1fr;
+  align-items: baseline;
+  gap: 4px 14px;
+  width: 100%;
+  padding: 10px 5px;
+  background: var(--bg);
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--text);
+}
+
+.summaryActive { background: rgba(255, 255, 255, 0.03); }
+
+.right {
+  text-align: right;
+  justify-self: end;
+}
+
+/* Same size as the Positions P&L. */
+.big { font-size: var(--text-3xl); }
+
+.slot { color: var(--orange); }
+.running { color: var(--gold); }
+.profit { color: var(--green); }
+.loss { color: var(--red); }
+.muted { color: var(--muted); }
+
+.details {
+  display: flex;
+  flex-direction: column;
+  padding: 0 5px;
+}
+
+.field {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--text);
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.note {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+  font-family: var(--font-sans);
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  color: var(--muted);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}

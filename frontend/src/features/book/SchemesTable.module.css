@@ -31,7 +31,8 @@
   white-space: nowrap;
 }
 
-.num { text-align: right; }
+.num,
+.table th.num { text-align: right; }
 
 .row { cursor: pointer; transition: background 0.12s ease; }
 .row:hover td { background: rgba(255, 255, 255, 0.03); }

@@ -19,6 +19,20 @@ const CARD_CLASS = { green: styles.cardGreen, red: styles.cardRed, gold: styles.
 
 const signClass = (v: number | null): string => (v === null ? styles.muted : v >= 0 ? styles.green : styles.red);
 
+// The Journal's row actions: no column of their own, they slide in over the row's right end on hover.
+function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => void }) {
+  return (
+    <td className={styles.actionsCell} onClick={e => e.stopPropagation()}>
+      <div className={styles.rowActions}>
+        <div className={styles.rowActionsInner}>
+          <button type="button" className={styles.editBtn} onClick={onEdit}>Editar</button>
+          <button type="button" className={styles.closeBtn} onClick={onDelete}>Eliminar</button>
+        </div>
+      </div>
+    </td>
+  );
+}
+
 export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade, onEditTrade, onDeleteTrade }: SchemesTableProps) {
   const [openId, setOpenId] = useState<number | null>(null);
   const toggle = (id: number) => setOpenId(current => (current === id ? null : id));
@@ -27,47 +41,37 @@ export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade
     <div className={styles.ops}>
       <div className={styles.opsHead}>
         <span className={styles.opsTitle}>Operaciones del esquema {s.number}{s.open > 0 ? ` · ${s.open} en curso` : ''}</span>
-        <button type="button" className={styles.newTradeBtn} onClick={() => onNewTrade(s)}>Nueva operación</button>
+        <button type="button" className={styles.newTradeBtn} onClick={() => onNewTrade(s)}>+ Nueva operación</button>
       </div>
       {s.trades.length === 0 ? (
         <span className={styles.dim}>Sin operaciones todavía.</span>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <table className={`${styles.table} ${styles.opsTable}`}>
-            <thead>
-              <tr>
-                <th>Ticket</th><th>Pos.</th><th>Dir.</th><th className={styles.num}>Lotes</th><th className={styles.num}>Entrada</th><th className={styles.num}>SL</th>
-                <th>Apertura</th><th>Cierre</th><th className={styles.num}>Precio</th><th className={styles.num}>Pips</th><th className={styles.num}>€</th><th className={styles.num}>R</th><th className={styles.num}>Saldo</th><th>Nota</th><th></th>
+        <table className={`${styles.table} ${styles.opsTable}`}>
+          <thead>
+            <tr>
+              <th>Pos.</th><th>Dir.</th><th className={styles.num}>Lotes</th><th className={styles.num}>Entrada</th><th className={styles.num}>Cierre</th>
+              <th>Apertura → Cierre</th><th className={styles.num}>Pips</th><th className={styles.num}>€</th><th className={styles.num}>R</th><th className={styles.num}>Saldo</th>
+              <th className={styles.actionsCell} aria-label="Acciones"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {s.trades.map(t => (
+              <tr key={t.id}>
+                <td className={styles.number}>{t.slot}</td>
+                <td className={t.direction === 'buy' ? styles.green : styles.red}>{t.direction}</td>
+                <td className={styles.num}>{fmtLots(t.lots)}</td>
+                <td className={styles.num}>{fmtPrice(t.entry)}</td>
+                <td className={styles.num}>{t.closePrice === null ? <span className={styles.gold}>en curso</span> : fmtPrice(t.closePrice)}</td>
+                <td>{fmtShort(t.openTime)} → {t.closeTime ? fmtShort(t.closeTime) : <span className={styles.gold}>en curso</span>}</td>
+                <td className={`${styles.num} ${signClass(t.pips)}`}>{fmtPips(t.pips)}</td>
+                <td className={`${styles.num} ${signClass(t.profit)}`}>{fmtEur(t.profit)}</td>
+                <td className={`${styles.num} ${signClass(t.r)}`}>{fmtR(t.r)}</td>
+                <td className={`${styles.num} ${styles.dim}`}>{fmtEur(t.balanceAfter)}</td>
+                <RowActions onEdit={() => onEditTrade(s, t)} onDelete={() => onDeleteTrade(s, t)} />
               </tr>
-            </thead>
-            <tbody>
-              {s.trades.map(t => (
-                <tr key={t.id}>
-                  <td className={styles.dim}>{t.ticket}</td>
-                  <td className={styles.number}>{t.slot}</td>
-                  <td className={t.direction === 'buy' ? styles.green : styles.red}>{t.direction}</td>
-                  <td className={styles.num}>{fmtLots(t.lots)}</td>
-                  <td className={styles.num}>{fmtPrice(t.entry)}</td>
-                  <td className={styles.num}>{fmtPrice(t.sl)}</td>
-                  <td>{fmtShort(t.openTime)}</td>
-                  <td>{t.closeTime ? fmtShort(t.closeTime) : <span className={styles.gold}>en curso</span>}</td>
-                  <td className={styles.num}>{fmtPrice(t.closePrice)}</td>
-                  <td className={`${styles.num} ${signClass(t.pips)}`}>{fmtPips(t.pips)}</td>
-                  <td className={`${styles.num} ${signClass(t.profit)}`}>{fmtEur(t.profit)}</td>
-                  <td className={`${styles.num} ${signClass(t.r)}`}>{fmtR(t.r)}</td>
-                  <td className={`${styles.num} ${styles.dim}`}>{fmtEur(t.balanceAfter)}</td>
-                  <td className={styles.note}>{t.note ?? ''}</td>
-                  <td>
-                    <div className={styles.actions}>
-                      <button type="button" className={styles.ghostBtn} onClick={() => onEditTrade(s, t)}>Editar</button>
-                      <button type="button" className={`${styles.ghostBtn} ${styles.ghostDanger}`} onClick={() => onDeleteTrade(s, t)}>Eliminar</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       )}
     </div>
   );
@@ -78,8 +82,9 @@ export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade
         <table className={styles.table}>
           <thead>
             <tr>
-              <th></th><th>Esq.</th><th>Inicio</th><th>Fin</th><th>Trades</th><th>Tickets</th><th>Resultado</th>
-              <th className={styles.num}>Neto €</th><th className={styles.num}>Neto R</th><th></th>
+              <th></th><th>Esq.</th><th>Inicio → Fin</th><th>Operaciones</th><th>Resultado</th>
+              <th className={styles.num}>Neto €</th><th className={styles.num}>Neto R</th>
+              <th className={styles.actionsCell} aria-label="Acciones"></th>
             </tr>
           </thead>
           <tbody>
@@ -89,21 +94,14 @@ export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade
                 <tr key={s.id} className={`${styles.row} ${open ? styles.rowOpen : ''}`} onClick={() => toggle(s.id)}>
                   <td className={styles.chevron}>{open ? '▾' : '▸'}</td>
                   <td className={styles.number}>{s.number}</td>
-                  <td>{s.start}</td>
-                  <td>{s.end ?? <span className={styles.gold}>en curso</span>}</td>
+                  <td>{s.start} → {s.end ?? <span className={styles.gold}>en curso</span>}</td>
                   <td>{s.tradesLine || <span className={styles.dim}>—</span>}</td>
-                  <td className={styles.dim}>{s.tickets}</td>
                   <td><span className={`${styles.badge} ${TONE_CLASS[resultTone(s.result)]}`}>{resultLabel(s.result)}</span></td>
                   <td className={`${styles.num} ${signClass(s.netEur)}`}>{fmtEur(s.netEur)}</td>
                   <td className={`${styles.num} ${signClass(s.netR)}`}>{fmtR(s.netR)}</td>
-                  <td onClick={e => e.stopPropagation()}>
-                    <div className={styles.actions}>
-                      <button type="button" className={styles.ghostBtn} onClick={() => onEditScheme(s)}>Editar</button>
-                      <button type="button" className={`${styles.ghostBtn} ${styles.ghostDanger}`} onClick={() => onDeleteScheme(s)}>Eliminar</button>
-                    </div>
-                  </td>
+                  <RowActions onEdit={() => onEditScheme(s)} onDelete={() => onDeleteScheme(s)} />
                 </tr>,
-                open ? <tr key={`${s.id}-ops`}><td colSpan={10} className={styles.opsCell}>{trades(s)}</td></tr> : null,
+                open ? <tr key={`${s.id}-ops`} className={styles.opsRow}><td colSpan={8} className={styles.opsCell}>{trades(s)}</td></tr> : null,
               ];
             })}
           </tbody>

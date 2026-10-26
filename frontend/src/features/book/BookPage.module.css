@@ -4,31 +4,47 @@
   gap: 20px;
 }
 
-.topBar {
+/* ── Tab bar (the Journal's) ─────────────────────── */
+
+.tabBar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  flex-wrap: wrap;
   border-bottom: 1px solid var(--border);
-  padding-bottom: 8px;
 }
 
-.heading {
-  margin: 0;
+.tabs {
+  display: flex;
+}
+
+.tab {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
   font-family: var(--font-sans);
-  font-size: var(--text-md);
-  font-weight: 400;
-  letter-spacing: var(--tracking-widest);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
   text-transform: uppercase;
-  color: var(--text);
+  color: var(--muted);
+  transition: color 0.12s ease, border-color 0.12s ease;
 }
 
-.topBarRight {
+.tab:hover { color: var(--text); }
+
+.tabActive {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+.tabBarRight {
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  padding-bottom: 4px;
 }
 
 .label {
@@ -56,8 +72,8 @@
   height: 27px;
   padding: 0 10px;
   background: transparent;
-  border: 1px solid var(--orange);
-  color: var(--orange);
+  border: 1px solid var(--green);
+  color: var(--green);
   font-family: var(--font-sans);
   font-size: var(--text-2xs);
   letter-spacing: var(--tracking-wide);
@@ -67,44 +83,51 @@
   transition: background 0.12s ease;
 }
 
-.newBtn:hover { background: rgba(245, 166, 35, 0.12); }
+.newBtn:hover { background: rgba(76, 175, 132, 0.15); }
 
-.totals {
-  display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 8px;
+/* ── Totals strip ────────────────────────────────── */
+
+.strip {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
 }
 
-.tile {
+.stat {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--border-bright);
+  padding: 0 20px;
+  border-left: 1px solid var(--border);
   min-width: 0;
 }
 
-.tileGreen { border-top-color: var(--green); }
-.tileRed { border-top-color: var(--red); }
-.tileGold { border-top-color: var(--gold); }
+.stat:first-child { border-left: none; }
 
-.tileLabel {
+.statPush { margin-left: auto; }
+
+.statLabel {
   font-family: var(--font-sans);
   font-size: var(--text-2xs);
-  letter-spacing: var(--tracking-wider);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   color: var(--muted);
 }
 
-.tileValue {
+.statValue {
   font-family: var(--font-mono);
-  font-size: var(--text-2xl);
+  font-size: var(--text-xl);
   color: var(--text);
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+}
+
+.statBig { font-size: var(--text-2xl); }
+
+.pending {
+  font-size: var(--text-sm);
+  color: var(--gold);
 }
 
 .green { color: var(--green); }
@@ -166,10 +189,5 @@
 }
 
 @media (max-width: 1024px) {
-  .totals { grid-template-columns: repeat(4, minmax(0, 1fr)); }
-}
-
-@media (max-width: 768px) {
-  .totals { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .tileValue { font-size: var(--text-xl); }
+  .strip { flex-wrap: wrap; row-gap: 12px; }
 }

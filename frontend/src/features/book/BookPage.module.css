@@ -191,3 +191,118 @@
 @media (max-width: 1024px) {
   .strip { flex-wrap: wrap; row-gap: 12px; }
 }
+
+/* ── Mobile (spec 026) ───────────────────────────── */
+
+.totalsMobile,
+.paginationMobile { display: none; }
+
+@media (max-width: 768px) {
+  .page { gap: 12px; }
+
+  .tabBar {
+    flex-wrap: wrap;
+    gap: 0;
+    border-bottom: none;
+  }
+
+  .tabs {
+    flex: 1 0 100%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 4px;
+    font-size: var(--text-md);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .tabActive { background: rgba(58, 123, 213, 0.18); }
+
+  .tabBarRight {
+    width: 100%;
+    padding: 12px 0 0;
+  }
+
+  .newBtn {
+    flex: 1;
+    height: 44px;
+    font-size: var(--text-sm);
+  }
+
+  .strip,
+  .pagination { display: none; }
+
+  .totalsMobile {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 12px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .mGrid2 {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    align-items: end;
+  }
+
+  .mGrid4 {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 8px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .mField {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+
+  .mRight { align-items: flex-end; }
+
+  .mNetEur {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    line-height: 1;
+  }
+
+  .mNetR {
+    font-family: var(--font-mono);
+    font-size: var(--text-3xl);
+    line-height: 1;
+  }
+
+  .mCount {
+    font-family: var(--font-mono);
+    font-size: var(--text-xl);
+    color: var(--text);
+  }
+
+  .paginationMobile {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 0 12px;
+  }
+
+  .pageBtnMobile {
+    height: 44px;
+    min-width: 56px;
+    background: transparent;
+    border: 1px solid var(--border-bright);
+    color: var(--text);
+    font-size: var(--text-xl);
+    cursor: pointer;
+  }
+
+  .pageBtnMobile:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .pageNo { font-size: var(--text-lg); }
+}

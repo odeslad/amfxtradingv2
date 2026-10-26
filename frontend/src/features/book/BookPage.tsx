@@ -1,6 +1,6 @@
 import { useCallback, useState } from 'react';
 import { errorMessage } from '../../lib/api';
-import { fmtEur, fmtR, PAGE_SIZES, type BookScheme, type BookTrade, type PageSize, type SchemeInput, type TradeInput } from '../../lib/book';
+import { fmtEur, fmtR, fmtR1, PAGE_SIZES, type BookScheme, type BookTrade, type PageSize, type SchemeInput, type TradeInput } from '../../lib/book';
 import { addToast } from '../../lib/toast';
 import { ConfirmPanel } from '../journal/ConfirmPanel';
 import { SchemePanel } from './SchemePanel';
@@ -80,6 +80,20 @@ export function BookPage() {
         <div className={styles.stat}><span className={styles.statLabel}>Neto R</span><span className={`${styles.statValue} ${styles.statBig} ${totals.netR >= 0 ? styles.green : styles.red}`}>{fmtR(totals.netR)}</span></div>
       </section>
 
+      <section aria-label="Totales" className={styles.totalsMobile}>
+        <span className={styles.statLabel}>{totals.schemes} esquemas{totals.pending > 0 && <span className={styles.gold}> · {totals.pending} en curso</span>}</span>
+        <div className={styles.mGrid2}>
+          <div className={styles.mField}><span className={styles.statLabel}>Neto €</span><span className={`${styles.mNetEur} ${totals.netEur >= 0 ? styles.green : styles.red}`}>{fmtEur(totals.netEur)}</span></div>
+          <div className={`${styles.mField} ${styles.mRight}`}><span className={styles.statLabel}>Neto R</span><span className={`${styles.mNetR} ${totals.netR >= 0 ? styles.green : styles.red}`}>{fmtR1(totals.netR)}</span></div>
+        </div>
+        <div className={styles.mGrid4}>
+          <div className={styles.mField}><span className={styles.statLabel}>Ganados</span><span className={`${styles.mCount} ${styles.green}`}>{totals.won}</span></div>
+          <div className={styles.mField}><span className={styles.statLabel}>Empates</span><span className={`${styles.mCount} ${styles.gold}`}>{totals.draws}</span></div>
+          <div className={styles.mField}><span className={styles.statLabel}>Perdidos</span><span className={`${styles.mCount} ${styles.red}`}>{totals.lost}</span></div>
+          <div className={`${styles.mField} ${styles.mRight}`}><span className={styles.statLabel}>% ganados</span><span className={styles.mCount}>{totals.winPct} %</span></div>
+        </div>
+      </section>
+
       {data.schemes.length === 0 ? (
         <div className={styles.empty}>Ningún esquema en esta selección.</div>
       ) : (
@@ -104,6 +118,12 @@ export function BookPage() {
           <span className={styles.pageNo}>{page} / {pages}</span>
           <button type="button" className={styles.pageBtn} disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Siguiente">›</button>
         </div>
+      </nav>
+
+      <nav aria-label="Paginación" className={styles.paginationMobile}>
+        <button type="button" className={styles.pageBtnMobile} disabled={page <= 1} onClick={() => setPage(page - 1)} aria-label="Anterior">‹</button>
+        <span className={styles.pageNo}>{page} / {pages} <span className={styles.muted}>· {pageSize} por pág.</span></span>
+        <button type="button" className={styles.pageBtnMobile} disabled={page >= pages} onClick={() => setPage(page + 1)} aria-label="Siguiente">›</button>
       </nav>
 
       <SchemePanel

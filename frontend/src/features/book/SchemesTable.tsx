@@ -1,12 +1,14 @@
 import { useState } from 'react';
 import {
-  fmtEur, fmtLots, fmtPips, fmtPrice, fmtR, fmtR1, fmtShort, resultLabel, resultTone,
+  fmtEur, fmtLots, fmtPips, fmtPrice, fmtR, fmtShort, resultLabel, resultTone,
   type BookScheme, type BookTrade,
 } from '../../lib/book';
+import { SchemeCard } from './SchemeCard';
 import styles from './SchemesTable.module.css';
 
 interface SchemesTableProps {
   schemes: BookScheme[];
+  onOpenOperations?: (scheme: BookScheme) => void;
   onEditScheme: (scheme: BookScheme) => void;
   onDeleteScheme: (scheme: BookScheme) => void;
   onNewTrade: (scheme: BookScheme) => void;
@@ -15,7 +17,6 @@ interface SchemesTableProps {
 }
 
 const TONE_CLASS = { green: styles.green, red: styles.red, gold: styles.gold, muted: styles.muted } as const;
-const CARD_CLASS = { green: styles.cardGreen, red: styles.cardRed, gold: styles.cardGold, muted: '' } as const;
 
 const signClass = (v: number | null): string => (v === null ? styles.muted : v >= 0 ? styles.green : styles.red);
 
@@ -33,7 +34,7 @@ function RowActions({ onEdit, onDelete }: { onEdit: () => void; onDelete: () => 
   );
 }
 
-export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade, onEditTrade, onDeleteTrade }: SchemesTableProps) {
+export function SchemesTable({ schemes, onOpenOperations, onEditScheme, onDeleteScheme, onNewTrade, onEditTrade, onDeleteTrade }: SchemesTableProps) {
   const [openId, setOpenId] = useState<number | null>(null);
   const toggle = (id: number) => setOpenId(current => (current === id ? null : id));
 
@@ -109,35 +110,18 @@ export function SchemesTable({ schemes, onEditScheme, onDeleteScheme, onNewTrade
       </div>
 
       <div className={styles.cards}>
-        {schemes.map(s => {
-          const open = openId === s.id;
-          return (
-            <article key={s.id} className={`${styles.card} ${CARD_CLASS[resultTone(s.result)]}`}>
-              <button type="button" className={styles.cardHead} onClick={() => toggle(s.id)} aria-expanded={open}>
-                <span className={styles.number}>#{s.number}</span>
-                <span className={`${styles.badge} ${TONE_CLASS[resultTone(s.result)]}`}>{resultLabel(s.result)}</span>
-              </button>
-              <div className={`${styles.cardLine} ${styles.dim}`}><span>{s.start} → {s.end ?? 'en curso'}</span><span>{s.tickets}</span></div>
-              <div className={styles.cardLine}><span>{s.tradesLine || '—'}</span><span className={signClass(s.netR)}>{fmtEur(s.netEur)} · {fmtR(s.netR)}</span></div>
-              {open && (
-                <div className={styles.cardOps}>
-                  {s.trades.map(t => (
-                    <div key={t.id} className={styles.cardOp}>
-                      <span className={styles.number}>{t.slot} <span className={t.direction === 'buy' ? styles.green : styles.red}>{t.direction}</span></span>
-                      <span className={styles.dim}>{t.ticket} · {fmtLots(t.lots)} l · {fmtPrice(t.entry)} → {t.closePrice === null ? 'en curso' : fmtPrice(t.closePrice)}</span>
-                      <span className={signClass(t.r)}>{t.r === null ? '…' : fmtR1(t.r)}R</span>
-                    </div>
-                  ))}
-                  <div className={styles.actions}>
-                    <button type="button" className={styles.newTradeBtn} onClick={() => onNewTrade(s)}>Nueva operación</button>
-                    <button type="button" className={styles.ghostBtn} onClick={() => onEditScheme(s)}>Editar</button>
-                    <button type="button" className={`${styles.ghostBtn} ${styles.ghostDanger}`} onClick={() => onDeleteScheme(s)}>Eliminar</button>
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
+        {schemes.map(s => (
+          <SchemeCard
+            key={s.id}
+            scheme={s}
+            open={openId === s.id}
+            onToggle={() => toggle(s.id)}
+            onOpenOperations={onOpenOperations ? () => onOpenOperations(s) : undefined}
+            onNewTrade={() => onNewTrade(s)}
+            onEdit={() => onEditScheme(s)}
+            onDelete={() => onDeleteScheme(s)}
+          />
+        ))}
       </div>
     </>
   );

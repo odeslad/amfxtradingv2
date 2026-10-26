@@ -189,62 +189,8 @@
 .opsTable td { white-space: nowrap; }
 .note { white-space: normal !important; max-width: 280px; color: var(--muted); }
 
-/* cards (mobile) */
+/* cards (mobile): SchemeCard */
 .cards { display: none; }
-
-.card {
-  padding: 10px 12px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-left: 3px solid var(--border-bright);
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.cardGreen { border-left-color: var(--green); }
-.cardRed { border-left-color: var(--red); }
-.cardGold { border-left-color: var(--gold); }
-
-.cardHead {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  background: transparent;
-  border: none;
-  padding: 0;
-  text-align: left;
-  color: var(--text);
-  font-family: var(--font-mono);
-  font-size: var(--text-md);
-}
-
-.cardLine {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  font-family: var(--font-mono);
-  font-size: var(--text-base);
-}
-
-.cardOps {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding-top: 6px;
-  border-top: 1px solid var(--border);
-}
-
-.cardOp {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 8px;
-  align-items: baseline;
-  font-family: var(--font-mono);
-  font-size: var(--text-base);
-}
 
 @media (max-width: 768px) {
   .wrapper { display: none; }

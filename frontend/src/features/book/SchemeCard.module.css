@@ -1,0 +1,165 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  padding: 0 12px 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--border-bright);
+}
+
+.cardOpen { border-color: rgba(245, 166, 35, 0.4); }
+
+.borderGreen { border-left-color: var(--green); }
+.borderRed { border-left-color: var(--red); }
+.borderGold { border-left-color: var(--gold); }
+
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  min-height: 44px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.number {
+  font-family: var(--font-mono);
+  font-size: var(--text-xl);
+  color: var(--orange);
+}
+
+/* Plain coloured text: never looks like a button. */
+.result {
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  align-items: end;
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  padding: 10px 0 12px;
+  border-top: 1px solid var(--border);
+  align-items: end;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.right { align-items: flex-end; }
+
+.label {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.value {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.mid { font-size: var(--text-xl); }
+
+/* Same size as the Positions P&L. */
+.big {
+  font-size: var(--text-3xl);
+  line-height: 1;
+}
+
+.green { color: var(--green); }
+.red { color: var(--red); }
+.gold { color: var(--gold); }
+
+.opsBtn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  height: 48px;
+  padding: 0 12px;
+  background: var(--bg);
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  cursor: pointer;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+}
+
+.opsLabel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--text-base);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+}
+
+.pill {
+  font-family: var(--font-mono);
+  font-size: var(--text-md);
+  letter-spacing: 0;
+  padding: 1px 7px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.opsRight {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--text-sm);
+}
+
+.chevron {
+  color: var(--muted);
+  font-size: var(--text-xl);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.actBtn {
+  flex: 1;
+  height: 44px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.actNew {
+  color: var(--green);
+  border-color: var(--green);
+}
+
+.actDelete {
+  color: var(--red);
+  border-color: rgba(224, 92, 92, 0.6);
+}

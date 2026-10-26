@@ -3,6 +3,7 @@
 | Tarea | Mecanismo | Comandos | Resultado | Est | Real |
 |---|---|---|---|---|---|
 | 1 [frontend] | build + lint + app local en ancho de escritorio | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa | 2 | 1 |
+| 2 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · Vite en el 5174, modo dispositivo | ✅ pasa | 1,5 | 1 |
 
 ## Evidencia
 
@@ -14,3 +15,11 @@ barra de pestañas por año con + Nuevo esquema a la derecha, franja de totales 
 Journal (Editar naranja / Eliminar rojo) en filas de esquema y operación que abren los paneles correctos
 sin plegar la fila, operaciones en 10 columnas sin scroll lateral, resultado sin borde, paginación ‹ ›
 compacta. La disposición del teléfono no cambia hasta las tareas 2–3, como se esperaba.
+
+### Tarea 2
+
+Build y lint limpios; aceptada por el usuario el 26-10-2026 antes de pasar a la tarea 3: pestañas de año a
+ancho completo y + Nuevo esquema de 44 px, bloque de totales (título, Neto € / Neto R a 28 px, cuatro
+recuentos con etiqueta), la nueva `SchemeCard` cerrada (▸ #N, resultado, Inicio / Neto € / Neto R) y
+abierta (rejilla con etiquetas, tres acciones de 44 px), paginación de 44 px. Ver operaciones llega con la
+tarea 3.

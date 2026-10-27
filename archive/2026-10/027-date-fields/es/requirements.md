@@ -1,6 +1,6 @@
 # 027 — Un único campo de fecha para toda la app
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

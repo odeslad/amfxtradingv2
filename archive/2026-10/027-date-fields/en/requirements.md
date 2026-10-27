@@ -1,6 +1,6 @@
 # 027 — One date field for the whole app
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

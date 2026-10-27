@@ -19,6 +19,8 @@ export function StatsTotals({ stats }: StatsTotalsProps) {
   const returnClass = signClass(stats.returnPct);
   const net = fmtPnl(stats.netPnl, stats.currency);
   const tradesPerMonth = fmt(stats.tradesPerMonth, 1);
+  // The account balance the return is measured against (also with an asset selected).
+  const startBalance = stats.startBalance === null ? '—' : `${fmt(stats.startBalance, 2)} ${stats.currency}`.trim();
 
   return (
     <>
@@ -27,7 +29,8 @@ export function StatsTotals({ stats }: StatsTotalsProps) {
         <div className={styles.stat}><span className={styles.label}>Win rate</span><span className={styles.value}>{winRate}</span></div>
         <div className={styles.stat}><span className={styles.label}>Trades / mes</span><span className={styles.value}>{tradesPerMonth}</span></div>
         <div className={styles.stat}><span className={styles.label}>Cash flow</span><span className={`${styles.value} ${asset ? styles.muted : signClass(stats.cashFlow)}`}>{cashFlow}</span></div>
-        <div className={`${styles.stat} ${styles.push}`}><span className={styles.label}>Return</span><span className={`${styles.value} ${styles.big} ${returnClass}`}>{returnPct}</span></div>
+        <div className={`${styles.stat} ${styles.push}`}><span className={styles.label}>Balance inicial</span><span className={styles.value}>{startBalance}</span></div>
+        <div className={styles.stat}><span className={styles.label}>Return</span><span className={`${styles.value} ${styles.big} ${returnClass}`}>{returnPct}</span></div>
         <div className={styles.stat}><span className={styles.label}>Net P&amp;L</span><span className={`${styles.value} ${styles.big} ${signClass(stats.netPnl)}`}>{net}</span></div>
       </section>
 
@@ -39,7 +42,7 @@ export function StatsTotals({ stats }: StatsTotalsProps) {
         <div className={styles.blockRow}>
           <div className={styles.field}><span className={styles.label}>Trades</span><span className={styles.count}>{stats.trades}</span></div>
           <div className={styles.field}><span className={styles.label}>Win rate</span><span className={styles.count}>{winRate}</span></div>
-          <div className={styles.field}><span className={styles.label}>T / mes</span><span className={styles.count}>{tradesPerMonth}</span></div>
+          <div className={styles.field}><span className={styles.label}>Balance ini.</span><span className={styles.count}>{startBalance}</span></div>
           <div className={`${styles.field} ${styles.right}`}><span className={styles.label}>Cash flow</span><span className={`${styles.count} ${asset ? styles.muted : signClass(stats.cashFlow)}`}>{cashFlow}</span></div>
         </div>
       </section>

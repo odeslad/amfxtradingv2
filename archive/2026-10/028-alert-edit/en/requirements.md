@@ -1,6 +1,6 @@
 # 028 — Edit price alerts
 
-> Status: **draft**
+> Status: **closed**
 > Mockup: [Edición de alertas](https://claude.ai/artifact/7LbhQNyWn6sAVVnpQWW19A) (approved)
 
 ## Context

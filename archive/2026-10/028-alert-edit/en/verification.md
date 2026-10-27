@@ -22,6 +22,33 @@
 
 - **Mechanism:** `npm run build` + `eslint src/features/chart/` + check on the iPhone in production.
 - **Commands:** `cd frontend && npm run build` → ✓ built; eslint → clean.
-- **Outcome:** 🕐 pending — the user tests it on the iPhone after the deploy (task 4).
+- **Outcome:** ✅ pass — confirmed by the user on the iPhone in production.
 - **Evidence:** selecting an alert on the chart shows `AlertActionBar` at the bottom of the chart (phone width only): Edit price (opens the Alerts panel editing that alert), On/Off, Delete; the bar goes when the alert is deselected, deleted or the symbol changes. Touch hit tolerance raised to 18 px (mouse stays 6 px) so a finger can grab alert and SL/TP lines.
 - **Est vs Actual:** 1.5 SP vs 1.5 SP.
+
+## Task 4 — Push and production validation
+
+- **Mechanism:** manual (user validation).
+- **Commands:** `git push origin master` (29ea650, 49eaf87, eeba0ff) → "Deploy Frontend to VPS" ✓ success.
+- **Outcome:** ✅ pass — the user confirmed /chart on the iPhone (drag, action bar, panel edit, re-arm).
+- **Est vs Actual:** 0.5 SP vs 0.25 SP.
+
+## Task 5 — Close
+
+- **Outcome:** ✅ — build re-run green; spec closed and archived under `archive/2026-10/`.
+- **Est vs Actual:** 0.25 SP vs 0.25 SP.
+
+## Totals
+
+| Task | Est | Actual |
+|---|---|---|
+| 1 | 2 | 2.5 |
+| 2 | 3 | 3 |
+| 3 | 1.5 | 1.5 |
+| 4 | 0.5 | 0.25 |
+| 5 | 0.25 | 0.25 |
+| **Total** | **7.25** | **7.5** |
+
+**Calibration:** on target; the overrun came from mockup-driven UI tweaks to the panel, the chart work matched its estimate.
+
+**Deviations agreed:** whole-row edit, Positions-style sliding buttons, current price on its own row, selection line stopping before the label, 18 px touch tolerance (also applies to SL/TP), Esc and no-op release apply to SL/TP too.

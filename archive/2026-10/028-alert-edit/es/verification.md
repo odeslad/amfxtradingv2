@@ -22,6 +22,33 @@
 
 - **Mecanismo:** `npm run build` + `eslint src/features/chart/` + prueba en el iPhone en producción.
 - **Comandos:** `cd frontend && npm run build` → ✓ built; eslint → limpio.
-- **Resultado:** 🕐 pendiente — el usuario lo prueba en el iPhone tras el despliegue (tarea 4).
+- **Resultado:** ✅ pass — confirmado por el usuario en el iPhone en producción.
 - **Evidencia:** al seleccionar una alerta en el gráfico aparece `AlertActionBar` abajo del gráfico (solo a ancho de móvil): Edit price (abre el panel de alertas editando esa alerta), On/Off, Delete; la barra se va al deseleccionar, borrar la alerta o cambiar de símbolo. Tolerancia táctil subida a 18 px (el ratón sigue en 6 px) para que el dedo enganche las líneas de alertas y SL/TP.
 - **Est vs Actual:** 1,5 SP vs 1,5 SP.
+
+## Tarea 4 — Push y validación en producción
+
+- **Mecanismo:** manual (validación del usuario).
+- **Comandos:** `git push origin master` (29ea650, 49eaf87, eeba0ff) → "Deploy Frontend to VPS" ✓ success.
+- **Resultado:** ✅ pass — el usuario confirmó /chart en el iPhone (arrastre, barra de acciones, edición en el panel, reactivación).
+- **Est vs Actual:** 0,5 SP vs 0,25 SP.
+
+## Tarea 5 — Cierre
+
+- **Resultado:** ✅ — build repetido en verde; spec cerrada y archivada en `archive/2026-10/`.
+- **Est vs Actual:** 0,25 SP vs 0,25 SP.
+
+## Totales
+
+| Tarea | Est | Real |
+|---|---|---|
+| 1 | 2 | 2,5 |
+| 2 | 3 | 3 |
+| 3 | 1,5 | 1,5 |
+| 4 | 0,5 | 0,25 |
+| 5 | 0,25 | 0,25 |
+| **Total** | **7,25** | **7,5** |
+
+**Calibración:** en línea; el exceso vino de ajustes de UI del panel sobre la maqueta, el trabajo del gráfico cuadró con su estimación.
+
+**Desviaciones acordadas:** edición desde toda la fila, botones deslizantes estilo Positions, precio actual en su propia fila, línea de selección que se corta antes de la etiqueta, tolerancia táctil de 18 px (también SL/TP), Esc y soltar sin cambio aplican también a SL/TP.

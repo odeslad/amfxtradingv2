@@ -1,6 +1,6 @@
 # 028 — Editar alertas de precio
 
-> Estado: **borrador**
+> Estado: **cerrada**
 > Maqueta: [Edición de alertas](https://claude.ai/artifact/7LbhQNyWn6sAVVnpQWW19A) (aprobada)
 
 ## Contexto

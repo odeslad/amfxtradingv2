@@ -11,7 +11,7 @@ import type { Position } from '../journal/utils/position';
 import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection, type SymbolVariant } from './DrawingTools';
 
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
-import { type PnlMode, isPending, isBuySide, TYPE_LABEL } from '../journal/utils/position';
+import { type PnlMode, isPending, isBuySide, pipSize, TYPE_LABEL } from '../journal/utils/position';
 
 // Imperative handle: the live candle is pushed straight into the series from the
 // WebSocket handler, so the page does not re-render per tick (spec 019).
@@ -94,7 +94,7 @@ interface PositionLabel {
   visible: boolean;
 }
 
-interface DraggableLevel {
+interface PositionLevel {
   id: string;
   kind: 'sl' | 'tp';
   ticket: number;
@@ -106,8 +106,29 @@ interface DraggableLevel {
   tp: number;
 }
 
+interface AlertLevel {
+  id: string;
+  kind: 'alert';
+  alertId: number;
+  price: number;
+}
+
+type DraggableLevel = PositionLevel | AlertLevel;
+
+interface ChartAlert {
+  id: number;
+  price: number;
+  enabled: boolean;
+  direction: 'above' | 'below';
+}
+
+const alertLevelId = (alertId: number) => `alert-${alertId}`;
+// Unselected alerts have no line: only their marker and label next to the price axis grab the pointer.
+const ALERT_MARKER_HIT_W = 90;
+
 interface DragState {
   level: DraggableLevel;
+  startPrice: number;
   currentPrice: number;
 }
 
@@ -192,19 +213,31 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   trendlineAppearance?: TrendlineAppearance;
   accountBalance?: number;
   pnlMode?: PnlMode;
-  alerts?: { id: number; price: number; enabled: boolean }[];
+  alerts?: ChartAlert[];
+  onMoveAlert?: (alertId: number, price: number) => Promise<void>;
   showNewTrade?: boolean;
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, onMoveAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const alertsRef = useRef(alerts);
   const drawRolloversRef = useRef<() => void>(() => { });
+  // Dragged alert prices (alert id -> price), kept after release until the list catches up (spec 028).
+  const alertPriceOverrideRef = useRef<Map<number, number>>(new Map());
+  const onMoveAlertRef = useRef(onMoveAlert);
+  useEffect(() => { onMoveAlertRef.current = onMoveAlert; }, [onMoveAlert]);
   // A created, toggled or deleted alert repaints its marker at once (spec 025).
-  useEffect(() => { alertsRef.current = alerts; drawRolloversRef.current(); }, [alerts]);
+  useEffect(() => {
+    alertsRef.current = alerts;
+    for (const [id, price] of alertPriceOverrideRef.current) {
+      const alert = alerts?.find(a => a.id === id);
+      if (!alert || Math.abs(alert.price - price) < 1e-9) alertPriceOverrideRef.current.delete(id);
+    }
+    drawRolloversRef.current();
+  }, [alerts]);
 
   // Double activation that works on both desktop (dblclick) and touch (two quick
   // taps), since onDoubleClick doesn't fire reliably on touch devices.
@@ -254,6 +287,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const [hasDrawings, setHasDrawings] = useState(false);
   const [positionLabels, setPositionLabels] = useState<PositionLabel[]>([]);
   const [hoverOhlc, setHoverOhlc] = useState<{ open: number; high: number; low: number; close: number } | null>(null);
+
+  const alertDisplayPrice = useCallback((alert: ChartAlert): number => {
+    const drag = dragStateRef.current;
+    if (drag?.level.kind === 'alert' && drag.level.alertId === alert.id) return drag.currentPrice;
+    return alertPriceOverrideRef.current.get(alert.id) ?? alert.price;
+  }, []);
 
   const onDrawDoneRef = useRef(onDrawDone);
   useEffect(() => { onDrawDoneRef.current = onDrawDone; }, [onDrawDone]);
@@ -340,7 +379,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       // redraw the overlay (alert triangles) when their Y position shifts
       const list = alertsRef.current;
       if (series && list) {
-        const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(a.price) ?? -1) | 0}`).join('|');
+        const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(alertDisplayPrice(a)) ?? -1) | 0}`).join('|')
+          + `#${selectedLevelIdRef.current ?? ''}`;
         if (sig !== lastAlertSig) {
           lastAlertSig = sig;
           drawRolloversRef.current();
@@ -351,7 +391,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [alertDisplayPrice]);
 
   // Left-pointing triangle markers pinned to the right edge of the pane (before
   // the price axis) with the alert price as a label. Orange when armed, grey off.
@@ -371,13 +411,40 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     ctx.textBaseline = 'middle';
     ctx.textAlign = 'right';
 
+    const precision = precisionRef.current;
+    const drag = dragStateRef.current;
+
+    // The line stops short of the price label so it never strikes through it.
+    const dashedLine = (y: number, color: string, endX: number) => {
+      ctx.save();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      ctx.moveTo(0, Math.round(y) + 0.5);
+      ctx.lineTo(endX, Math.round(y) + 0.5);
+      ctx.stroke();
+      ctx.restore();
+    };
+
     for (const alert of list) {
-      const y = series.priceToCoordinate(alert.price);
+      const levelId = alertLevelId(alert.id);
+      const dragging = drag?.level.id === levelId;
+      const selected = dragging || selectedLevelIdRef.current === levelId;
+      const price = alertDisplayPrice(alert);
+      const y = series.priceToCoordinate(price);
       if (y === null || y < 0 || y > bottom) continue;
 
       const color = alert.enabled ? '#f5a623' : '#666666';
       const size = 4;
       const tipX = right - 5; // overlap the price-axis edge slightly
+
+      const labelLeft = tipX - 4 - ctx.measureText(String(price)).width;
+      if (dragging) {
+        const fromY = series.priceToCoordinate(drag.startPrice);
+        if (fromY !== null) dashedLine(fromY, 'rgba(245,166,35,0.25)', tipX - 2);
+      }
+      if (selected && !dragging) dashedLine(y, '#f5a623', labelLeft - 6);
 
       // triangle pointing left
       ctx.fillStyle = color;
@@ -388,10 +455,35 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       ctx.closePath();
       ctx.fill();
 
+      if (dragging) {
+        // live label centred on the line next to the axis; pips only on desktop (spec 028)
+        const arrow = alert.direction === 'above' ? '▲' : '▼';
+        const pips = (price - drag.startPrice) / pipSize(symbolRef.current);
+        const isPhone = window.matchMedia('(max-width: 768px)').matches;
+        const text = isPhone
+          ? `${arrow} ${fmtPrice(price, precision)}`
+          : `${arrow} ${fmtPrice(price, precision)} · ${pips >= 0 ? '+' : ''}${pips.toFixed(1)} pips`;
+        ctx.font = '11px "DM Mono", monospace';
+        const boxW = ctx.measureText(text).width + 16;
+        const boxH = 20;
+        const boxX = tipX - 4 - boxW;
+        const boxY = Math.round(y - boxH / 2);
+        dashedLine(y, '#f5a623', boxX - 4);
+        ctx.fillStyle = '#1e1e1e';
+        ctx.fillRect(boxX, boxY, boxW, boxH);
+        ctx.strokeStyle = '#f5a623';
+        ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxW - 1, boxH - 1);
+        ctx.fillStyle = '#f5a623';
+        ctx.fillText(text, boxX + boxW - 8, y + 1);
+        ctx.font = '9px "DM Mono", monospace';
+        continue;
+      }
+
       // price label to the left of the triangle, nudged down 1px for visual alignment
-      ctx.fillText(String(alert.price), tipX - 4, y + 1);
+      ctx.fillStyle = color;
+      ctx.fillText(String(price), tipX - 4, y + 1);
     }
-  }, []);
+  }, [alertDisplayPrice]);
 
   const drawRollovers = useCallback(() => {
     const canvas = overlayRef.current;
@@ -918,7 +1010,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       markersRef.current = createSeriesMarkers(series, markers);
     }
 
-    if (selectedLevelIdRef.current && !draggable.some(l => l.id === selectedLevelIdRef.current)) {
+    const selectedId = selectedLevelIdRef.current;
+    if (selectedId && !selectedId.startsWith('alert-') && !draggable.some(l => l.id === selectedId)) {
       selectedLevelIdRef.current = null;
     }
     draggableRef.current = draggable;
@@ -938,13 +1031,27 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       return clientY - rect.top;
     };
 
-    const findHit = (clientY: number): DraggableLevel | null => {
+    // Alerts join the SL/TP levels (spec 028). An unselected alert is only grabbed
+    // near its marker, so pressing elsewhere at that height still pans the chart.
+    const alertLevels = (clientX: number): AlertLevel[] => {
+      const chart = chartRef.current;
+      if (!chart) return [];
+      const rect = container.getBoundingClientRect();
+      const paneRight = rect.width - chart.priceScale('right').width();
+      const x = clientX - rect.left;
+      const nearMarker = x >= paneRight - ALERT_MARKER_HIT_W;
+      return (alertsRef.current ?? [])
+        .map(a => ({ id: alertLevelId(a.id), kind: 'alert' as const, alertId: a.id, price: alertDisplayPrice(a) }))
+        .filter(l => nearMarker || selectedLevelIdRef.current === l.id);
+    };
+
+    const findHit = (clientX: number, clientY: number): DraggableLevel | null => {
       const series = seriesRef.current;
       if (!series) return null;
       const y = yToClientOffset(clientY);
       let best: DraggableLevel | null = null;
       let bestDist = HIT_PX;
-      for (const lvl of draggableRef.current) {
+      for (const lvl of [...draggableRef.current, ...alertLevels(clientX)]) {
         const ly = series.priceToCoordinate(lvl.price);
         if (ly === null) continue;
         const dist = Math.abs(ly - y);
@@ -957,6 +1064,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       const drag = dragStateRef.current;
       if (!drag) return;
       drag.currentPrice = price;
+      if (drag.level.kind === 'alert') { drawRolloversRef.current(); return; }
       const line = priceLinesRef.current.get(drag.level.id);
       line?.applyOptions({ price });
       // live label update
@@ -980,13 +1088,23 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       if (prev) applySelectionStyle(prev, false);
       if (id) applySelectionStyle(id, true);
       selectedLevelIdRef.current = id;
+      // alert selection is painted on the overlay
+      if (prev?.startsWith('alert-') || id?.startsWith('alert-')) drawRolloversRef.current();
+    };
+
+    // Esc during a drag puts the level back and saves nothing (spec 028).
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !dragStateRef.current) return;
+      e.preventDefault();
+      applyDragPrice(dragStateRef.current.startPrice);
+      endDrag(false);
     };
 
     // Two-step interaction: pointer-down on an unselected level only selects
     // it; dragging starts on a level that is already selected. Pointer-down
     // away from any level deselects.
-    const startDrag = (clientY: number): boolean => {
-      const hit = findHit(clientY);
+    const startDrag = (clientX: number, clientY: number): boolean => {
+      const hit = findHit(clientX, clientY);
       if (!hit) {
         setSelectedLevel(null);
         return false;
@@ -995,9 +1113,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
         setSelectedLevel(hit.id);
         return true;
       }
-      dragStateRef.current = { level: hit, currentPrice: hit.price };
+      dragStateRef.current = { level: hit, startPrice: hit.price, currentPrice: hit.price };
       chartRef.current?.applyOptions({ handleScroll: false, handleScale: false });
       container.style.cursor = 'ns-resize';
+      document.addEventListener('keydown', onKeyDown, true);
       return true;
     };
 
@@ -1010,13 +1129,30 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       applyDragPrice(price);
     };
 
-    const endDrag = () => {
+    const endDrag = (save = true) => {
       const drag = dragStateRef.current;
       dragStateRef.current = null;
+      document.removeEventListener('keydown', onKeyDown, true);
       chartRef.current?.applyOptions({ handleScroll: true, handleScale: true });
       container.style.cursor = '';
       if (!drag) return;
-      const { level, currentPrice } = drag;
+      const { level, startPrice } = drag;
+      const currentPrice = Number(drag.currentPrice.toFixed(precisionRef.current));
+      if (!save || Math.abs(currentPrice - startPrice) < 1e-9) {
+        if (level.kind === 'alert') drawRolloversRef.current();
+        return;
+      }
+      if (level.kind === 'alert') {
+        // keep the dragged price until the list refresh brings it; drop it if the save fails
+        const { alertId } = level;
+        alertPriceOverrideRef.current.set(alertId, currentPrice);
+        drawRolloversRef.current();
+        onMoveAlertRef.current?.(alertId, currentPrice).catch(() => {
+          alertPriceOverrideRef.current.delete(alertId);
+          drawRolloversRef.current();
+        });
+        return;
+      }
       const sl = level.kind === 'sl' ? currentPrice : level.sl;
       const tp = level.kind === 'tp' ? currentPrice : level.tp;
       // keep the dragged value optimistically until server feedback matches
@@ -1024,17 +1160,17 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       onModifyRef.current?.(level.ticket, sl, tp);
     };
 
-    const onMouseDown = (e: MouseEvent) => { if (startDrag(e.clientY)) { e.preventDefault(); e.stopPropagation(); } };
+    const onMouseDown = (e: MouseEvent) => { if (startDrag(e.clientX, e.clientY)) { e.preventDefault(); e.stopPropagation(); } };
     const onMouseMove = (e: MouseEvent) => {
       if (dragStateRef.current) { moveDrag(e.clientY); return; }
       // hover affordance
-      container.style.cursor = findHit(e.clientY) ? 'ns-resize' : '';
+      container.style.cursor = findHit(e.clientX, e.clientY) ? 'ns-resize' : '';
     };
     const onMouseUp = () => { if (dragStateRef.current) endDrag(); };
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (t && startDrag(t.clientY)) { e.preventDefault(); e.stopPropagation(); }
+      if (t && startDrag(t.clientX, t.clientY)) { e.preventDefault(); e.stopPropagation(); }
     };
     const onTouchMove = (e: TouchEvent) => {
       if (!dragStateRef.current) return;
@@ -1057,8 +1193,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       container.removeEventListener('touchstart', onTouchStart, true);
       document.removeEventListener('touchmove', onTouchMove, true);
       document.removeEventListener('touchend', onTouchEnd, true);
+      document.removeEventListener('keydown', onKeyDown, true);
     };
-  }, []);
+  }, [alertDisplayPrice]);
 
   const legendPrecision = getPricePrecision(symbol);
 

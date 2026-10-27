@@ -118,9 +118,18 @@ export function ChartPage() {
   const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, updatePrice: updateAlertPrice, remove: removeAlert } = useAlerts();
   const { alerts: emaAlerts, create: createEmaAlert, toggle: toggleEmaAlert, remove: removeEmaAlert } = useEmaAlerts();
   const chartAlerts = useMemo(
-    () => alerts.filter(a => a.broker === broker && a.symbol === symbol).map(a => ({ id: a.id, price: a.price, enabled: a.enabled })),
+    () => alerts.filter(a => a.broker === broker && a.symbol === symbol).map(a => ({ id: a.id, price: a.price, enabled: a.enabled, direction: a.direction })),
     [alerts, broker, symbol],
   );
+  // Dragged on the chart (spec 028): the chart drops its optimistic price when this rejects.
+  const moveAlert = useCallback(async (id: number, price: number) => {
+    try {
+      await updateAlertPrice(id, price);
+    } catch (err) {
+      addToast(errorMessage(err, 'Failed to move alert'), 'error');
+      throw err;
+    }
+  }, [updateAlertPrice]);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [positions, setPositions] = useState<Position[]>([]);
@@ -584,7 +593,7 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} onMoveAlert={moveAlert} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>

@@ -42,9 +42,9 @@ export function StatsTotals({ stats }: StatsTotalsProps) {
         <div className={styles.blockRow}>
           <div className={styles.field}><span className={styles.label}>Trades</span><span className={styles.count}>{stats.trades}</span></div>
           <div className={styles.field}><span className={styles.label}>Win rate</span><span className={styles.count}>{winRate}</span></div>
-          <div className={styles.field}><span className={styles.label}>Balance ini.</span><span className={styles.count}>{startBalance}</span></div>
           <div className={`${styles.field} ${styles.right}`}><span className={styles.label}>Cash flow</span><span className={`${styles.count} ${asset ? styles.muted : signClass(stats.cashFlow)}`}>{cashFlow}</span></div>
         </div>
+        <div className={styles.blockLine}><span className={styles.label}>Balance inicial</span><span className={styles.count}>{startBalance}</span></div>
       </section>
     </>
   );

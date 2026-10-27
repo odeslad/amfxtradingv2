@@ -65,7 +65,7 @@
 
   .blockRow {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 8px;
     padding-top: 10px;
     border-top: 1px solid var(--border);
@@ -76,6 +76,16 @@
     flex-direction: column;
     gap: 4px;
     min-width: 0;
+  }
+
+  /* The start balance gets its own line: too wide to share the row (spec 029). */
+  .blockLine {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 12px;
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
   }
 
   .right { align-items: flex-end; }

@@ -117,11 +117,6 @@
   background-image: none;
 }
 
-.dateInput::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
-  cursor: pointer;
-}
-
 .resetBtn {
   height: 34px;
   background: transparent;

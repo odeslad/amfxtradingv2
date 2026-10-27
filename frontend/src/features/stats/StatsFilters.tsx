@@ -1,4 +1,5 @@
 import { type DateRange, DATE_RANGE_OPTIONS } from '../journal/utils/dateRange';
+import { IsoDateField } from '../../shared/ui/DateField';
 import styles from './StatsFilters.module.css';
 
 export interface StatsFilterValues {
@@ -37,24 +38,12 @@ export function StatsFilters({ brokers, values, onChange }: StatsFiltersProps) {
       {values.dateRange === 'custom' && (
         <>
           <div className={styles.field}>
-            <label className={styles.label}>From</label>
-            <input
-              className={`${styles.input} ${styles.dateInput}`}
-              type="date"
-              value={values.dateFrom}
-              max={values.dateTo || undefined}
-              onChange={set('dateFrom')}
-            />
+            <label className={styles.label} htmlFor="stats-date-from">From</label>
+            <IsoDateField id="stats-date-from" className={`${styles.input} ${styles.dateInput}`} value={values.dateFrom} onChange={iso => onChange({ ...values, dateFrom: iso })} />
           </div>
           <div className={styles.field}>
-            <label className={styles.label}>To</label>
-            <input
-              className={`${styles.input} ${styles.dateInput}`}
-              type="date"
-              value={values.dateTo}
-              min={values.dateFrom || undefined}
-              onChange={set('dateTo')}
-            />
+            <label className={styles.label} htmlFor="stats-date-to">To</label>
+            <IsoDateField id="stats-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: iso })} />
           </div>
         </>
       )}

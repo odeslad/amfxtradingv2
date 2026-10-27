@@ -3,6 +3,7 @@ import { apiFetch, errorMessage, isAbortError } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import { TIMEFRAMES, type EmaNotification, type NotificationDirection, type NotificationEvent, type NotificationInput } from '../../lib/useEmaNotifications';
 import { useVisibility, visibleSymbols } from '../../lib/visibility';
+import { DateField } from '../../shared/ui/DateField';
 import styles from '../journal/BulkEditPanel.module.css';
 import own from './NotificationPanel.module.css';
 
@@ -105,7 +106,7 @@ export function NotificationPanel({ open, brokers, notification, nonce, onSave, 
     if (!Number.isInteger(emaFast) || !Number.isInteger(emaSlow) || emaFast < 1 || emaSlow < 1 || emaFast === emaSlow) { addToast('EMA periods must be positive and different', 'error'); return; }
     if (fields.event !== 'cross' && !(threshold > 0)) { addToast('The approach threshold must be a positive number of pips', 'error'); return; }
     if (fields.repeat === 'every' && !(Number.isInteger(minutes) && minutes >= 1)) { addToast('Repeat every N minutes needs a whole number ≥ 1', 'error'); return; }
-    if (fields.endsAt.trim() !== '' && endsAt === null) { addToast('Ends must be dd/mm/yyyy hh:mm', 'error'); return; }
+    if (fields.endsAt.trim() !== '' && endsAt === null) { addToast('Ends must be DD/MM/YYYY HH:MM', 'error'); return; }
     setBusy(true);
     try {
       await onSave({
@@ -215,8 +216,8 @@ export function NotificationPanel({ open, brokers, notification, nonce, onSave, 
           </div>
 
           <div className={styles.field}>
-            <label className={styles.label}>Ends <em className={own.hintInline}>· empty = no end</em></label>
-            <input type="text" inputMode="numeric" className={styles.input} placeholder="dd/mm/yyyy hh:mm" value={fields.endsAt} onChange={e => set('endsAt')(e.target.value)} />
+            <label className={styles.label} htmlFor="notification-ends">Ends <em className={own.hintInline}>· empty = no end</em></label>
+            <DateField id="notification-ends" mode="datetime" className={styles.input} value={fields.endsAt} onChange={set('endsAt')} />
           </div>
 
           <div className={styles.field}>

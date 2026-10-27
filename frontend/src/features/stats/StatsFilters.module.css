@@ -53,11 +53,6 @@
   background-image: none;
 }
 
-.dateInput::-webkit-calendar-picker-indicator {
-  filter: invert(0.6);
-  cursor: pointer;
-}
-
 @media (max-width: 768px) {
   .field {
     flex: 1 1 100%;

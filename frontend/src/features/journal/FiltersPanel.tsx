@@ -1,5 +1,6 @@
 import { POSITION_COLORS, POSITION_COLOR_VALUES, type PositionColor } from './utils/position';
 import { type DateRange, DATE_RANGE_OPTIONS } from './utils/dateRange';
+import { IsoDateField } from '../../shared/ui/DateField';
 import styles from './FiltersPanel.module.css';
 
 export interface FilterValues {
@@ -97,24 +98,12 @@ export function FiltersPanel({ open, onClose, values, options, onChange, showDat
               {values.dateRange === 'custom' && (
                 <div className={styles.row}>
                   <div className={styles.field}>
-                    <label className={styles.label}>From</label>
-                    <input
-                      className={`${styles.input} ${styles.dateInput}`}
-                      type="date"
-                      value={values.dateFrom}
-                      max={values.dateTo || undefined}
-                      onChange={set('dateFrom')}
-                    />
+                    <label className={styles.label} htmlFor="journal-date-from">From</label>
+                    <IsoDateField id="journal-date-from" className={`${styles.input} ${styles.dateInput}`} value={values.dateFrom} onChange={iso => onChange({ ...values, dateFrom: iso })} />
                   </div>
                   <div className={styles.field}>
-                    <label className={styles.label}>To</label>
-                    <input
-                      className={`${styles.input} ${styles.dateInput}`}
-                      type="date"
-                      value={values.dateTo}
-                      min={values.dateFrom || undefined}
-                      onChange={set('dateTo')}
-                    />
+                    <label className={styles.label} htmlFor="journal-date-to">To</label>
+                    <IsoDateField id="journal-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: iso })} />
                   </div>
                 </div>
               )}

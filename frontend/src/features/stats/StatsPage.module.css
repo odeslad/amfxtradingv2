@@ -1,22 +1,18 @@
-.page {}
-
-.tiles {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 12px;
-  margin-bottom: 24px;
+/* Desktop: a full-height column; the chart takes the rest of the viewport (spec 029). */
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  height: 100%;
+  min-height: 0;
 }
 
 .split {
+  flex: 1;
+  min-height: 320px;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
-  align-items: stretch;
-}
-
-.chartPane {
-  min-width: 0;
-  display: flex;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 20px;
 }
 
 .empty {
@@ -27,24 +23,16 @@
   letter-spacing: var(--tracking-normal);
 }
 
-@media (max-width: 1024px) {
-  .tiles {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-
 @media (max-width: 768px) {
-  .tiles {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 8px;
+  .page {
+    height: auto;
+    gap: 12px;
   }
 
   .split {
+    flex: none;
+    min-height: 0;
     grid-template-columns: minmax(0, 1fr);
-    gap: 16px;
-  }
-
-  .chartPane {
-    order: -1;
+    gap: 12px;
   }
 }

@@ -1,14 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
-import { isBrokerVisible, useVisibility } from '../../lib/visibility';
+import { isBrokerVisible, useVisibility, visibleSymbols } from '../../lib/visibility';
 import { dateRangeBounds, normalizeDateRange } from '../journal/utils/dateRange';
-import { fmt, fmtPnl } from '../journal/utils/position';
 import { StatsFilters, type StatsFilterValues } from './StatsFilters';
-import { StatTile, type StatTone } from './StatTile';
+import { StatsTotals } from './StatsTotals';
 import { MonthlyBreakdown } from './MonthlyBreakdown';
 import { BalanceChart } from './BalanceChart';
-import { fmtPct } from './format';
 import type { BrokerStats } from './types';
 import styles from './StatsPage.module.css';
 
@@ -18,9 +16,7 @@ interface StatsResult {
   error?: string;
 }
 
-const DEFAULT_FILTERS: StatsFilterValues = { broker: '', dateRange: '', dateFrom: '', dateTo: '' };
-
-const toneOf = (n: number): StatTone => (n > 0 ? 'positive' : n < 0 ? 'negative' : 'neutral');
+const DEFAULT_FILTERS: StatsFilterValues = { broker: '', symbol: '', dateRange: '', dateFrom: '', dateTo: '' };
 
 export function StatsPage() {
   const [storedFilters, setFilters] = useLocalStorage<StatsFilterValues>('stats.filters', DEFAULT_FILTERS);
@@ -34,6 +30,8 @@ export function StatsPage() {
   const brokers = useMemo(() => allBrokers.filter(b => isBrokerVisible(visibility, b)), [allBrokers, visibility]);
   const [brokersError, setBrokersError] = useState('');
   const [result, setResult] = useState<StatsResult | null>(null);
+  // Symbols traded on the broker, from the last stats response of that broker.
+  const [symbolsByBroker, setSymbolsByBroker] = useState<Record<string, string[]>>({});
 
   useEffect(() => {
     apiFetch<{ broker: string }[]>('/balances')
@@ -42,32 +40,42 @@ export function StatsPage() {
   }, []);
 
   const broker = brokers.includes(filters.broker) ? filters.broker : (brokers[0] ?? '');
+  const knownSymbols = symbolsByBroker[broker];
+  const symbols = useMemo(() => visibleSymbols(visibility, broker, knownSymbols ?? []), [visibility, broker, knownSymbols]);
+  // An asset not traded on this broker (or hidden) falls back to Todos (AC 8).
+  const symbol = filters.symbol && (!knownSymbols || symbols.includes(filters.symbol)) ? filters.symbol : '';
   const { from, to } = dateRangeBounds(filters);
-  const requestKey = `${broker}|${from ?? ''}|${to ?? ''}`;
+  const requestKey = `${broker}|${symbol}|${from ?? ''}|${to ?? ''}`;
 
   useEffect(() => {
     if (!broker) return;
     let cancelled = false;
     const params = new URLSearchParams({ broker });
+    if (symbol) params.set('symbol', symbol);
     if (from) params.set('from', from);
     if (to) params.set('to', to);
     apiFetch<BrokerStats>(`/stats?${params}`)
-      .then(stats => { if (!cancelled) setResult({ key: requestKey, stats }); })
+      .then(stats => {
+        if (cancelled) return;
+        setSymbolsByBroker(prev => ({ ...prev, [broker]: stats.symbols ?? [] }));
+        setResult({ key: requestKey, stats });
+      })
       .catch((err: unknown) => { if (!cancelled) setResult({ key: requestKey, error: errorMessage(err, 'Failed to load stats') }); });
     return () => { cancelled = true; };
-  }, [broker, from, to, requestKey]);
+  }, [broker, symbol, from, to, requestKey]);
 
   const current = result?.key === requestKey ? result : null;
   const error = brokersError || current?.error || '';
   const loading = !error && !current;
   const stats = current?.stats ?? null;
-  const winRate = stats && stats.trades > 0 ? (stats.wins / stats.trades) * 100 : null;
+  const chartTitle = symbol ? `P&L acumulado · ${symbol}` : 'Balance';
 
   return (
     <div className={styles.page}>
       <StatsFilters
         brokers={brokers}
-        values={{ ...filters, broker }}
+        symbols={symbols}
+        values={{ ...filters, broker, symbol }}
         onChange={setFilters}
       />
 
@@ -76,22 +84,7 @@ export function StatsPage() {
 
       {!error && !loading && stats && (
         <>
-          <div className={styles.tiles}>
-            <StatTile label="Trades / month" value={fmt(stats.tradesPerMonth, 1)} />
-            <StatTile
-              label="Return"
-              value={fmtPct(stats.returnPct)}
-              tone={stats.returnPct === null ? 'neutral' : toneOf(stats.returnPct)}
-            />
-            <StatTile label="Net P&L" value={fmtPnl(stats.netPnl, stats.currency)} tone={toneOf(stats.netPnl)} />
-            <StatTile
-              label="Cash flow"
-              value={stats.cashFlow === 0 ? '—' : fmtPnl(stats.cashFlow, stats.currency)}
-              tone={toneOf(stats.cashFlow)}
-            />
-            <StatTile label="Trades" value={String(stats.trades)} />
-            <StatTile label="Win rate" value={winRate === null ? '—' : `${fmt(winRate, 1)} %`} />
-          </div>
+          <StatsTotals stats={{ ...stats, symbol: symbol || null }} />
 
           {stats.trades === 0 ? (
             <div className={styles.empty}>
@@ -99,10 +92,8 @@ export function StatsPage() {
             </div>
           ) : (
             <div className={styles.split}>
+              <BalanceChart curve={stats.curve} title={chartTitle} />
               <MonthlyBreakdown rows={stats.monthly} currency={stats.currency} />
-              <div className={styles.chartPane}>
-                <BalanceChart curve={stats.curve} />
-              </div>
             </div>
           )}
         </>

@@ -1,6 +1,7 @@
 export interface MonthlyStats {
   month: string;
   trades: number;
+  wins: number;
   netPnl: number;
   cashFlow: number;
   returnPct: number | null;
@@ -32,4 +33,7 @@ export interface BrokerStats {
   monthly: MonthlyStats[];
   curve: CurvePoint[];
   operations: BalanceOperation[];
+  // spec 029: the asset filtered on (null = all) and the symbols traded on the broker
+  symbol: string | null;
+  symbols: string[];
 }

@@ -15,3 +15,13 @@
 - **Resultado:** ✅ pass — validado por el usuario en local.
 - **Evidencia:** Hoy, Ayer, Esta semana/Este mes/Este trimestre/Este año (últimos 7/30/90/365 días con hoy), Todo, Custom; `normalizeDateRange` lleva los valores guardados eliminados a Todo (Journal y Stats); `clampToToday` mantiene la fecha Hasta de Custom ≤ hoy.
 - **Est vs Actual:** 1 SP vs 0,5 SP.
+
+## Tarea 3 — Rediseño de Stats
+
+- **Mecanismo:** `npm run build` + eslint + prueba local en desktop y ancho de móvil.
+- **Comandos:** `cd frontend && npm run build` → ✓; eslint stats → limpio.
+- **Resultado:** ✅ pass — validado por el usuario en local.
+- **Evidencia:** `PeriodTabs` (Hoy · Ayer · Esta semana · Este mes + menú Más; etiquetas cortas en móvil), selects Broker + Activo, franja/bloque `StatsTotals`, gráfico a 2/3 del ancho ocupando el alto restante, tabla mensual (Mes, Trades, Win %, Net P&L) con scroll en su columna y tarjetas en móvil, modo activo (cash flow "—", gráfico de P&L acumulado). `StatTile` eliminado.
+- **Desviación acordada:** con un activo el Return se muestra como su contribución al return de la cuenta (ajuste de backend 9465958); meses en español.
+- **Incidencia:** 9465958 se llevó el borrado de StatTile que estaba en el stage y rompió el build del frontend en master; restaurado en e4556d2. El redespliegue de e4556d2 perdió la sesión SSH a mitad del build (broken pipe) y se relanzó por SSH con éxito.
+- **Est vs Actual:** 4 SP vs 4 SP.

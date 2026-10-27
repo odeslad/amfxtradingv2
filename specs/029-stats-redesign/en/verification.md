@@ -15,3 +15,13 @@
 - **Outcome:** ✅ pass — validated by the user locally.
 - **Evidence:** Hoy, Ayer, Esta semana/Este mes/Este trimestre/Este año (rolling 7/30/90/365 days incl. today), Todo, Custom; `normalizeDateRange` maps stored removed values to Todo (Journal and Stats); `clampToToday` keeps the Custom To date ≤ today.
 - **Est vs Actual:** 1 SP vs 0.5 SP.
+
+## Task 3 — Stats redesign
+
+- **Mechanism:** `npm run build` + eslint + local check on desktop and phone width.
+- **Commands:** `cd frontend && npm run build` → ✓; eslint stats → clean.
+- **Outcome:** ✅ pass — validated by the user locally.
+- **Evidence:** `PeriodTabs` (Hoy · Ayer · Esta semana · Este mes + Más menu; phone short labels), Broker + Activo selects, `StatsTotals` strip/block, chart 2/3 width filling the remaining height, monthly table (Mes, Trades, Win %, Net P&L) scrolling in its column and phone cards, asset mode (cash flow "—", cumulative P&L chart). `StatTile` removed.
+- **Deviation agreed:** with an asset the Return is shown as its contribution to the account return (backend follow-up 9465958); months labelled in Spanish.
+- **Incident:** 9465958 picked up the staged StatTile deletion and broke the frontend build on master; restored in e4556d2. The redeploy of e4556d2 lost its SSH session mid-build (broken pipe) and was relaunched over SSH successfully.
+- **Est vs Actual:** 4 SP vs 4 SP.

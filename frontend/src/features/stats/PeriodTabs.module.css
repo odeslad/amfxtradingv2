@@ -1,0 +1,89 @@
+.tabs {
+  display: flex;
+}
+
+.tab {
+  padding: 12px 24px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  font-size: var(--text-xs);
+  letter-spacing: var(--tracking-wider);
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.tab:hover { color: var(--text); }
+.tab:focus { outline: none; }
+.tab:focus-visible { outline: 1px solid var(--blue); outline-offset: -1px; }
+
+.tabActive {
+  color: var(--blue);
+  border-bottom-color: var(--blue);
+}
+
+.tabOpen { color: var(--text); }
+
+.labelShort { display: none; }
+
+.moreWrap {
+  position: relative;
+  display: flex;
+}
+
+.menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 10;
+  width: 180px;
+  padding: 4px 0;
+  background: var(--surface2);
+  border: 1px solid var(--border-bright);
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  padding: 9px 14px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.menuItem:hover { background: rgba(255, 255, 255, 0.05); }
+.menuItemActive { color: var(--blue); }
+
+@media (max-width: 768px) {
+  .tabs {
+    width: 100%;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .tab {
+    flex: 1;
+    padding: 12px 4px;
+    font-size: var(--text-md);
+    letter-spacing: var(--tracking-normal);
+  }
+
+  .tabActive { background: rgba(58, 123, 213, 0.18); }
+
+  .moreWrap { flex: 1; min-width: 0; }
+  .moreWrap .tab { width: 100%; }
+
+  .labelLong { display: none; }
+  .labelShort { display: inline; }
+
+  .menuItem { min-height: 44px; font-size: var(--text-lg); }
+}

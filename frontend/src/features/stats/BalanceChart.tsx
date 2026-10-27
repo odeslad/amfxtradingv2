@@ -8,13 +8,14 @@ import styles from './BalanceChart.module.css';
 
 interface BalanceChartProps {
   curve: CurvePoint[];
+  title: string;
 }
 
 const COLOR_LINE = '#f5a623';
 const COLOR_AREA_TOP = 'rgba(245, 166, 35, 0.45)';
 const COLOR_AREA_BOTTOM = 'rgba(245, 166, 35, 0.03)';
 
-export function BalanceChart({ curve }: BalanceChartProps) {
+export function BalanceChart({ curve, title }: BalanceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
 
@@ -73,5 +74,10 @@ export function BalanceChart({ curve }: BalanceChartProps) {
     };
   }, [curve]);
 
-  return <div ref={containerRef} className={styles.chart} />;
+  return (
+    <div className={styles.panel}>
+      <div className={styles.header}><span className={styles.title}>{title}</span></div>
+      <div ref={containerRef} className={styles.chart} />
+    </div>
+  );
 }

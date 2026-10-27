@@ -1,14 +1,36 @@
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.header {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* Fills the panel; autoSize follows the container (spec 029: full height on desktop). */
 .chart {
   flex: 1;
-  width: 100%;
   min-height: 280px;
   min-width: 0;
-  border: 1px solid var(--border);
   background: var(--bg);
 }
 
 @media (max-width: 768px) {
   .chart {
-    height: 280px;
+    flex: none;
+    height: 260px;
   }
 }

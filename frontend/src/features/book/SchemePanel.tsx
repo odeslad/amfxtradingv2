@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { errorMessage } from '../../lib/api';
 import { RESULTS, resultLabel, type BookScheme, type SchemeInput, type StoredResult } from '../../lib/book';
 import { addToast } from '../../lib/toast';
+import { IsoDateField } from '../../shared/ui/DateField';
 import styles from './panels.module.css';
 
 interface SchemePanelProps {
@@ -77,8 +78,8 @@ export function SchemePanel({ open, scheme, nonce, nextNumber, onSave, onClose }
                 {RESULTS.map(r => <option key={r} value={r}>{resultLabel(r)}</option>)}
               </select>
             </label>
-            <label className={styles.field}><span className={styles.label}>Inicio</span><input className={styles.input} type="date" value={fields.start} onChange={e => set('start')(e.target.value)} required /></label>
-            <label className={styles.field}><span className={styles.label}>Fin <em className={styles.hint}>vacío = en curso</em></span><input className={styles.input} type="date" value={fields.end} onChange={e => set('end')(e.target.value)} /></label>
+            <div className={styles.field}><label className={styles.label} htmlFor="scheme-start">Inicio</label><IsoDateField id="scheme-start" className={styles.input} value={fields.start} onChange={set('start')} required /></div>
+            <div className={styles.field}><label className={styles.label} htmlFor="scheme-end">Fin <em className={styles.hint}>vacío = en curso</em></label><IsoDateField id="scheme-end" className={styles.input} value={fields.end} onChange={set('end')} /></div>
           </div>
           <label className={styles.field}><span className={styles.label}>Nota</span><input className={styles.input} type="text" value={fields.note} onChange={e => set('note')(e.target.value)} maxLength={500} placeholder="opcional" /></label>
           <p className={styles.help}>

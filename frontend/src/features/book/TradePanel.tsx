@@ -5,6 +5,7 @@ import {
   type BookScheme, type BookTrade, type Direction, type Slot, type TradeInput, type TradePreview,
 } from '../../lib/book';
 import { addToast } from '../../lib/toast';
+import { DateField } from '../../shared/ui/DateField';
 import styles from './panels.module.css';
 
 interface TradePanelProps {
@@ -91,8 +92,8 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!scheme || !ready) { addToast('Entrada y SL son obligatorios y distintos', 'error'); return; }
-    if (openTime === null) { addToast('La apertura es obligatoria, en formato dd/mm/aaaa hh:mm', 'error'); return; }
-    if (fields.closeTime.trim() !== '' && closeTime === null) { addToast('El cierre debe ser dd/mm/aaaa hh:mm', 'error'); return; }
+    if (openTime === null) { addToast('La apertura es obligatoria, en formato DD/MM/YYYY HH:MM', 'error'); return; }
+    if (fields.closeTime.trim() !== '' && closeTime === null) { addToast('El cierre debe ser DD/MM/YYYY HH:MM', 'error'); return; }
     if (closed && !closeComplete) { addToast('Para cerrar la operación hacen falta hora y precio de cierre', 'error'); return; }
     setBusy(true);
     try {
@@ -128,8 +129,8 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
             </label>
             <label className={styles.field}><span className={styles.label}>Entrada</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.entry} onChange={e => set('entry')(e.target.value)} required /></label>
             <label className={styles.field}><span className={styles.label}>SL</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.sl} onChange={e => set('sl')(e.target.value)} required /></label>
-            <label className={styles.field}><span className={styles.label}>Apertura</span><input className={styles.input} type="text" inputMode="numeric" placeholder="dd/mm/aaaa hh:mm" value={fields.openTime} onChange={e => set('openTime')(e.target.value)} required /></label>
-            <label className={styles.field}><span className={styles.label}>Cierre <em className={styles.hint}>vacío = en curso</em></span><input className={styles.input} type="text" inputMode="numeric" placeholder="dd/mm/aaaa hh:mm" value={fields.closeTime} onChange={e => set('closeTime')(e.target.value)} /></label>
+            <div className={styles.field}><label className={styles.label} htmlFor="trade-open">Apertura</label><DateField id="trade-open" mode="datetime" className={styles.input} value={fields.openTime} onChange={set('openTime')} required /></div>
+            <div className={styles.field}><label className={styles.label} htmlFor="trade-close">Cierre <em className={styles.hint}>vacío = en curso</em></label><DateField id="trade-close" mode="datetime" className={styles.input} value={fields.closeTime} onChange={set('closeTime')} /></div>
             <label className={styles.field}><span className={styles.label}>Precio de cierre</span><input className={styles.input} type="number" step="0.0001" inputMode="decimal" value={fields.closePrice} onChange={e => set('closePrice')(e.target.value)} /></label>
             <label className={styles.field}><span className={styles.label}>Lotes <em className={styles.hint}>vacío = propuesta 1 %</em></span><input className={styles.input} type="number" step="0.01" inputMode="decimal" value={fields.lots} onChange={e => set('lots')(e.target.value)} placeholder={preview ? fmtLots(preview.proposedLots) : ''} /></label>
           </div>

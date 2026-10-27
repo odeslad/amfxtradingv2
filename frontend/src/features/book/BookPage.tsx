@@ -3,6 +3,7 @@ import { errorMessage } from '../../lib/api';
 import { fmtEur, fmtR, fmtR1, PAGE_SIZES, type BookScheme, type BookTrade, type PageSize, type SchemeInput, type TradeInput } from '../../lib/book';
 import { addToast } from '../../lib/toast';
 import { ConfirmPanel } from '../journal/ConfirmPanel';
+import { OlderYearsTab } from './OlderYearsTab';
 import { OperationsPanel } from './OperationsPanel';
 import { SchemePanel } from './SchemePanel';
 import { SchemesTable } from './SchemesTable';
@@ -16,6 +17,8 @@ type Panel =
   | { kind: 'deleteScheme'; scheme: BookScheme }
   | { kind: 'deleteTrade'; scheme: BookScheme; trade: BookTrade }
   | null;
+
+const RECENT_YEARS = 3;
 
 export function BookPage() {
   const { data, loading, error, year, page, pageSize, selectYear, setPage, selectPageSize, actions } = useBook();
@@ -59,15 +62,27 @@ export function BookPage() {
   const to = Math.min(page * pageSize, data.total);
   const deleting = panel?.kind === 'deleteScheme' || panel?.kind === 'deleteTrade' ? panel : null;
   const activeYear: number | 'all' = typeof year === 'number' ? year : 'all';
+  // Tabs for the three newest years, the rest behind "Anteriores" (fits on a phone however many years).
+  const years = [...data.years].sort((a, b) => b - a);
+  const recentYears = years.slice(0, RECENT_YEARS);
+  const olderYears = years.slice(RECENT_YEARS);
+  const olderActive = typeof activeYear === 'number' && olderYears.includes(activeYear);
   const opsScheme = opsSchemeId === null ? null : data.schemes.find(s => s.id === opsSchemeId) ?? null;
 
   return (
     <div className={styles.page}>
       <div className={styles.tabBar}>
         <div className={styles.tabs} role="tablist" aria-label="Año">
-          {data.years.map(y => (
+          {recentYears.map(y => (
             <button key={y} type="button" role="tab" aria-selected={activeYear === y} className={`${styles.tab} ${activeYear === y ? styles.tabActive : ''}`} onClick={() => selectYear(y)}>{y}</button>
           ))}
+          {olderYears.length > 0 && (
+            <OlderYearsTab
+              years={olderYears}
+              active={olderActive ? (activeYear as number) : null}
+              onSelect={selectYear}
+            />
+          )}
           <button type="button" role="tab" aria-selected={activeYear === 'all'} className={`${styles.tab} ${activeYear === 'all' ? styles.tabActive : ''}`} onClick={() => selectYear('all')}>Todos</button>
         </div>
         <div className={styles.tabBarRight}>

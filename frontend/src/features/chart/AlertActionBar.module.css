@@ -1,0 +1,46 @@
+.bar { display: none; }
+
+@media (max-width: 768px) {
+  .bar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 10;
+    display: flex;
+    gap: 8px;
+    padding: 12px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+  }
+}
+
+.editBtn,
+.toggleBtn,
+.deleteBtn {
+  flex: 1;
+  height: 44px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.editBtn {
+  background: var(--orange);
+  color: #000;
+  border: none;
+}
+
+.toggleBtn {
+  background: transparent;
+  color: var(--orange);
+  border: 1px solid var(--orange);
+}
+
+.deleteBtn {
+  background: transparent;
+  color: var(--red);
+  border: 1px solid var(--red);
+}

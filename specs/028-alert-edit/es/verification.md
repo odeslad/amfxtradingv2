@@ -17,3 +17,11 @@
 - **Evidencia:** las alertas se suman al arrastre de SL/TP (unión `DraggableLevel`); una alerta sin seleccionar solo se coge junto a su marca, una seleccionada en todo el panel; seleccionada = línea naranja discontinua que se corta antes de la etiqueta de precio; al arrastrar se ve una línea tenue en el precio inicial y una etiqueta centrada en la línea (`▲ precio · ±pips` en desktop, `▲ precio` en móvil); al soltar se guarda redondeado a la precisión del símbolo (override optimista, se descarta si falla con un toast); Esc restaura y no guarda (también SL/TP). Soltar un SL/TP sin moverlo ya no envía un modify.
 - **Desviación:** la línea de selección cruzaba la etiqueta de precio (parecía un precio viejo tachado); corregido para que se corte antes.
 - **Est vs Actual:** 3 SP vs 3 SP.
+
+## Tarea 3 — Barra de acciones de alerta en móvil
+
+- **Mecanismo:** `npm run build` + `eslint src/features/chart/` + prueba en el iPhone en producción.
+- **Comandos:** `cd frontend && npm run build` → ✓ built; eslint → limpio.
+- **Resultado:** 🕐 pendiente — el usuario lo prueba en el iPhone tras el despliegue (tarea 4).
+- **Evidencia:** al seleccionar una alerta en el gráfico aparece `AlertActionBar` abajo del gráfico (solo a ancho de móvil): Edit price (abre el panel de alertas editando esa alerta), On/Off, Delete; la barra se va al deseleccionar, borrar la alerta o cambiar de símbolo. Tolerancia táctil subida a 18 px (el ratón sigue en 6 px) para que el dedo enganche las líneas de alertas y SL/TP.
+- **Est vs Actual:** 1,5 SP vs 1,5 SP.

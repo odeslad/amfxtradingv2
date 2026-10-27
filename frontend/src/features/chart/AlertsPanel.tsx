@@ -27,11 +27,19 @@ interface AlertsPanelProps {
   onCreateEma: (alert: NewEmaAlert) => Promise<void>;
   onToggleEma: (a: EmaCrossAlert) => Promise<void>;
   onDeleteEma: (id: number) => Promise<void>;
+  editRequest?: { id: number; nonce: number } | null;
 }
 
-export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onUpdatePrice, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma }: AlertsPanelProps) {
+export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onUpdatePrice, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma, editRequest }: AlertsPanelProps) {
   const [tab, setTab] = useState<'price' | 'ema'>('price');
   const [editingId, setEditingId] = useState<number | null>(null);
+
+  // "Edit price" from the chart's phone bar opens the panel on that alert (spec 028).
+  const [prevEditRequest, setPrevEditRequest] = useState(editRequest);
+  if (editRequest !== prevEditRequest) {
+    setPrevEditRequest(editRequest);
+    if (editRequest) { setTab('price'); setEditingId(editRequest.id); }
+  }
   const [formBroker, setFormBroker] = useState(broker);
   const [formSymbol, setFormSymbol] = useState(symbol);
   const [price, setPrice] = useState('');

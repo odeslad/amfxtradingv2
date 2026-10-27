@@ -17,3 +17,11 @@
 - **Evidence:** alerts join the SL/TP drag (`DraggableLevel` union); an unselected alert is grabbed only near its marker, a selected one across the pane; selected = dashed orange line that stops short of the price label; dragging shows a faint line at the start price and a label centred on the line (`▲ price · ±pips` desktop, `▲ price` phone); release saves rounded to the symbol precision (optimistic override, dropped on failure with a toast); Esc restores and saves nothing (SL/TP too). An unchanged SL/TP release no longer sends a modify.
 - **Deviation:** the selection line originally crossed the price label (looked like a struck-out old price); fixed to stop before it.
 - **Est vs Actual:** 3 SP vs 3 SP.
+
+## Task 3 — Mobile alert action bar
+
+- **Mechanism:** `npm run build` + `eslint src/features/chart/` + check on the iPhone in production.
+- **Commands:** `cd frontend && npm run build` → ✓ built; eslint → clean.
+- **Outcome:** 🕐 pending — the user tests it on the iPhone after the deploy (task 4).
+- **Evidence:** selecting an alert on the chart shows `AlertActionBar` at the bottom of the chart (phone width only): Edit price (opens the Alerts panel editing that alert), On/Off, Delete; the bar goes when the alert is deselected, deleted or the symbol changes. Touch hit tolerance raised to 18 px (mouse stays 6 px) so a finger can grab alert and SL/TP lines.
+- **Est vs Actual:** 1.5 SP vs 1.5 SP.

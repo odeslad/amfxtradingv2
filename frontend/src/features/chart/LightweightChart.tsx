@@ -215,11 +215,12 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   pnlMode?: PnlMode;
   alerts?: ChartAlert[];
   onMoveAlert?: (alertId: number, price: number) => Promise<void>;
+  onSelectAlert?: (alertId: number | null) => void;
   showNewTrade?: boolean;
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, onMoveAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -227,11 +228,19 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const drawRolloversRef = useRef<() => void>(() => { });
   // Dragged alert prices (alert id -> price), kept after release until the list catches up (spec 028).
   const alertPriceOverrideRef = useRef<Map<number, number>>(new Map());
+  const selectedLevelIdRef = useRef<string | null>(null);
   const onMoveAlertRef = useRef(onMoveAlert);
   useEffect(() => { onMoveAlertRef.current = onMoveAlert; }, [onMoveAlert]);
+  const onSelectAlertRef = useRef(onSelectAlert);
+  useEffect(() => { onSelectAlertRef.current = onSelectAlert; }, [onSelectAlert]);
   // A created, toggled or deleted alert repaints its marker at once (spec 025).
   useEffect(() => {
     alertsRef.current = alerts;
+    const selected = selectedLevelIdRef.current;
+    if (selected?.startsWith('alert-') && !alerts?.some(a => alertLevelId(a.id) === selected)) {
+      selectedLevelIdRef.current = null;
+      onSelectAlertRef.current?.(null);
+    }
     for (const [id, price] of alertPriceOverrideRef.current) {
       const alert = alerts?.find(a => a.id === id);
       if (!alert || Math.abs(alert.price - price) < 1e-9) alertPriceOverrideRef.current.delete(id);
@@ -275,7 +284,6 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
   const draggableRef = useRef<DraggableLevel[]>([]);
   const dragStateRef = useRef<DragState | null>(null);
-  const selectedLevelIdRef = useRef<string | null>(null);
   // optimistic SL/TP overrides (id -> price) kept until server feedback matches
   const pendingPriceRef = useRef<Map<string, number>>(new Map());
   const precisionRef = useRef(5);
@@ -1025,6 +1033,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     if (!container) return;
 
     const HIT_PX = 6;
+    // a finger is far less precise than a mouse pointer
+    const TOUCH_HIT_PX = 18;
 
     const yToClientOffset = (clientY: number) => {
       const rect = container.getBoundingClientRect();
@@ -1045,12 +1055,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
         .filter(l => nearMarker || selectedLevelIdRef.current === l.id);
     };
 
-    const findHit = (clientX: number, clientY: number): DraggableLevel | null => {
+    const findHit = (clientX: number, clientY: number, tolerance = HIT_PX): DraggableLevel | null => {
       const series = seriesRef.current;
       if (!series) return null;
       const y = yToClientOffset(clientY);
       let best: DraggableLevel | null = null;
-      let bestDist = HIT_PX;
+      let bestDist = tolerance;
       for (const lvl of [...draggableRef.current, ...alertLevels(clientX)]) {
         const ly = series.priceToCoordinate(lvl.price);
         if (ly === null) continue;
@@ -1089,7 +1099,11 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       if (id) applySelectionStyle(id, true);
       selectedLevelIdRef.current = id;
       // alert selection is painted on the overlay
-      if (prev?.startsWith('alert-') || id?.startsWith('alert-')) drawRolloversRef.current();
+      if (prev?.startsWith('alert-') || id?.startsWith('alert-')) {
+        drawRolloversRef.current();
+        const alertId = id?.startsWith('alert-') ? Number(id.slice('alert-'.length)) : null;
+        onSelectAlertRef.current?.(alertId);
+      }
     };
 
     // Esc during a drag puts the level back and saves nothing (spec 028).
@@ -1103,8 +1117,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     // Two-step interaction: pointer-down on an unselected level only selects
     // it; dragging starts on a level that is already selected. Pointer-down
     // away from any level deselects.
-    const startDrag = (clientX: number, clientY: number): boolean => {
-      const hit = findHit(clientX, clientY);
+    const startDrag = (clientX: number, clientY: number, tolerance = HIT_PX): boolean => {
+      const hit = findHit(clientX, clientY, tolerance);
       if (!hit) {
         setSelectedLevel(null);
         return false;
@@ -1170,7 +1184,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (t && startDrag(t.clientX, t.clientY)) { e.preventDefault(); e.stopPropagation(); }
+      if (t && startDrag(t.clientX, t.clientY, TOUCH_HIT_PX)) { e.preventDefault(); e.stopPropagation(); }
     };
     const onTouchMove = (e: TouchEvent) => {
       if (!dragStateRef.current) return;

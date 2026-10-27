@@ -9,7 +9,8 @@ import { playAlertBeep } from '../../lib/beep';
 import { ChartToolbar } from './ChartToolbar';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
 import { AlertsPanel } from './AlertsPanel';
-import { useAlerts } from '../../lib/useAlerts';
+import { AlertActionBar } from './AlertActionBar';
+import { useAlerts, type PriceAlert } from '../../lib/useAlerts';
 import { useEmaAlerts } from '../../lib/useEmaAlerts';
 import { LightweightChart } from './LightweightChart';
 import { ChartErrorBoundary } from './ChartErrorBoundary';
@@ -130,6 +131,19 @@ export function ChartPage() {
       throw err;
     }
   }, [updateAlertPrice]);
+  const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
+  const [alertEditRequest, setAlertEditRequest] = useState<{ id: number; nonce: number } | null>(null);
+  const selectedAlert = selectedAlertId === null ? null : alerts.find(a => a.id === selectedAlertId) ?? null;
+  const editAlertFromChart = useCallback((a: PriceAlert) => {
+    setAlertEditRequest({ id: a.id, nonce: Date.now() });
+    setAlertsOpen(true);
+  }, []);
+  const toggleAlertFromChart = useCallback((a: PriceAlert) => {
+    toggleAlert(a).catch(err => addToast(errorMessage(err, 'Failed to update alert'), 'error'));
+  }, [toggleAlert]);
+  const deleteAlertFromChart = useCallback((a: PriceAlert) => {
+    removeAlert(a.id).catch(err => addToast(errorMessage(err, 'Failed to delete alert'), 'error'));
+  }, [removeAlert]);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [positions, setPositions] = useState<Position[]>([]);
@@ -582,6 +596,7 @@ export function ChartPage() {
         onCreateEma={createEmaAlert}
         onToggleEma={toggleEmaAlert}
         onDeleteEma={removeEmaAlert}
+        editRequest={alertEditRequest}
       />
       <IndicatorsPanel
         open={indicatorsOpen}
@@ -593,8 +608,11 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} onMoveAlert={moveAlert} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} onMoveAlert={moveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
+              {selectedAlert && (
+                <AlertActionBar alert={selectedAlert} onEditPrice={editAlertFromChart} onToggle={toggleAlertFromChart} onDelete={deleteAlertFromChart} />
+              )}
             </ChartErrorBoundary>
           : <div className={styles.empty}>Select a broker and symbol</div>
         }

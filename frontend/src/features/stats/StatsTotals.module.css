@@ -36,11 +36,9 @@
 
 .big { font-size: var(--text-2xl); }
 
-.green { color: var(--green); }
-.red { color: var(--red); }
-.muted { color: var(--muted); }
 
-.block { display: none; }
+/* Base text colour here so the sign colours below win on the phone. */
+.block { display: none; color: var(--text); }
 
 @media (max-width: 1024px) {
   .strip { flex-wrap: wrap; row-gap: 12px; }
@@ -86,20 +84,21 @@
     font-family: var(--font-mono);
     font-size: 22px;
     line-height: 1;
-    color: var(--text);
   }
 
   .returnBig {
     font-family: var(--font-mono);
     font-size: var(--text-3xl);
     line-height: 1;
-    color: var(--text);
   }
 
   .count {
     font-family: var(--font-mono);
     font-size: var(--text-xl);
-    color: var(--text);
     white-space: nowrap;
   }
 }
+
+.green { color: var(--green); }
+.red { color: var(--red); }
+.muted { color: var(--muted); }

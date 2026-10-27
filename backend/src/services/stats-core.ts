@@ -1,6 +1,7 @@
 export interface MonthlyStats {
   month: string;
   trades: number;
+  wins: number;
   netPnl: number;
   cashFlow: number;
   returnPct: number | null;
@@ -55,6 +56,9 @@ export interface StatsInput {
   from?: Date;
   to?: Date;
   now?: Date;
+  // 'asset': the trades of one symbol only (spec 029). Balance operations belong to no
+  // asset, so return and cash flow have no meaning and the curve is the cumulative P&L.
+  mode?: 'account' | 'asset';
 }
 
 const DAY_MS = 86_400_000;
@@ -101,7 +105,9 @@ const inWindow = (items: Movement[], from: Date, to: Date): Movement[] =>
 
 // Pure: every number the Stats page shows, derived from the latest balance snapshot
 // (the anchor) and the movements loaded by the caller.
-export function computeStats({ broker, latest, trades: allTrades, operations: allOperations, from, to, now = new Date() }: StatsInput): BrokerStats {
+export function computeStats({ broker, latest, trades: allTrades, operations: rawOperations, from, to, now = new Date(), mode = 'account' }: StatsInput): BrokerStats {
+  const asset = mode === 'asset';
+  const allOperations = asset ? [] : rawOperations;
   const periodEnd = to ?? now;
   const periodTrades = to ? allTrades.filter(t => t.time <= periodEnd) : allTrades;
   const periodStart = from ?? periodTrades[0]?.time ?? null;
@@ -128,11 +134,15 @@ export function computeStats({ broker, latest, trades: allTrades, operations: al
     const byMonth = new Map<string, MonthlyStats>();
     for (let i = 0; i < months; i++) {
       const monthStart = new Date(Date.UTC(periodStart.getUTCFullYear(), periodStart.getUTCMonth() + i, 1));
-      byMonth.set(monthKey(monthStart), { month: monthKey(monthStart), trades: 0, netPnl: 0, cashFlow: 0, returnPct: null });
+      byMonth.set(monthKey(monthStart), { month: monthKey(monthStart), trades: 0, wins: 0, netPnl: 0, cashFlow: 0, returnPct: null });
     }
     for (const t of periodTrades) {
       const bucket = byMonth.get(monthKey(t.time));
-      if (bucket) { bucket.trades += 1; bucket.netPnl += t.amount; }
+      if (bucket) {
+        bucket.trades += 1;
+        bucket.netPnl += t.amount;
+        if (t.amount > 0) bucket.wins += 1;
+      }
     }
     for (const op of periodOps) {
       const bucket = byMonth.get(monthKey(op.time));
@@ -141,7 +151,7 @@ export function computeStats({ broker, latest, trades: allTrades, operations: al
     for (const bucket of byMonth.values()) {
       const monthStart = startOfUtcMonth(new Date(`${bucket.month}-01T00:00:00Z`));
       const effectiveStart = monthStart > periodStart ? monthStart : periodStart;
-      bucket.returnPct = returnPct(bucket.netPnl, balanceBefore(effectiveStart), bucket.cashFlow);
+      bucket.returnPct = asset ? null : returnPct(bucket.netPnl, balanceBefore(effectiveStart), bucket.cashFlow);
       monthly.push(bucket);
     }
   }
@@ -150,9 +160,16 @@ export function computeStats({ broker, latest, trades: allTrades, operations: al
   if (periodStart) {
     const firstDay = startOfUtcDay(periodStart);
     const lastDay = startOfUtcDay(periodEnd);
+    let cumulative = 0;
+    let next = 0;
     for (let d = firstDay.getTime(); d <= lastDay.getTime(); d += DAY_MS) {
       const endOfDay = new Date(d + DAY_MS - 1);
-      curve.push({ date: dayKey(new Date(d)), balance: balanceAt(endOfDay) });
+      if (asset) {
+        while (next < periodTrades.length && periodTrades[next].time <= endOfDay) cumulative += periodTrades[next++].amount;
+        curve.push({ date: dayKey(new Date(d)), balance: cumulative });
+      } else {
+        curve.push({ date: dayKey(new Date(d)), balance: balanceAt(endOfDay) });
+      }
     }
   }
 
@@ -170,8 +187,8 @@ export function computeStats({ broker, latest, trades: allTrades, operations: al
     netPnl,
     cashFlow,
     tradesPerMonth: months > 0 ? periodTrades.length / months : 0,
-    startBalance: latest ? startBalance : null,
-    returnPct: latest ? returnPct(netPnl, startBalance, cashFlow) : null,
+    startBalance: latest && !asset ? startBalance : null,
+    returnPct: latest && !asset ? returnPct(netPnl, startBalance, cashFlow) : null,
     monthly,
     curve,
     operations,

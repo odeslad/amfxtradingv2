@@ -75,6 +75,24 @@ describe('computeStats', () => {
     expect(noAnchor.netPnl).toBe(220);
   });
 
+  it('counts the winning trades of each month', () => {
+    expect(stats.monthly.map(m => m.wins)).toEqual([1, 1, 0]);
+  });
+
+  it('in asset mode ignores operations, nulls the return and draws the cumulative P&L', () => {
+    const asset = computeStats({ broker: 'test', latest, trades, operations, from, to, mode: 'asset' });
+    expect(asset.netPnl).toBe(220);
+    expect(asset.cashFlow).toBe(0);
+    expect(asset.operations).toEqual([]);
+    expect(asset.startBalance).toBeNull();
+    expect(asset.returnPct).toBeNull();
+    expect(asset.monthly.every(m => m.returnPct === null && m.cashFlow === 0)).toBe(true);
+    expect(asset.curve[0]).toEqual({ date: '2026-03-01', balance: 0 });
+    expect(asset.curve.find(p => p.date === '2026-03-10')?.balance).toBe(100);
+    expect(asset.curve.find(p => p.date === '2026-04-20')?.balance).toBe(250);
+    expect(asset.curve.at(-1)).toEqual({ date: '2026-05-31', balance: 220 });
+  });
+
   it('without a period it starts at the first trade and ends now', () => {
     const open = computeStats({ broker: 'test', latest, trades, operations, now: at('2026-06-15T00:00:00Z') });
     expect(open.period.from).toBe(trades[0].time.toISOString());

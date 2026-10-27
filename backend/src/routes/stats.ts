@@ -17,6 +17,7 @@ router.get('/', asyncRoute<AuthRequest>(async (req, res) => {
   const broker = singleQuery(req.query, 'broker');
   const from = singleQuery(req.query, 'from');
   const to = singleQuery(req.query, 'to');
+  const symbol = singleQuery(req.query, 'symbol') || undefined;
 
   const known = broker
     ? await db.balance.findFirst({ where: { broker }, select: { id: true } })
@@ -26,7 +27,7 @@ router.get('/', asyncRoute<AuthRequest>(async (req, res) => {
     return;
   }
 
-  res.json(await computeBrokerStats(broker, parseDate(from), parseDate(to)));
+  res.json(await computeBrokerStats(broker, parseDate(from), parseDate(to), symbol));
 }));
 
 export default router;

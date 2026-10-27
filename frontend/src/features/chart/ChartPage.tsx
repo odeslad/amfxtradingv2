@@ -115,7 +115,7 @@ export function ChartPage() {
   const [newTradeOpen, setNewTradeOpen] = useState(false);
   const [alertFlash, setAlertFlash] = useState(false);
   const { user } = useAuth();
-  const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, remove: removeAlert } = useAlerts();
+  const { alerts, refresh: refreshAlerts, create: createAlert, toggle: toggleAlert, updatePrice: updateAlertPrice, remove: removeAlert } = useAlerts();
   const { alerts: emaAlerts, create: createEmaAlert, toggle: toggleEmaAlert, remove: removeEmaAlert } = useEmaAlerts();
   const chartAlerts = useMemo(
     () => alerts.filter(a => a.broker === broker && a.symbol === symbol).map(a => ({ id: a.id, price: a.price, enabled: a.enabled })),
@@ -567,6 +567,7 @@ export function ChartPage() {
         alerts={alerts}
         onCreate={createAlert}
         onToggle={toggleAlert}
+        onUpdatePrice={updateAlertPrice}
         onDelete={removeAlert}
         emaAlerts={emaAlerts}
         onCreateEma={createEmaAlert}

@@ -31,8 +31,12 @@ export function useAlerts() {
   const toggle = useCallback((a: PriceAlert) =>
     mutate(() => apiSend(`/alerts/${a.id}`, 'PUT', { enabled: !a.enabled })), [mutate]);
 
+  // A new price re-arms the alert (spec 028): enabled false → true clears triggeredAt on the server.
+  const updatePrice = useCallback((id: number, price: number) =>
+    mutate(() => apiSend(`/alerts/${id}`, 'PUT', { price, enabled: true })), [mutate]);
+
   const remove = useCallback((id: number) =>
     mutate(() => apiSend(`/alerts/${id}`, 'DELETE')), [mutate]);
 
-  return { alerts, refresh, create, toggle, remove };
+  return { alerts, refresh, create, toggle, updatePrice, remove };
 }

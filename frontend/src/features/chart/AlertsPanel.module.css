@@ -204,6 +204,19 @@ select.input {
   appearance: textfield;
 }
 
+.currentPrice {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.currentPriceValue {
+  font-family: var(--font-mono);
+  font-size: var(--text-lg);
+  color: var(--text);
+}
+
 .input option {
   background: var(--surface);
 }
@@ -250,9 +263,94 @@ select.input {
   border-bottom: 1px solid var(--border);
 }
 
-.itemOff {
+/* Off / triggered: dim the data, keep the buttons readable (spec 028). */
+.itemOff .itemMain,
+.itemOff .itemPrice {
   opacity: 0.45;
 }
+
+.itemEditing {
+  flex-direction: column;
+  align-items: stretch;
+  background: rgba(245, 166, 35, 0.06);
+}
+
+.editHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.editDirection {
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  color: var(--orange);
+}
+
+.editRow {
+  display: flex;
+  gap: 8px;
+}
+
+.editInput { flex: 1; }
+
+.inputError,
+.inputError:focus { border-color: var(--red); }
+
+.saveBtn,
+.cancelBtn {
+  height: 34px;
+  padding: 0 14px;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: opacity 0.12s ease, color 0.12s ease;
+}
+
+.saveBtn {
+  background: var(--orange);
+  color: #000;
+  border: none;
+}
+
+.saveBtn:hover { opacity: 0.85; }
+
+.cancelBtn {
+  background: transparent;
+  color: var(--muted);
+  border: 1px solid var(--border-bright);
+}
+
+.cancelBtn:hover { color: var(--text); }
+
+.saveBtn:disabled,
+.cancelBtn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* The whole row except its buttons opens the price edit (spec 028). */
+.itemEdit {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  align-self: stretch;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:has(.itemEdit:hover) { background: rgba(255, 255, 255, 0.03); }
+
+.itemEdit:focus { outline: none; }
+.itemEdit:focus-visible { outline: 1px solid var(--blue); outline-offset: 2px; }
 
 .itemMain {
   display: flex;
@@ -302,41 +400,65 @@ select.input {
   text-transform: uppercase;
 }
 
+/* Buttons slide in from the right like Positions: hover on desktop, swipe on touch. */
+.item { position: relative; overflow: hidden; }
+
 .itemActions {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.itemActionsInner {
   display: flex;
   align-items: center;
   gap: 8px;
+  height: 100%;
+  padding: 0 20px 0 16px;
+  background: var(--surface);
+  transform: translateX(100%);
+  transition: transform 0.18s ease;
+  pointer-events: auto;
+}
+
+.itemActionsOpen { transform: translateX(0); }
+
+@media (hover: hover) {
+  .item:hover .itemActionsInner { transform: translateX(0); }
+}
+
+/* Same as Edit / Close in PositionCard (spec 028). */
+.toggleBtn,
+.deleteBtn {
+  height: 34px;
+  padding: 0 12px;
+  background: transparent;
+  border: 1px solid;
+  font-family: var(--font-sans);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s ease;
 }
 
 .toggleBtn {
-  height: 24px;
-  padding: 0 8px;
-  background: transparent;
-  border: 1px solid var(--border-bright);
-  border-radius: 2px;
-  color: var(--muted);
-  font-size: var(--text-2xs);
-  cursor: pointer;
-  transition: color 0.12s ease;
+  color: var(--orange);
+  border-color: var(--orange);
 }
 
-.toggleBtn:hover {
-  color: var(--text);
-}
+.toggleBtn:hover { background: rgba(245, 166, 35, 0.15); }
 
 .deleteBtn {
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-  font-size: var(--text-sm);
-  line-height: 1;
-  transition: color 0.12s ease;
+  color: var(--red);
+  border-color: var(--red);
 }
 
-.deleteBtn:hover {
-  color: var(--red);
-}
+.deleteBtn:hover { background: rgba(224, 92, 92, 0.15); }
 
 @media (max-width: 768px) {
   .input {

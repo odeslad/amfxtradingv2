@@ -3,6 +3,8 @@ import { usePush } from '../../lib/usePush';
 import { errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import type { PriceAlert } from '../../lib/useAlerts';
+import { AlertPriceEdit } from './AlertPriceEdit';
+import { AlertRow } from './AlertRow';
 import type { EmaCrossAlert, NewEmaAlert, EmaAlertDirection } from '../../lib/useEmaAlerts';
 import styles from './AlertsPanel.module.css';
 
@@ -19,6 +21,7 @@ interface AlertsPanelProps {
   alerts: PriceAlert[];
   onCreate: (alert: { broker: string; symbol: string; price: number; direction: 'above' | 'below' }) => Promise<void>;
   onToggle: (a: PriceAlert) => Promise<void>;
+  onUpdatePrice: (id: number, price: number) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   emaAlerts: EmaCrossAlert[];
   onCreateEma: (alert: NewEmaAlert) => Promise<void>;
@@ -26,8 +29,9 @@ interface AlertsPanelProps {
   onDeleteEma: (id: number) => Promise<void>;
 }
 
-export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma }: AlertsPanelProps) {
+export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, symbol, brokers, symbols, currentPrice, alerts, onCreate, onToggle, onUpdatePrice, onDelete, emaAlerts, onCreateEma, onToggleEma, onDeleteEma }: AlertsPanelProps) {
   const [tab, setTab] = useState<'price' | 'ema'>('price');
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [formBroker, setFormBroker] = useState(broker);
   const [formSymbol, setFormSymbol] = useState(symbol);
   const [price, setPrice] = useState('');
@@ -156,11 +160,18 @@ export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, sy
                 inputMode="decimal"
                 step="0.00001"
                 value={price}
-                placeholder={currentPrice != null ? String(currentPrice) : '0.00000'}
+                placeholder="0.00000"
                 onChange={e => setPrice(e.target.value)}
               />
             </div>
           </div>
+
+          {currentPrice != null && (
+            <div className={styles.currentPrice}>
+              <span className={styles.label}>Current price</span>
+              <span className={styles.currentPriceValue}>{currentPrice}</span>
+            </div>
+          )}
 
           <button type="button" className={styles.addBtn} onClick={handleCreate} disabled={saving}>
             {saving ? 'Adding…' : '+ Add alert'}
@@ -169,25 +180,30 @@ export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, sy
 
         <div className={styles.list}>
           {alerts.length === 0 && <div className={styles.empty}>No alerts</div>}
-          {alerts.map(a => (
-            <div key={a.id} className={`${styles.item} ${!a.enabled ? styles.itemOff : ''}`}>
-              <div className={styles.itemMain}>
-                <span className={styles.itemSymbol}>{a.symbol}</span>
-                <span className={styles.itemBroker}>{a.broker}</span>
-              </div>
-              <div className={styles.itemPrice}>
-                <span className={a.direction === 'above' ? styles.above : styles.below}>
-                  {a.direction === 'above' ? '▲' : '▼'} {a.price}
+          {alerts.map(a => a.id === editingId ? (
+            <AlertPriceEdit key={a.id} alert={a} onSave={onUpdatePrice} onDone={() => setEditingId(null)} />
+          ) : (
+            <AlertRow
+              key={a.id}
+              off={!a.enabled}
+              label={`Edit ${a.symbol} alert price ${a.price}`}
+              onActivate={() => setEditingId(a.id)}
+              actions={<>
+                <button type="button" className={styles.toggleBtn} onClick={() => handleToggle(a)}>{a.enabled ? 'Off' : 'On'}</button>
+                <button type="button" className={styles.deleteBtn} onClick={() => handleDelete(a.id)}>Delete</button>
+              </>}
+            >
+                <span className={styles.itemMain}>
+                  <span className={styles.itemSymbol}>{a.symbol}</span>
+                  <span className={styles.itemBroker}>{a.broker}</span>
                 </span>
-                {a.triggeredAt && <span className={styles.triggered}>triggered</span>}
-              </div>
-              <div className={styles.itemActions}>
-                <button type="button" className={styles.toggleBtn} onClick={() => handleToggle(a)}>
-                  {a.enabled ? 'Off' : 'On'}
-                </button>
-                <button type="button" className={styles.deleteBtn} onClick={() => handleDelete(a.id)}>✕</button>
-              </div>
-            </div>
+                <span className={styles.itemPrice}>
+                  <span className={a.direction === 'above' ? styles.above : styles.below}>
+                    {a.direction === 'above' ? '▲' : '▼'} {a.price}
+                  </span>
+                  {a.triggeredAt && <span className={styles.triggered}>triggered</span>}
+                </span>
+            </AlertRow>
           ))}
         </div>
         </>)}
@@ -256,24 +272,26 @@ export const AlertsPanel = memo(function AlertsPanel({ open, onClose, broker, sy
         <div className={styles.list}>
           {emaAlerts.length === 0 && <div className={styles.empty}>No EMA alerts</div>}
           {emaAlerts.map(a => (
-            <div key={a.id} className={`${styles.item} ${!a.enabled ? styles.itemOff : ''}`}>
-              <div className={styles.itemMain}>
+            <AlertRow
+              key={a.id}
+              off={!a.enabled}
+              label={`${a.symbol} EMA alert`}
+              actions={<>
+                <button type="button" className={styles.toggleBtn} onClick={() => handleToggleEma(a)}>{a.enabled ? 'Off' : 'On'}</button>
+                <button type="button" className={styles.deleteBtn} onClick={() => handleDeleteEma(a.id)}>Delete</button>
+              </>}
+            >
+              <span className={styles.itemMain}>
                 <span className={styles.itemSymbol}>{a.symbol}</span>
                 <span className={styles.itemBroker}>{a.broker} · {a.timeframe}</span>
-              </div>
-              <div className={styles.itemPrice}>
+              </span>
+              <span className={styles.itemPrice}>
                 <span className={a.direction === 'buy' ? styles.above : a.direction === 'sell' ? styles.below : ''}>
                   {a.direction === 'buy' ? '▲' : a.direction === 'sell' ? '▼' : '⇅'} {a.emaFast}/{a.emaSlow} ≤{a.thresholdPips}p
                 </span>
                 {a.triggeredAt && <span className={styles.triggered}>triggered</span>}
-              </div>
-              <div className={styles.itemActions}>
-                <button type="button" className={styles.toggleBtn} onClick={() => handleToggleEma(a)}>
-                  {a.enabled ? 'Off' : 'On'}
-                </button>
-                <button type="button" className={styles.deleteBtn} onClick={() => handleDeleteEma(a.id)}>✕</button>
-              </div>
-            </div>
+              </span>
+            </AlertRow>
           ))}
         </div>
         </>)}

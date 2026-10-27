@@ -5,6 +5,13 @@
 | 1 [frontend] | build + lint + local app at desktop width | `npm run build` · `npm run lint` · Vite on 5174 proxied to `api-v2` | ✅ pass | 2 | 1 |
 | 2 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · Vite on 5174, device mode | ✅ pass | 1.5 | 1 |
 | 3 [frontend] | build + lint + local app at 390 px | `npm run build` · `npm run lint` · Vite on 5174, device mode | ✅ pass | 2 | 1 |
+| 4 [infra] | manual (user validation on production) | push `bbfa983..debb3fc`, "Deploy Frontend to VPS" green | ✅ pass | 0.5 | 0.5 |
+| 5 [specs] | manual | this file, `Status: closed`, `git mv` to `archive/2026-10/` | ✅ pass | 0.25 | 0.25 |
+
+**Total**: Est 6.25 SP · Actual 3.75 SP. Calibration: well under estimate because every piece reused an
+existing pattern (Journal tab bar and hover row actions, `PositionCard` and `useSwipeActions`, the
+shared drawer chrome); the mockup iterations with the user, which carried most of the design work, are
+not counted against the tasks.
 
 ## Evidence
 
@@ -33,3 +40,13 @@ and return to the refreshed list; + Nueva operación at the bottom. The operatio
 in `BookPage`, so the stacking chosen in the design held without the fallback. Fixed along the way: the
 numeric column headers of both desktop tables were left-aligned over right-aligned numbers
 (`.table th` overrode `.num`).
+
+### Task 4
+
+Pushed `bbfa983..debb3fc` (three frontend commits); "Deploy Frontend to VPS" succeeded and production
+served the new bundle. Accepted by the user on production (desktop and iPhone) against AC 1–10 on
+2026-10-27.
+
+### Task 5
+
+Closed and archived under `archive/2026-10/`.

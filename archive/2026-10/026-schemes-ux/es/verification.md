@@ -5,6 +5,13 @@
 | 1 [frontend] | build + lint + app local en ancho de escritorio | `npm run build` · `npm run lint` · Vite en el 5174 con proxy a `api-v2` | ✅ pasa | 2 | 1 |
 | 2 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · Vite en el 5174, modo dispositivo | ✅ pasa | 1,5 | 1 |
 | 3 [frontend] | build + lint + app local a 390 px | `npm run build` · `npm run lint` · Vite en el 5174, modo dispositivo | ✅ pasa | 2 | 1 |
+| 4 [infra] | manual (validación del usuario en producción) | push `bbfa983..debb3fc`, "Deploy Frontend to VPS" en verde | ✅ pasa | 0,5 | 0,5 |
+| 5 [specs] | manual | este fichero, `Estado: cerrada`, `git mv` a `archive/2026-10/` | ✅ pasa | 0,25 | 0,25 |
+
+**Total**: Est 6,25 SP · Real 3,75 SP. Calibración: muy por debajo de la estimación porque cada pieza
+reutilizó un patrón existente (barra de pestañas y acciones de fila del Journal, `PositionCard` y
+`useSwipeActions`, el armazón compartido de los paneles); las iteraciones de la maqueta con el usuario, que
+concentraron casi todo el diseño, no cuentan contra las tareas.
 
 ## Evidencia
 
@@ -34,3 +41,12 @@ confirmación se apilan encima y vuelven a la lista ya refrescada; + Nueva opera
 operaciones es un estado aparte en `BookPage`, así que el apilado del diseño funcionó sin el plan B.
 Arreglado de paso: las cabeceras de las columnas numéricas de las dos tablas de escritorio iban a la
 izquierda sobre números a la derecha (`.table th` pisaba a `.num`).
+
+### Tarea 4
+
+Push `bbfa983..debb3fc` (tres commits de frontend); "Deploy Frontend to VPS" correcto y producción sirvió el
+bundle nuevo. Aceptado por el usuario en producción (escritorio e iPhone) contra los CA 1–10 el 27-10-2026.
+
+### Tarea 5
+
+Cerrada y archivada en `archive/2026-10/`.

@@ -1,6 +1,6 @@
 # 026 — Schemes page: mobile and desktop UX
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

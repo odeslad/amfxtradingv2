@@ -1,6 +1,6 @@
 # 026 — Página de esquemas: UX en móvil y escritorio
 
-> Estado: **aprobada**
+> Estado: **cerrada**
 
 ## Contexto
 

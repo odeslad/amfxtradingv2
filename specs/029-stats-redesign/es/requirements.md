@@ -30,7 +30,7 @@ La página de Stats (`frontend/src/features/stats/`) filtra por broker y periodo
 **Filtro por activo**
 - AC 5. Un select **Activo** junto a Broker lista "Todos" más los símbolos operados en ese broker, sin los símbolos ocultos (visibilidad de la spec 024).
 - AC 6. CUANDO se elige un activo ENTONCES trades, ganadas, win rate, trades/mes, Net P&L y las filas mensuales cuentan solo las operaciones de ese activo.
-- AC 7. CUANDO se elige un activo ENTONCES Cash flow y Return muestran "—" y el gráfico muestra el P&L acumulado de ese activo; con "Todos" el gráfico es la curva de balance como hoy.
+- AC 7. CUANDO se elige un activo ENTONCES Cash flow muestra "—", Return (global y mensual) es la contribución de ese activo al return de la cuenta (P&L del activo sobre el balance inicial de la cuenta + cash flow de la cuenta, el mismo denominador que el return de la cuenta) y el gráfico muestra el P&L acumulado de ese activo; con "Todos" el gráfico es la curva de balance como hoy.
 - AC 8. CUANDO cambia el broker y el activo elegido no se operó en él ENTONCES el activo vuelve a "Todos".
 
 **Diseño**

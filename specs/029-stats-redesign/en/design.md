@@ -14,7 +14,7 @@ Backend first (an optional `symbol` and the list of traded symbols on `GET /stat
 - `services/stats-core.ts` (pure, unit-tested):
   - `StatsInput` gains `mode: 'account' | 'asset'`.
   - `MonthlyStats` gains `wins` (monthly win %).
-  - Asset mode: `cashFlow = 0`, `startBalance = null`, `returnPct = null` (overall and monthly), and `curve` is the **cumulative P&L of the period's trades per day** starting at 0 (same `CurvePoint` shape, `balance` = cumulative P&L). Account mode is unchanged.
+  - Asset mode: `cashFlow = 0`; `startBalance` and `returnPct` (overall and monthly) come from the whole account's balance and cash flow passed in as `accountTrades` / `accountOperations` (the service loads them too), so the return is the asset's contribution; and `curve` is the **cumulative P&L of the period's trades per day** starting at 0 (same `CurvePoint` shape, `balance` = cumulative P&L). Account mode is unchanged.
   - `BrokerStats` gains `symbol: string | null` and `symbols: string[]`.
 - Tests: extend `stats-core.test.ts` with asset mode (cumulative curve, null return, monthly wins).
 - Contract: additive only (new optional param, new fields). The current frontend keeps working.

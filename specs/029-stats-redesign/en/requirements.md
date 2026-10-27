@@ -30,7 +30,7 @@ The Stats page (`frontend/src/features/stats/`) filters by broker and period (th
 **Asset filter**
 - AC 5. An **Activo** select next to Broker lists "Todos" plus the symbols traded on that broker, minus hidden symbols (spec 024 visibility).
 - AC 6. WHEN an asset is selected THEN trades, wins, win rate, trades/month, Net P&L and the monthly rows count only that asset's trades.
-- AC 7. WHEN an asset is selected THEN Cash flow and Return show "—" and the chart shows that asset's cumulative P&L; with "Todos" the chart is the balance curve as today.
+- AC 7. WHEN an asset is selected THEN Cash flow shows "—", Return (overall and monthly) is that asset's contribution to the account return (asset P&L over the account's start balance + account cash flow, the same denominator as the account return) and the chart shows that asset's cumulative P&L; with "Todos" the chart is the balance curve as today.
 - AC 8. WHEN the broker changes and the selected asset was not traded there THEN the asset falls back to "Todos".
 
 **Layout**

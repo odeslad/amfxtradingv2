@@ -39,15 +39,22 @@ async function tradedSymbols(broker: string): Promise<string[]> {
 
 // DB adapter: loads the anchor balance and the movements, the maths live in stats-core.
 export async function computeBrokerStats(broker: string, from?: Date, to?: Date, symbol?: string): Promise<StatsResponse> {
-  const [latest, movements, symbols] = await Promise.all([
+  const [latest, movements, account, symbols] = await Promise.all([
     db.balance.findFirst({
       where: { broker },
       orderBy: { timestamp: 'desc' },
       select: { balance: true, currency: true, timestamp: true },
     }),
     loadMovements(broker, from, symbol),
+    // the whole account, for the balance an asset's return is measured against
+    symbol ? loadMovements(broker, from) : Promise.resolve(null),
     tradedSymbols(broker),
   ]);
-  const stats = computeStats({ broker, latest, ...movements, from, to, mode: symbol ? 'asset' : 'account' });
+  const stats = computeStats({
+    broker, latest, ...movements, from, to,
+    mode: symbol ? 'asset' : 'account',
+    accountTrades: account?.trades,
+    accountOperations: account?.operations,
+  });
   return { ...stats, symbol: symbol ?? null, symbols };
 }

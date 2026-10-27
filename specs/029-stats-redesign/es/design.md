@@ -14,7 +14,7 @@ Primero el backend (un `symbol` opcional y la lista de activos operados en `GET 
 - `services/stats-core.ts` (puro, con tests):
   - `StatsInput` gana `mode: 'account' | 'asset'`.
   - `MonthlyStats` gana `wins` (win % mensual).
-  - Modo activo: `cashFlow = 0`, `startBalance = null`, `returnPct = null` (global y mensual), y `curve` es el **P&L acumulado de las operaciones del periodo por día** empezando en 0 (misma forma `CurvePoint`, `balance` = P&L acumulado). El modo cuenta no cambia.
+  - Modo activo: `cashFlow = 0`; `startBalance` y `returnPct` (global y mensual) salen del balance y el cash flow de toda la cuenta, pasados como `accountTrades` / `accountOperations` (el servicio también los carga), así que el return es la contribución del activo; y `curve` es el **P&L acumulado de las operaciones del periodo por día** empezando en 0 (misma forma `CurvePoint`, `balance` = P&L acumulado). El modo cuenta no cambia.
   - `BrokerStats` gana `symbol: string | null` y `symbols: string[]`.
 - Tests: ampliar `stats-core.test.ts` con el modo activo (curva acumulada, return nulo, wins mensuales).
 - Contrato: solo añade (parámetro opcional nuevo, campos nuevos). El frontend actual sigue funcionando.

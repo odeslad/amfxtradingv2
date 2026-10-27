@@ -57,8 +57,11 @@ export interface StatsInput {
   to?: Date;
   now?: Date;
   // 'asset': the trades of one symbol only (spec 029). Balance operations belong to no
-  // asset, so return and cash flow have no meaning and the curve is the cumulative P&L.
+  // asset: cash flow is 0 and the curve is the cumulative P&L. The return is the asset's
+  // contribution to the account return, measured against the account's own movements.
   mode?: 'account' | 'asset';
+  accountTrades?: Movement[];
+  accountOperations?: Movement[];
 }
 
 const DAY_MS = 86_400_000;
@@ -105,16 +108,21 @@ const inWindow = (items: Movement[], from: Date, to: Date): Movement[] =>
 
 // Pure: every number the Stats page shows, derived from the latest balance snapshot
 // (the anchor) and the movements loaded by the caller.
-export function computeStats({ broker, latest, trades: allTrades, operations: rawOperations, from, to, now = new Date(), mode = 'account' }: StatsInput): BrokerStats {
+export function computeStats({ broker, latest, trades: allTrades, operations: rawOperations, from, to, now = new Date(), mode = 'account', accountTrades, accountOperations }: StatsInput): BrokerStats {
   const asset = mode === 'asset';
   const allOperations = asset ? [] : rawOperations;
+  // The balance always comes from the whole account; in asset mode without it there is no return.
+  const hasAccount = !asset || (accountTrades !== undefined && accountOperations !== undefined);
+  const accTrades = asset ? accountTrades ?? [] : allTrades;
+  const accOps = asset ? accountOperations ?? [] : allOperations;
   const periodEnd = to ?? now;
   const periodTrades = to ? allTrades.filter(t => t.time <= periodEnd) : allTrades;
   const periodStart = from ?? periodTrades[0]?.time ?? null;
   const periodOps = periodStart ? inWindow(allOperations, periodStart, periodEnd) : [];
 
-  const tradesAfter = afterSum(allTrades, suffixSums(allTrades));
-  const opsAfter = afterSum(allOperations, suffixSums(allOperations));
+  const tradesAfter = afterSum(accTrades, suffixSums(accTrades));
+  const opsAfter = afterSum(accOps, suffixSums(accOps));
+  const accountPeriodOps = periodStart ? inWindow(accOps, periodStart, periodEnd) : [];
   const anchor = latest?.balance ?? 0;
   // Balance once every movement at or before `t` has been applied.
   const balanceAt = (t: Date): number => {
@@ -148,10 +156,12 @@ export function computeStats({ broker, latest, trades: allTrades, operations: ra
       const bucket = byMonth.get(monthKey(op.time));
       if (bucket) bucket.cashFlow += op.amount;
     }
+    const accountCashByMonth = new Map<string, number>();
+    for (const op of accountPeriodOps) accountCashByMonth.set(monthKey(op.time), (accountCashByMonth.get(monthKey(op.time)) ?? 0) + op.amount);
     for (const bucket of byMonth.values()) {
       const monthStart = startOfUtcMonth(new Date(`${bucket.month}-01T00:00:00Z`));
       const effectiveStart = monthStart > periodStart ? monthStart : periodStart;
-      bucket.returnPct = asset ? null : returnPct(bucket.netPnl, balanceBefore(effectiveStart), bucket.cashFlow);
+      bucket.returnPct = hasAccount ? returnPct(bucket.netPnl, balanceBefore(effectiveStart), accountCashByMonth.get(bucket.month) ?? 0) : null;
       monthly.push(bucket);
     }
   }
@@ -187,8 +197,8 @@ export function computeStats({ broker, latest, trades: allTrades, operations: ra
     netPnl,
     cashFlow,
     tradesPerMonth: months > 0 ? periodTrades.length / months : 0,
-    startBalance: latest && !asset ? startBalance : null,
-    returnPct: latest && !asset ? returnPct(netPnl, startBalance, cashFlow) : null,
+    startBalance: latest && hasAccount ? startBalance : null,
+    returnPct: latest && hasAccount ? returnPct(netPnl, startBalance, sum(accountPeriodOps)) : null,
     monthly,
     curve,
     operations,

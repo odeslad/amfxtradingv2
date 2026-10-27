@@ -79,7 +79,20 @@ describe('computeStats', () => {
     expect(stats.monthly.map(m => m.wins)).toEqual([1, 1, 0]);
   });
 
-  it('in asset mode ignores operations, nulls the return and draws the cumulative P&L', () => {
+  it('in asset mode measures the return against the whole account', () => {
+    // asset = the +100 and +200 trades; account = every trade and the deposit
+    const assetTrades = [trades[0], trades[2]];
+    const asset = computeStats({ broker: 'test', latest, trades: assetTrades, operations: [], from, to, mode: 'asset', accountTrades: trades, accountOperations: operations });
+    expect(asset.netPnl).toBe(300);
+    expect(asset.cashFlow).toBe(0);
+    expect(asset.startBalance).toBe(500);
+    expect(asset.returnPct).toBeCloseTo(300 / (500 + 500) * 100, 10);   // same denominator as the account
+    const [mar, apr] = asset.monthly;
+    expect(mar.returnPct).toBeCloseTo(100 / 500 * 100, 10);
+    expect(apr.returnPct).toBeCloseTo(200 / (550 + 500) * 100, 10);
+  });
+
+  it('in asset mode without the account ignores operations, nulls the return and draws the cumulative P&L', () => {
     const asset = computeStats({ broker: 'test', latest, trades, operations, from, to, mode: 'asset' });
     expect(asset.netPnl).toBe(220);
     expect(asset.cashFlow).toBe(0);

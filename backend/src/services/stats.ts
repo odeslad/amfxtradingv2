@@ -32,6 +32,15 @@ async function loadMovements(broker: string, since?: Date, symbol?: string): Pro
   };
 }
 
+async function accountStart(broker: string): Promise<Date | undefined> {
+  const [trade, operation] = await Promise.all([
+    db.trade.findFirst({ where: { broker }, orderBy: { closeTime: 'asc' }, select: { closeTime: true } }),
+    db.balanceOperation.findFirst({ where: { broker }, orderBy: { time: 'asc' }, select: { time: true } }),
+  ]);
+  const times = [trade?.closeTime, operation?.time].filter((t): t is Date => t instanceof Date);
+  return times.length > 0 ? new Date(Math.min(...times.map(t => t.getTime()))) : undefined;
+}
+
 async function tradedSymbols(broker: string): Promise<string[]> {
   const rows = await db.trade.findMany({ where: { broker }, distinct: ['symbol'], select: { symbol: true } });
   return rows.map(r => r.symbol).sort();
@@ -39,7 +48,7 @@ async function tradedSymbols(broker: string): Promise<string[]> {
 
 // DB adapter: loads the anchor balance and the movements, the maths live in stats-core.
 export async function computeBrokerStats(broker: string, from?: Date, to?: Date, symbol?: string): Promise<StatsResponse> {
-  const [latest, movements, account, symbols] = await Promise.all([
+  const [latest, movements, account, symbols, start] = await Promise.all([
     db.balance.findFirst({
       where: { broker },
       orderBy: { timestamp: 'desc' },
@@ -49,12 +58,14 @@ export async function computeBrokerStats(broker: string, from?: Date, to?: Date,
     // the whole account, for the balance an asset's return is measured against
     symbol ? loadMovements(broker, from) : Promise.resolve(null),
     tradedSymbols(broker),
+    accountStart(broker),
   ]);
   const stats = computeStats({
     broker, latest, ...movements, from, to,
     mode: symbol ? 'asset' : 'account',
     accountTrades: account?.trades,
     accountOperations: account?.operations,
+    accountStart: start,
   });
   return { ...stats, symbol: symbol ?? null, symbols };
 }

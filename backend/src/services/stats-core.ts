@@ -62,6 +62,8 @@ export interface StatsInput {
   mode?: 'account' | 'asset';
   accountTrades?: Movement[];
   accountOperations?: Movement[];
+  // First movement the account ever had: a period reaching further back starts here.
+  accountStart?: Date;
 }
 
 const DAY_MS = 86_400_000;
@@ -108,7 +110,7 @@ const inWindow = (items: Movement[], from: Date, to: Date): Movement[] =>
 
 // Pure: every number the Stats page shows, derived from the latest balance snapshot
 // (the anchor) and the movements loaded by the caller.
-export function computeStats({ broker, latest, trades: allTrades, operations: rawOperations, from, to, now = new Date(), mode = 'account', accountTrades, accountOperations }: StatsInput): BrokerStats {
+export function computeStats({ broker, latest, trades: allTrades, operations: rawOperations, from, to, now = new Date(), mode = 'account', accountTrades, accountOperations, accountStart }: StatsInput): BrokerStats {
   const asset = mode === 'asset';
   const allOperations = asset ? [] : rawOperations;
   // The balance always comes from the whole account; in asset mode without it there is no return.
@@ -117,7 +119,8 @@ export function computeStats({ broker, latest, trades: allTrades, operations: ra
   const accOps = asset ? accountOperations ?? [] : allOperations;
   const periodEnd = to ?? now;
   const periodTrades = to ? allTrades.filter(t => t.time <= periodEnd) : allTrades;
-  const periodStart = from ?? periodTrades[0]?.time ?? null;
+  const requestedStart = from && accountStart && accountStart > from ? accountStart : from;
+  const periodStart = requestedStart ?? periodTrades[0]?.time ?? null;
   const periodOps = periodStart ? inWindow(allOperations, periodStart, periodEnd) : [];
 
   const tradesAfter = afterSum(accTrades, suffixSums(accTrades));

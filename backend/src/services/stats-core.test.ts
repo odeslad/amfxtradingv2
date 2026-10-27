@@ -112,6 +112,13 @@ describe('computeStats', () => {
     expect(local.curve[0].date).toBe('2026-03-01');
   });
 
+  it('starts at the account start when the period reaches further back', () => {
+    const early = computeStats({ broker: 'test', latest, trades, operations, from: at('2025-01-01T00:00:00Z'), to, accountStart: at('2026-03-10T10:00:00Z') });
+    expect(early.period.from).toBe('2026-03-10T10:00:00.000Z');
+    expect(early.curve[0].date).toBe('2026-03-10');
+    expect(early.monthly.map(m => m.month)).toEqual(['2026-03', '2026-04', '2026-05']);
+  });
+
   it('without a period it starts at the first trade and ends now', () => {
     const open = computeStats({ broker: 'test', latest, trades, operations, now: at('2026-06-15T00:00:00Z') });
     expect(open.period.from).toBe(trades[0].time.toISOString());

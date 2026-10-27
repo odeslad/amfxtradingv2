@@ -36,7 +36,7 @@ export function OlderYearsTab({ years, active, onSelect }: OlderYearsTabProps) {
         className={`${styles.tab} ${active !== null ? styles.tabActive : ''} ${open ? styles.tabOpen : ''}`}
         onClick={() => setOpen(o => !o)}
       >
-        {active ?? 'Anteriores'} ▾
+        {active ?? <><span className={styles.labelLong}>Anteriores</span><span className={styles.labelShort}>Más</span></>} ▾
       </button>
       {open && (
         <div className={styles.olderMenu} role="menu">

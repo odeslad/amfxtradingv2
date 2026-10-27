@@ -47,6 +47,8 @@
 
 .tabOpen { color: var(--text); }
 
+.labelShort { display: none; }
+
 .olderMenu {
   position: absolute;
   top: calc(100% + 4px);
@@ -86,7 +88,15 @@
 
 @media (max-width: 768px) {
   .olderWrap { flex: 1; min-width: 0; }
-  .olderWrap .tab { width: 100%; white-space: nowrap; }
+  .olderWrap .tab {
+    width: 100%;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .labelLong { display: none; }
+  .labelShort { display: inline; }
   .olderItem { min-height: 44px; font-size: var(--text-lg); }
 }
 

@@ -7,3 +7,11 @@
 - **Resultado:** ✅ pass.
 - **Evidencia:** parámetro opcional `symbol`; con él solo se cargan las operaciones de ese símbolo y ninguna operación de balance; `stats-core` `mode: 'asset'` → cash flow 0, balance inicial y return nulos (también mensuales), curva = P&L acumulado desde 0; `MonthlyStats.wins`; la respuesta añade `symbol` y `symbols` (símbolos operados del broker). Contrato que solo añade — el frontend actual no se ve afectado.
 - **Est vs Actual:** 2 SP vs 1,5 SP.
+
+## Tarea 2 — Lista de periodos compartida
+
+- **Mecanismo:** `npm run build` + eslint + prueba local en los filtros del Journal.
+- **Comandos:** `cd frontend && npm run build` → ✓; eslint journal/stats → limpio.
+- **Resultado:** ✅ pass — validado por el usuario en local.
+- **Evidencia:** Hoy, Ayer, Esta semana/Este mes/Este trimestre/Este año (últimos 7/30/90/365 días con hoy), Todo, Custom; `normalizeDateRange` lleva los valores guardados eliminados a Todo (Journal y Stats); `clampToToday` mantiene la fecha Hasta de Custom ≤ hoy.
+- **Est vs Actual:** 1 SP vs 0,5 SP.

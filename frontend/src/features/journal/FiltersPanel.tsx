@@ -1,5 +1,5 @@
 import { POSITION_COLORS, POSITION_COLOR_VALUES, type PositionColor } from './utils/position';
-import { type DateRange, DATE_RANGE_OPTIONS } from './utils/dateRange';
+import { type DateRange, DATE_RANGE_OPTIONS, clampToToday } from './utils/dateRange';
 import { IsoDateField } from '../../shared/ui/DateField';
 import styles from './FiltersPanel.module.css';
 
@@ -103,7 +103,7 @@ export function FiltersPanel({ open, onClose, values, options, onChange, showDat
                   </div>
                   <div className={styles.field}>
                     <label className={styles.label} htmlFor="journal-date-to">To</label>
-                    <IsoDateField id="journal-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: iso })} />
+                    <IsoDateField id="journal-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: clampToToday(iso) })} />
                   </div>
                 </div>
               )}

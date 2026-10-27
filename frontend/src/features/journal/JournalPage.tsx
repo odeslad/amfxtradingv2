@@ -17,6 +17,7 @@ import { closeCommand, sendCommands } from '../../lib/commands';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { addToast } from '../../lib/toast';
 import { type Position, TYPE_LABEL, fmt } from './utils/position';
+import { normalizeDateRange } from './utils/dateRange';
 import { useLivePositionsFeed, useLivePositionsByKeys, posKey } from './useLivePositions';
 import styles from './JournalPage.module.css';
 
@@ -38,7 +39,10 @@ export function JournalPage() {
   // Memoised: a fresh object every render retriggers the group effects in the
   // tabs, which set state here and loop the render infinitely.
   const filters: FilterValues = useMemo(
-    () => ({ ...DEFAULT_FILTERS, ...storedFilters }),
+    () => {
+      const merged = { ...DEFAULT_FILTERS, ...storedFilters };
+      return { ...merged, dateRange: normalizeDateRange(merged.dateRange) };
+    },
     [storedFilters],
   );
   const orderFilters: OrderFilterValues = useMemo(

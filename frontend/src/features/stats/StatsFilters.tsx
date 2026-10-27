@@ -1,4 +1,4 @@
-import { type DateRange, DATE_RANGE_OPTIONS } from '../journal/utils/dateRange';
+import { type DateRange, DATE_RANGE_OPTIONS, clampToToday } from '../journal/utils/dateRange';
 import { IsoDateField } from '../../shared/ui/DateField';
 import styles from './StatsFilters.module.css';
 
@@ -43,7 +43,7 @@ export function StatsFilters({ brokers, values, onChange }: StatsFiltersProps) {
           </div>
           <div className={styles.field}>
             <label className={styles.label} htmlFor="stats-date-to">To</label>
-            <IsoDateField id="stats-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: iso })} />
+            <IsoDateField id="stats-date-to" className={`${styles.input} ${styles.dateInput}`} value={values.dateTo} onChange={iso => onChange({ ...values, dateTo: clampToToday(iso) })} />
           </div>
         </>
       )}

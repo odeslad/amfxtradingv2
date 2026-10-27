@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { isBrokerVisible, useVisibility } from '../../lib/visibility';
-import { dateRangeBounds } from '../journal/utils/dateRange';
+import { dateRangeBounds, normalizeDateRange } from '../journal/utils/dateRange';
 import { fmt, fmtPnl } from '../journal/utils/position';
 import { StatsFilters, type StatsFilterValues } from './StatsFilters';
 import { StatTile, type StatTone } from './StatTile';
@@ -24,7 +24,10 @@ const toneOf = (n: number): StatTone => (n > 0 ? 'positive' : n < 0 ? 'negative'
 
 export function StatsPage() {
   const [storedFilters, setFilters] = useLocalStorage<StatsFilterValues>('stats.filters', DEFAULT_FILTERS);
-  const filters = useMemo(() => ({ ...DEFAULT_FILTERS, ...storedFilters }), [storedFilters]);
+  const filters = useMemo(() => {
+    const merged = { ...DEFAULT_FILTERS, ...storedFilters };
+    return { ...merged, dateRange: normalizeDateRange(merged.dateRange) };
+  }, [storedFilters]);
 
   const [allBrokers, setBrokers] = useState<string[]>([]);
   const visibility = useVisibility();

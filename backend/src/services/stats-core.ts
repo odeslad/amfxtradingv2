@@ -168,7 +168,9 @@ export function computeStats({ broker, latest, trades: allTrades, operations: ra
 
   const curve: CurvePoint[] = [];
   if (periodStart) {
-    const firstDay = startOfUtcDay(periodStart);
+    // The page sends the viewer's local midnight, which in UTC can fall on the evening
+    // before: round to the nearest UTC day so the chart has no extra leading day.
+    const firstDay = startOfUtcDay(new Date(periodStart.getTime() + DAY_MS / 2));
     const lastDay = startOfUtcDay(periodEnd);
     let cumulative = 0;
     let next = 0;

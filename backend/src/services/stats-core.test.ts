@@ -106,6 +106,12 @@ describe('computeStats', () => {
     expect(asset.curve.at(-1)).toEqual({ date: '2026-05-31', balance: 220 });
   });
 
+  it('starts the curve on the viewer\'s day when the period opens at local midnight', () => {
+    const localMidnight = at('2026-02-28T23:00:00Z');                    // 1 March 00:00 in UTC+1
+    const local = computeStats({ broker: 'test', latest, trades, operations, from: localMidnight, to });
+    expect(local.curve[0].date).toBe('2026-03-01');
+  });
+
   it('without a period it starts at the first trade and ends now', () => {
     const open = computeStats({ broker: 'test', latest, trades, operations, now: at('2026-06-15T00:00:00Z') });
     expect(open.period.from).toBe(trades[0].time.toISOString());

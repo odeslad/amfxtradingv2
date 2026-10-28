@@ -1,6 +1,6 @@
 # 029 — Stats redesign and asset filter
 
-> Status: **draft**
+> Status: **closed**
 > Mockup: [Stats rediseño](https://claude.ai/artifact/VDb9ZAGrZJw5TcxNwtzCrU) (approved)
 
 ## Context

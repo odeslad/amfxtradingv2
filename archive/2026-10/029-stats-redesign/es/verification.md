@@ -25,3 +25,29 @@
 - **Desviación acordada:** con un activo el Return se muestra como su contribución al return de la cuenta (ajuste de backend 9465958); meses en español.
 - **Incidencia:** 9465958 se llevó el borrado de StatTile que estaba en el stage y rompió el build del frontend en master; restaurado en e4556d2. El redespliegue de e4556d2 perdió la sesión SSH a mitad del build (broken pipe) y se relanzó por SSH con éxito.
 - **Est vs Actual:** 4 SP vs 4 SP.
+
+## Tarea 4 — Push y validación en producción
+
+- **Mecanismo:** manual (validación del usuario).
+- **Comandos:** `git push origin master` (backend primero, luego frontend) → despliegues ✓ success.
+- **Resultado:** ✅ pass — el usuario confirmó /stats en desktop e iPhone y el select de periodo del Journal.
+- **Ajustes de la validación:** curva desde el día local del usuario (6f53c10), balance inicial en los totales (bd450ae), colores de signo en móvil (4e90870), periodo no anterior a la cuenta (7d6bdf1), balance inicial en su propia línea en móvil (b5f293f).
+- **Est vs Actual:** 0,5 SP vs 1 SP.
+
+## Tarea 5 — Cierre
+
+- **Resultado:** ✅ — builds de frontend y backend repetidos en verde; spec cerrada y archivada en `archive/2026-10/`.
+- **Est vs Actual:** 0,25 SP vs 0,25 SP.
+
+## Totales
+
+| Tarea | Est | Actual |
+|---|---|---|
+| 1 | 2 | 1,5 |
+| 2 | 1 | 0,5 |
+| 3 | 4 | 4 |
+| 4 | 0,5 | 1 |
+| 5 | 0,25 | 0,25 |
+| **Total** | **7,75** | **7,25** |
+
+**Calibración:** algo por debajo; el backend y la lista de periodos fueron más rápidos de lo estimado, la validación en producción necesitó cinco ajustes pequeños.

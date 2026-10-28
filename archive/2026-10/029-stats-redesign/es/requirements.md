@@ -1,6 +1,6 @@
 # 029 — Rediseño de Stats y filtro por activo
 
-> Estado: **borrador**
+> Estado: **cerrada**
 > Maqueta: [Stats rediseño](https://claude.ai/artifact/VDb9ZAGrZJw5TcxNwtzCrU) (aprobada)
 
 ## Contexto

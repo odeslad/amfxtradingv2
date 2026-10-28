@@ -25,3 +25,29 @@
 - **Deviation agreed:** with an asset the Return is shown as its contribution to the account return (backend follow-up 9465958); months labelled in Spanish.
 - **Incident:** 9465958 picked up the staged StatTile deletion and broke the frontend build on master; restored in e4556d2. The redeploy of e4556d2 lost its SSH session mid-build (broken pipe) and was relaunched over SSH successfully.
 - **Est vs Actual:** 4 SP vs 4 SP.
+
+## Task 4 — Push and production validation
+
+- **Mechanism:** manual (user validation).
+- **Commands:** `git push origin master` (backend first, then frontend) → deploys ✓ success.
+- **Outcome:** ✅ pass — the user confirmed /stats on desktop and iPhone and the Journal period select.
+- **Follow-ups from validation:** curve starts on the viewer's local day (6f53c10), start balance in the totals (bd450ae), phone sign colours (4e90870), period starts no earlier than the account (7d6bdf1), start balance on its own phone line (b5f293f).
+- **Est vs Actual:** 0.5 SP vs 1 SP.
+
+## Task 5 — Close
+
+- **Outcome:** ✅ — frontend and backend builds re-run green; spec closed and archived under `archive/2026-10/`.
+- **Est vs Actual:** 0.25 SP vs 0.25 SP.
+
+## Totals
+
+| Task | Est | Actual |
+|---|---|---|
+| 1 | 2 | 1.5 |
+| 2 | 1 | 0.5 |
+| 3 | 4 | 4 |
+| 4 | 0.5 | 1 |
+| 5 | 0.25 | 0.25 |
+| **Total** | **7.75** | **7.25** |
+
+**Calibration:** slightly under; backend and period list were faster than estimated, the production validation needed five small follow-ups.

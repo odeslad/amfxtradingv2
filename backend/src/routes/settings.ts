@@ -24,6 +24,7 @@ interface DisplayInput {
   trendlineStyle?: (typeof TRENDLINE_STYLES)[number];
   trendlineWidth?: number;
   rectLabels?: boolean;
+  showSpread?: boolean;
 }
 
 interface Visibility {
@@ -37,6 +38,7 @@ interface DisplayRow {
   trendlineStyle: string;
   trendlineWidth: number;
   rectLabels: boolean;
+  showSpread: boolean;
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -56,7 +58,7 @@ function parseMirror(value: unknown): MirrorItem[] {
   });
 }
 
-function parseDisplay(value: unknown): DisplayInput {
+export function parseDisplay(value: unknown): DisplayInput {
   const row = bodyRecord(value);
   return {
     pnlMode: oneOf(row.pnlMode, 'display.pnlMode', PNL_MODES),
@@ -64,6 +66,7 @@ function parseDisplay(value: unknown): DisplayInput {
     trendlineStyle: optionalOneOf(row.trendlineStyle, 'display.trendlineStyle', TRENDLINE_STYLES),
     trendlineWidth: optionalInteger(row.trendlineWidth, 'display.trendlineWidth', { min: 1 }),
     rectLabels: optionalBoolean(row.rectLabels, 'display.rectLabels'),
+    showSpread: optionalBoolean(row.showSpread, 'display.showSpread'),
   };
 }
 
@@ -108,6 +111,7 @@ function toResponse(mirror: unknown[], display: DisplayRow | null) {
       trendlineStyle: display?.trendlineStyle ?? 'dashed',
       trendlineWidth: display?.trendlineWidth ?? 1,
       rectLabels: display?.rectLabels ?? true,
+      showSpread: display?.showSpread ?? false,
     },
     visibility: {
       hiddenBrokers: display?.hiddenBrokers ?? [],
@@ -156,6 +160,7 @@ router.put('/', asyncRoute(async (req, res) => {
       ...(display.trendlineStyle !== undefined ? { trendlineStyle: display.trendlineStyle } : {}),
       ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
       ...(display.rectLabels !== undefined ? { rectLabels: display.rectLabels } : {}),
+      ...(display.showSpread !== undefined ? { showSpread: display.showSpread } : {}),
     };
     const visibilityFields = visibility === undefined ? {} : {
       hiddenBrokers: visibility.hiddenBrokers,
@@ -172,6 +177,7 @@ router.put('/', asyncRoute(async (req, res) => {
           trendlineStyle: display?.trendlineStyle ?? 'dashed',
           trendlineWidth: display?.trendlineWidth ?? 1,
           rectLabels: display?.rectLabels ?? true,
+          showSpread: display?.showSpread ?? false,
           ...visibilityFields,
         },
       })

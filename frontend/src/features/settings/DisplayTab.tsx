@@ -8,6 +8,7 @@ export interface DisplaySettingsForm {
   trendlineStyle: TrendlineStyle;
   trendlineWidth: number;
   rectLabels: boolean;
+  showSpread: boolean;
 }
 
 const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
@@ -70,6 +71,17 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
           <span className={styles.displayLabel}>Rectangle labels (prices and pips)</span>
           <label className={styles.toggle}>
             <input type="checkbox" checked={display.rectLabels} onChange={e => onChange({ rectLabels: e.target.checked })} aria-label="Rectangle labels" />
+            <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
+          </label>
+        </div>
+
+        <div className={`${styles.displayRow} ${styles.displayRowInline}`}>
+          <span className={styles.displayLabel}>
+            Spread (ASK and BID lines)
+            <span className={styles.displayHint}>Replaces the current-price line on the chart</span>
+          </span>
+          <label className={styles.toggle}>
+            <input type="checkbox" checked={display.showSpread} onChange={e => onChange({ showSpread: e.target.checked })} aria-label="Spread" />
             <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
           </label>
         </div>

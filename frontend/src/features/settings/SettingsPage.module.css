@@ -303,6 +303,13 @@
   letter-spacing: var(--tracking-normal);
 }
 
+.displayHint {
+  display: block;
+  margin-top: 4px;
+  font-size: var(--text-2xs);
+  color: var(--muted);
+}
+
 .colorSwatches {
   display: flex;
   gap: 8px;

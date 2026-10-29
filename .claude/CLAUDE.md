@@ -281,7 +281,7 @@ Un `PipeReader` + un `FileWatcher` **por broker**, configurados en `brokers.json
 | Canal | Uso | Formato |
 |-------|-----|---------|
 | Named Pipe `\.\pipe\mt4tick_<broker>` | Ticks (100 ms), posiciones abiertas (1 s), cuenta (1 s) | Una línea JSON por mensaje: array `[...]` = batch de ticks · `{"type":"positions",...}` · `{"type":"account",...}` |
-| Archivos `bridge/*.json` (el EA los escribe cada 60 s) | Persistencia; el watcher los lee cada 30 s y salta los que no cambian de `mtime`/tamaño | `candles_<SYM>_<TF>.json` → `candles` (solo velas cerradas) · `history.json` → `trades` + `balance_operations` · `account.json` → `balances` (un upsert por broker y día UTC) |
+| Archivos `bridge/*.json` (el EA los escribe cada 60 s) | Persistencia; el watcher los lee cada 5 s y salta los que no cambian de `mtime`/tamaño (`history.json` y `account.json` también por contenido, spec 030) | `candles_<SYM>_<TF>.json` → `candles` (solo velas cerradas) · `history.json` → `trades` + `balance_operations` · `account.json` → `balances` (un upsert por broker y día UTC) |
 | Archivo `bridge/command.json` | Órdenes backend → EA | `action`, `symbol`, `lots`, `sl`, `tp`, `price`, `magic`, `id` |
 
 **El backend es SERVER del pipe**; el EA es CLIENT y se conecta al iniciar. Si el `listen` falla se reintenta con backoff (1 s → 30 s). `positions.json` lo escribe el EA pero nadie lo lee: las posiciones solo viven en memoria (`store/positions`) y se emiten por WS, no se persisten.
@@ -292,7 +292,7 @@ Un `PipeReader` + un `FileWatcher` **por broker**, configurados en `brokers.json
 
 ### WebSocket `/ws`
 
-Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `candle` (vela cerrada detectada en el tick por el cambio de `<tf>_time`, guardada al momento sin pisar la del EA, spec 025) · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
+Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `candle` (vela cerrada detectada en el tick por el cambio de `<tf>_time`, guardada al momento sin pisar la del EA, spec 025) · `trades_updated` (el watcher guardó un `history.json` con cambios; Historial y Stats recargan, spec 030) · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
 
 ### Velas activas y alertas
 

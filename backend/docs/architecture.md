@@ -20,7 +20,7 @@ MT4 EA (one terminal per broker)
     │               { "type": "account", … }     every 1 s   → store/accounts, WS 'account'
     │
     └── <bridgePath>/*.json (written by the EA every 60 s)
-            └── bridge/file-watcher.ts — polls every 30 s, skips files whose mtime/size did not change
+            └── bridge/file-watcher.ts — polls every 5 s, skips files whose mtime/size did not change (history/account also by content)
                     ├── candles_<SYM>_<TF>.json → services/candles.ts            → candles (closed bars only)
                     ├── history.json            → services/trades.ts             → trades
                     │                           → services/balance-operations.ts → balance_operations
@@ -209,7 +209,8 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 |--------|---------|--------|
 | `ticks` | `{ broker, ticks: [ …tick ] }` | pipe, every 100 ms, only when `FEATURE_WS_BROADCAST` is on |
 | `positions` | `{ broker, currency, brokerOffset, positions: [ …open positions with current bid/ask and colour ] }` | pipe, every 1 s |
-| `account` | `{ broker, account }` | pipe every 1 s, and `account.json` every 30 s |
+| `account` | `{ broker, account }` | pipe every 1 s, and `account.json` when its content changes |
+| `trades_updated` | `{ broker }` | the watcher synced a changed `history.json` (spec 030): History and Stats refetch |
 | `candle` | `{ broker, symbol, timeframe, time, open, high, low, close }` | a candle closed on the tick stream (`<tf>_time` changed, spec 025): stored at once unless the EA's file already wrote it, `time` in seconds |
 | `command_result` | `{ id, status, ticket?, error?, late? }` | command bridge |
 | `alert` | `{ broker, symbol, price, direction }` | price alert, only to its owner |

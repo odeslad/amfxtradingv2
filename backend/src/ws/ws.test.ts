@@ -107,6 +107,13 @@ describe('delivery', () => {
     await settle();
     expect(received).toEqual([]);
   });
+
+  it('broadcasts trades_updated with the broker at the root', async () => {
+    const client = await connectAs(1);
+    const message = nextMessage(client);
+    wss.broadcastTradesUpdated('test');
+    expect(await message).toEqual({ type: 'trades_updated', broker: 'test' });
+  });
 });
 
 describe('heartbeat', () => {

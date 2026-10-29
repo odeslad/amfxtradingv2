@@ -104,6 +104,10 @@ export function createWss(server: Server) {
     broadcastCandle(broker: string, candle: { symbol: string; timeframe: string; time: number; open: number; high: number; low: number; close: number }) {
       broadcast('candle', { broker, ...candle });
     },
+    // Closed trades or balance operations of the broker reached the DB (spec 030).
+    broadcastTradesUpdated(broker: string) {
+      broadcast('trades_updated', { broker });
+    },
     broadcastCommandResult(id: string, status: string, ticket?: number, error?: string, late?: boolean) {
       broadcast('command_result', { id, status, ticket, error, ...(late ? { late: true } : {}) });
     },

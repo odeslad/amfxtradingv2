@@ -78,6 +78,8 @@ function startBroker(brokerName: string, bridgePath: string, wss: Wss) {
     const operations = entries.filter(e => BALANCE_OPERATION_TYPES.has(e.type));
     await syncTrades(brokerName, trades);
     await syncBalanceOperations(brokerName, operations);
+    // The watcher only hands a history whose content changed.
+    if (features.wsBroadcast) wss.broadcastTradesUpdated(brokerName);
   });
 
   watcher?.onAccount(async (account) => {

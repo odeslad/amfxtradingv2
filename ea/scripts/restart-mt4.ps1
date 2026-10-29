@@ -3,15 +3,37 @@
 # the logged-on Administrator) start it again in the interactive session.
 # Never Start-Process terminal.exe from here: a process started from an SSH
 # session lands in session 0, invisible, and dies.
-# Exit 1 when a terminal does not come back within the timeout.
+# The task ignores /run while it is still running (it sleeps 20 s after each
+# start), so every /run waits for it to be idle first (spec 031).
+# Exit 1 only when a terminal is still missing at the end.
 param(
-    [int] $TimeoutSec = 120
+    [int] $TimeoutSec = 720,
+    [int] $SoftWaitSec = 90,
+    [int] $IdleWaitSec = 120
 )
 
 $task = 'AMFX-Watchdog'
+$deadline = (Get-Date).AddSeconds($TimeoutSec)
 
 function Running-Terminals {
     @(Get-CimInstance Win32_Process -Filter "Name = 'terminal.exe'" | Select-Object ProcessId, SessionId, ExecutablePath)
+}
+
+function Is-Back([string] $exe) {
+    [bool](Running-Terminals | Where-Object { $_.ExecutablePath -eq $exe -and $_.SessionId -ne 0 })
+}
+
+function Wait-WatchdogIdle {
+    $limit = (Get-Date).AddSeconds($IdleWaitSec)
+    while ((Get-ScheduledTask -TaskName $task).State -eq 'Running') {
+        if ((Get-Date) -ge $limit) { Write-Host "[WARN] $task still running after $IdleWaitSec s, asking anyway"; return }
+        Start-Sleep -Seconds 2
+    }
+}
+
+function Run-Watchdog {
+    Wait-WatchdogIdle
+    schtasks /run /tn $task | Out-Null
 }
 
 $initial = Running-Terminals
@@ -21,8 +43,8 @@ if ($initial.Count -eq 0) {
     exit 0
 }
 
+$started = Get-Date
 Write-Host "Reloading $($initial.Count) terminal(s) through $task"
-$failed = @()
 
 foreach ($t in $initial) {
     $exe = $t.ExecutablePath
@@ -33,20 +55,27 @@ foreach ($t in $initial) {
         if (-not $proc.WaitForExit(10000)) { Stop-Process -Id $t.ProcessId -Force }
     }
 
-    schtasks /run /tn $task | Out-Null
+    Run-Watchdog
 
-    $deadline = (Get-Date).AddSeconds($TimeoutSec)
-    $back = $false
-    while ((Get-Date) -lt $deadline) {
-        Start-Sleep -Seconds 5
-        $now = Running-Terminals | Where-Object { $_.ExecutablePath -eq $exe }
-        if ($now) { $back = $true; Write-Host "Started: $exe (session $($now[0].SessionId))"; break }
-    }
-    if (-not $back) { Write-Host "[FAILED] $exe did not come back within $TimeoutSec s"; $failed += $exe }
+    $soft = (Get-Date).AddSeconds($SoftWaitSec)
+    while (-not (Is-Back $exe) -and (Get-Date) -lt $soft) { Start-Sleep -Seconds 3 }
+    if (Is-Back $exe) { Write-Host "Started: $exe" }
+    else { Write-Host "[WARN] $exe not back after $SoftWaitSec s, checking again at the end" }
+}
+
+$missing = @($initial | Where-Object { -not (Is-Back $_.ExecutablePath) })
+if ($missing.Count -gt 0) { Run-Watchdog }
+while ($missing.Count -gt 0 -and (Get-Date) -lt $deadline) {
+    Start-Sleep -Seconds 5
+    $missing = @($initial | Where-Object { -not (Is-Back $_.ExecutablePath) })
 }
 
 $final = Running-Terminals
-Write-Host "Terminals running: $($final.Count)/$($initial.Count)"
-if ($failed.Count -gt 0 -or $final.Count -lt $initial.Count) { exit 1 }
+$elapsed = [int]((Get-Date) - $started).TotalSeconds
+Write-Host "Terminals running: $($final.Count)/$($initial.Count) in $elapsed s"
+if ($missing.Count -gt 0) {
+    foreach ($m in $missing) { Write-Host "[FAILED] $($m.ExecutablePath) is not running" }
+    exit 1
+}
 Write-Host "Done - $($initial.Count) terminal(s) reloaded"
 exit 0

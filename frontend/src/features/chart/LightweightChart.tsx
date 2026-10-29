@@ -275,6 +275,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const emasRef = useRef<Ema[]>(emas);
   const timeframeRef = useRef<string>(timeframe);
   const symbolRef = useRef<string>(symbol);
+  const brokerRef = useRef<string>(broker);
+  const candlesKeyRef = useRef<string | null>(null);
   const liveCandleTimeRef = useRef<number | null>(null);
   const onLoadMoreRef = useRef<(() => void) | undefined>(undefined);
   const trendlineManagerRef = useRef<DrawingManager | null>(null);
@@ -596,6 +598,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
           priceLineVisible: false,
           lastValueVisible: false,
           crosshairMarkerVisible: false,
+          autoscaleInfoProvider: () => null,
         });
         emaSeriesRef.current.set(ema.id, series);
       } else {
@@ -788,16 +791,20 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   }, [drawRollovers]);
 
   useEffect(() => {
+    brokerRef.current = broker;
     symbolRef.current = symbol;
     timeframeRef.current = timeframe;
-  }, [symbol, timeframe]);
+  }, [broker, symbol, timeframe]);
 
   useEffect(() => {
     if (!seriesRef.current || !chartRef.current || candles.length === 0) return;
 
     const oldCandles = candlesRef.current;
-    // Prepending older candles preserves the view; anything else resets it.
-    const preserve = oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
+    const candlesKey = `${brokerRef.current}|${symbolRef.current}|${timeframeRef.current}`;
+    const sameChart = candlesKeyRef.current === candlesKey;
+    candlesKeyRef.current = candlesKey;
+    // Prepending older candles of the same chart preserves the view; anything else resets it.
+    const preserve = sameChart && oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
 
     const filterWeekend = (arr: Candle[]) =>
       arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
@@ -911,7 +918,17 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     updateLiveEmas(liveTime, liveCandle.close);
   }, [updateLiveEmas]);
 
+  const fitPrice = useCallback(() => {
+    seriesRef.current?.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0, bottom: 0 } });
+  }, []);
+
   useImperativeHandle(ref, () => ({ updateLive }), [updateLive]);
+
+  const handleDoubleClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    const scaleWidth = seriesRef.current?.priceScale().width() ?? 0;
+    const right = e.currentTarget.getBoundingClientRect().right;
+    if (e.clientX >= right - scaleWidth) fitPrice();
+  };
 
   useEffect(() => {
     const series = seriesRef.current;
@@ -1214,7 +1231,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const legendPrecision = getPricePrecision(symbol);
 
   return (
-    <div ref={containerRef} className={styles.chart}>
+    <div ref={containerRef} className={styles.chart} onDoubleClick={handleDoubleClick}>
       <canvas ref={overlayRef} className={styles.overlay} />
       <canvas ref={trendlineCanvasRef} className={styles.trendlineCanvas} />
       {symbol && (

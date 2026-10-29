@@ -859,12 +859,9 @@ export class DrawingManager {
     }
   }
 
-  private strokeStyleFor(preview: boolean) {
-    // Preview uses the configured color so what you draw matches what you'll get;
-    // only the dash hints that it's not yet committed.
-    return preview
-      ? { color: this.appearance.color, style: 'dashed' as TrendlineStyle, width: this.appearance.width }
-      : this.appearance;
+  // The preview is drawn exactly as the committed shape will be.
+  private strokeStyleFor() {
+    return this.appearance;
   }
 
   private applyDash(style: TrendlineStyle) {
@@ -875,7 +872,7 @@ export class DrawingManager {
 
   private paintLine(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false, colorOverride?: string) {
     const ctx = this.ctx;
-    const { color: baseColor, style, width } = this.strokeStyleFor(preview);
+    const { color: baseColor, style, width } = this.strokeStyleFor();
     const color = colorOverride ?? baseColor;
     ctx.strokeStyle = color;
     ctx.lineWidth = width;
@@ -895,7 +892,7 @@ export class DrawingManager {
 
   private paintRect(px: { x1: number; y1: number; x2: number; y2: number }, selected: boolean, preview = false, colorOverride?: string) {
     const ctx = this.ctx;
-    const { color: baseColor, style, width } = this.strokeStyleFor(preview);
+    const { color: baseColor, style, width } = this.strokeStyleFor();
     const color = colorOverride ?? baseColor;
     const x = Math.min(px.x1, px.x2);
     const y = Math.min(px.y1, px.y2);

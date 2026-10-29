@@ -34,7 +34,7 @@ No EA ↔ backend contract change.
   - `showSpread` off → candle series keeps `priceLineVisible` / `lastValueVisible` (today).
   - `showSpread` on → candle series `priceLineVisible: false, lastValueVisible: false`, plus two `IPriceLine`s created once and moved with `applyOptions({ price })` on every tick:
     - **BID** at the live close (bid), `rgba(180,180,180,0.6)`, label `BID`.
-    - **ASK** at `ask`, `--red` `#e05c5c` dashed, label `ASK`; not created until a tick with `ask` arrives (AC 5).
+    - **ASK** at `ask`, same grey as BID but dashed (user change during task 4; the mockup shows it red), label `ASK`; not created until a tick with `ask` arrives (AC 5).
   - Toggling the prop removes / recreates the two lines and restores the series options.
 - No dependencies added.
 

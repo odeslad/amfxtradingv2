@@ -157,6 +157,7 @@ export function ChartPage() {
   const [editPosition, setEditPosition] = useState<Position | null>(null);
   const [closePosition, setClosePosition] = useState<Position | null>(null);
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
+  const [showSpread, setShowSpread] = useState(false);
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [hasMore, setHasMore] = useState(true);
   const [chartLoading, setChartLoading] = useState(() => Boolean(broker && symbol));
@@ -214,8 +215,9 @@ export function ChartPage() {
   }, []);
 
   useEffect(() => {
-    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number; rectLabels?: boolean } }>('/settings')
+    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number; rectLabels?: boolean; showSpread?: boolean } }>('/settings')
       .then(data => {
+        setShowSpread(data.display?.showSpread ?? false);
         const color = data.display?.trendlineColor;
         const style = data.display?.trendlineStyle;
         const width = data.display?.trendlineWidth;
@@ -383,7 +385,7 @@ export function ChartPage() {
       close: last.bid,
     };
     liveCandleRef.current = candle;
-    chartRef.current?.updateLive(candle);
+    chartRef.current?.updateLive(candle, last.ask);
     if (alertsOpen) setPanelPrice(candle.close);
   }, [broker, symbol, timeframe, user, refreshAlerts, alertsOpen, positionsMode, acceptPositions]));
 
@@ -608,7 +610,7 @@ export function ChartPage() {
       <div className={styles.chartArea}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} alerts={chartAlerts} onMoveAlert={moveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={handleEditPosition} onClosePosition={handleClosePosition} onModifyPosition={handleModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balances[broker]} pnlMode={pnlMode} showSpread={showSpread} alerts={chartAlerts} onMoveAlert={moveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
               {selectedAlert && (
                 <AlertActionBar alert={selectedAlert} onEditPrice={editAlertFromChart} onToggle={toggleAlertFromChart} onDelete={deleteAlertFromChart} />

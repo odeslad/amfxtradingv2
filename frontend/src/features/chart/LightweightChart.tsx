@@ -16,7 +16,7 @@ import { type PnlMode, isPending, isBuySide, pipSize, TYPE_LABEL } from '../jour
 // Imperative handle: the live candle is pushed straight into the series from the
 // WebSocket handler, so the page does not re-render per tick (spec 019).
 export interface ChartHandle {
-  updateLive(candle: Candle | null): void;
+  updateLive(candle: Candle | null, ask?: number): void;
 }
 
 export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck' | 'text';
@@ -213,6 +213,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   trendlineAppearance?: TrendlineAppearance;
   accountBalance?: number;
   pnlMode?: PnlMode;
+  showSpread?: boolean;
   alerts?: ChartAlert[];
   onMoveAlert?: (alertId: number, price: number) => Promise<void>;
   onSelectAlert?: (alertId: number | null) => void;
@@ -220,7 +221,7 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onNewTrade?: () => void;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', showSpread = false, alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -272,6 +273,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   // Last closed point per EMA, the base of the provisional point on the live candle (spec 025).
   const emaLastRef = useRef<Map<string, { time: number; value: number }>>(new Map());
   const candlesRef = useRef<Candle[]>([]);
+  const showSpreadRef = useRef(showSpread);
+  const quoteRef = useRef<{ bid: number | null; ask: number | null }>({ bid: null, ask: null });
+  const bidLineRef = useRef<IPriceLine | null>(null);
+  const askLineRef = useRef<IPriceLine | null>(null);
   const emasRef = useRef<Ema[]>(emas);
   const timeframeRef = useRef<string>(timeframe);
   const symbolRef = useRef<string>(symbol);
@@ -786,6 +791,8 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
+      bidLineRef.current = null;
+      askLineRef.current = null;
       emaSeries.clear();
     };
   }, [drawRollovers]);
@@ -884,8 +891,41 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     syncEmaSeries();
   }, [emas, syncEmaSeries]);
 
-  const updateLive = useCallback((liveCandle: Candle | null) => {
-    if (liveCandle === null) { liveCandleTimeRef.current = null; return; }
+  // Spec 032: with the spread on, ASK and BID price lines replace the series' current-price line.
+  const syncSpreadLines = useCallback(() => {
+    const series = seriesRef.current;
+    if (!series) return;
+    const removeLine = (line: { current: IPriceLine | null }) => {
+      if (line.current) series.removePriceLine(line.current);
+      line.current = null;
+    };
+    if (!showSpreadRef.current) {
+      removeLine(bidLineRef);
+      removeLine(askLineRef);
+      series.applyOptions({ priceLineVisible: true, lastValueVisible: true });
+      return;
+    }
+    series.applyOptions({ priceLineVisible: false, lastValueVisible: false });
+    const bid = quoteRef.current.bid ?? candlesRef.current[candlesRef.current.length - 1]?.close ?? null;
+    const ask = quoteRef.current.ask;
+    const place = (line: { current: IPriceLine | null }, price: number, color: string, lineStyle: LineStyle, title: string) => {
+      if (line.current) line.current.applyOptions({ price });
+      else line.current = series.createPriceLine({ price, color, lineWidth: 1, lineStyle, axisLabelVisible: true, title });
+    };
+    if (bid !== null) place(bidLineRef, bid, 'rgba(180,180,180,0.85)', LineStyle.Dotted, 'BID');
+    if (ask !== null && ask > 0) place(askLineRef, ask, 'rgba(180,180,180,0.85)', LineStyle.Dashed, 'ASK');
+    else removeLine(askLineRef);
+  }, []);
+
+  useEffect(() => {
+    showSpreadRef.current = showSpread;
+    syncSpreadLines();
+  }, [showSpread, syncSpreadLines]);
+
+  const updateLive = useCallback((liveCandle: Candle | null, ask?: number) => {
+    if (liveCandle === null) { liveCandleTimeRef.current = null; quoteRef.current = { bid: null, ask: null }; return; }
+    quoteRef.current = { bid: liveCandle.close, ask: ask ?? null };
+    if (showSpreadRef.current) syncSpreadLines();
     if (!seriesRef.current) return;
 
     const data = candlesRef.current;
@@ -916,7 +956,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       // skip silently
     }
     updateLiveEmas(liveTime, liveCandle.close);
-  }, [updateLiveEmas]);
+  }, [updateLiveEmas, syncSpreadLines]);
 
   const fitPrice = useCallback(() => {
     seriesRef.current?.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0, bottom: 0 } });

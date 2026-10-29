@@ -34,7 +34,7 @@ Sin cambios en el contrato EA ↔ backend.
   - `showSpread` desactivado → la serie de velas mantiene `priceLineVisible` / `lastValueVisible` (como hoy).
   - `showSpread` activado → la serie de velas pasa a `priceLineVisible: false, lastValueVisible: false`, más dos `IPriceLine` creadas una vez y movidas con `applyOptions({ price })` en cada tick:
     - **BID** en el cierre en vivo (bid), `rgba(180,180,180,0.6)`, etiqueta `BID`.
-    - **ASK** en `ask`, `--red` `#e05c5c` discontinua, etiqueta `ASK`; no se crea hasta que llega un tick con `ask` (CA 5).
+    - **ASK** en `ask`, el mismo gris que BID pero discontinua (cambio del usuario en la tarea 4; la maqueta la muestra en rojo), etiqueta `ASK`; no se crea hasta que llega un tick con `ask` (CA 5).
   - Al cambiar la prop se quitan / recrean las dos líneas y se restauran las opciones de la serie.
 - Sin dependencias nuevas.
 

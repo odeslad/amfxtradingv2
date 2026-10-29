@@ -39,6 +39,13 @@ interface FileStamp {
   size: number;
 }
 
+interface FileSnapshot {
+  stamp: FileStamp;
+  raw: string;
+}
+
+const sameStamp = (a: FileStamp, b: FileStamp): boolean => a.mtimeMs === b.mtimeMs && a.size === b.size;
+
 // Polls the EA's bridge files and hands each one to an awaited handler, so a
 // poll never overlaps the previous one and a slow DB cannot stack writes.
 export class FileWatcher {
@@ -52,9 +59,12 @@ export class FileWatcher {
   private polling = false;
   // Candle files already persisted, by name: skipped while mtime and size hold.
   private readonly seen = new Map<string, FileStamp>();
+  // account.json and history.json as last handled: the EA rewrites them every
+  // cycle with mostly identical content, which must not reach the DB again (spec 030).
+  private readonly snapshots = new Map<string, FileSnapshot>();
   private lastListErrorAt = 0;
 
-  constructor(brokerName: string, bridgePath: string, intervalMs = 30_000) {
+  constructor(brokerName: string, bridgePath: string, intervalMs = 5_000) {
     this.brokerName = brokerName;
     this.bridgePath = bridgePath;
     this.intervalMs = intervalMs;
@@ -97,22 +107,53 @@ export class FileWatcher {
   }
 
   private async handleAccount() {
-    if (!this.accountHandler) return;
-    const account = this.readJson<BridgeAccount>('account.json');
-    if (account) await this.accountHandler(account);
+    const handler = this.accountHandler;
+    if (handler) await this.handleIfChanged<BridgeAccount>('account.json', handler);
   }
 
   private async handleHistory() {
-    if (!this.historyHandler) return;
-    const history = this.readJson<BridgeTrade[]>('history.json');
-    if (history) await this.historyHandler(history);
+    const handler = this.historyHandler;
+    if (handler) await this.handleIfChanged<BridgeTrade[]>('history.json', handler);
+  }
+
+  // Remembered only after the handler succeeds, so a DB failure is retried next poll.
+  private async handleIfChanged<T>(filename: string, handler: (data: T) => Promise<void>) {
+    const stamp = this.stat(filename);
+    if (!stamp) return;
+    const prev = this.snapshots.get(filename);
+    if (prev && sameStamp(prev.stamp, stamp)) return;
+
+    const raw = this.readRaw(filename);
+    if (raw === null) return;
+    if (prev && prev.raw === raw) {
+      this.snapshots.set(filename, { stamp, raw });
+      return;
+    }
+    const data = this.parse<T>(filename, raw);
+    if (data === null) return;
+    await handler(data);
+    this.snapshots.set(filename, { stamp, raw });
   }
 
   private readJson<T>(filename: string): T | null {
+    const raw = this.readRaw(filename);
+    return raw === null ? null : this.parse<T>(filename, raw);
+  }
+
+  private parse<T>(filename: string, raw: string): T | null {
+    try {
+      return JSON.parse(raw) as T;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error(`[FILE-WATCHER: ${this.brokerName}] error reading ${filename} | ${msg}`);
+      return null;
+    }
+  }
+
+  private readRaw(filename: string): string | null {
     const filepath = path.join(this.bridgePath, filename);
     try {
-      const raw = fs.readFileSync(filepath, 'utf8');
-      return JSON.parse(raw) as T;
+      return fs.readFileSync(filepath, 'utf8');
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       if (!msg.includes('ENOENT')) {
@@ -147,7 +188,7 @@ export class FileWatcher {
       const stamp = this.stat(file);
       if (!stamp) continue;
       const prev = this.seen.get(file);
-      if (prev && prev.mtimeMs === stamp.mtimeMs && prev.size === stamp.size) continue;
+      if (prev && sameStamp(prev, stamp)) continue;
 
       const data = this.readJson<BridgeCandles>(file);
       if (!data) continue;

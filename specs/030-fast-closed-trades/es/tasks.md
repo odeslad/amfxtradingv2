@@ -2,7 +2,7 @@
 
 Cada tarea es un commit convencional. El proyecto debe compilar tras cada tarea. Tareas de capas distintas nunca comparten commit. Orden de despliegue: backend → frontend → ea (el EA solo necesita recarga vía Watchdog; backend + frontend ya traen el watcher a 5 s y el refresco automático).
 
-- [ ] 1. [backend] `FileWatcher`: saltar `history.json` / `account.json` sin cambios (por `mtime`/tamaño y luego contenido), recordarlos solo si el handler termina bien, intervalo por defecto 5 s; tests de sin cambios / con cambios / handler que falla · **Verificar:** `npm run build` + vitest · **Est:** 1 SP
+- [x] 1. [backend] `FileWatcher`: saltar `history.json` / `account.json` sin cambios (por `mtime`/tamaño y luego contenido), recordarlos solo si el handler termina bien, intervalo por defecto 5 s; tests de sin cambios / con cambios / handler que falla · **Verificar:** `npm run build` + vitest · **Est:** 1 SP
 - [ ] 2. [backend] Emitir `{ type: "trades_updated", broker }` tras sincronizar un historial modificado; actualizar `backend/docs/architecture.md` y las líneas de WS/watcher de `.claude/CLAUDE.md` · **Verificar:** `npm run build` + vitest (broadcast WS) · **Est:** 0.5 SP
 - [ ] 3. [frontend] `lib/useTradesUpdated.ts` (filtro WS por broker + debounce de 1 s); Stats e Historial (posiciones cerradas) vuelven a pedir datos con él sin parpadeo de carga · **Verificar:** `npm run build` + manual en dev local contra el túnel a la BD de producción · **Est:** 1 SP
 - [ ] 4. [ea] Escribir `history.json` en cuanto cambia `OrdersHistoryTotal()`, como mucho cada `HISTORY_MIN_GAP_S` (3 s); el ciclo de 60 s se mantiene · **Verificar:** compilación en MetaEditor (usuario) + `[STATE] History changed` en el log del terminal tras cerrar un trade demo · **Est:** 0.5 SP

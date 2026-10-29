@@ -46,15 +46,15 @@ model Trade {
   @@map("trades")
 }
 
-model SettingsMirror {
+// Spec 033 · named mirror configurations; brokers = [{ broker, enabled, lotsMode, lots }].
+model MirrorPreset {
   id        Int      @id @default(autoincrement())
-  broker    String   @unique
-  enabled   Boolean  @default(false)
-  lotsMode  String   @default("fixed")
-  lots      Float    @default(0.01)
+  name      String   @unique
+  position  Int      @default(0)
+  brokers   Json     @default("[]")
   updatedAt DateTime @updatedAt
 
-  @@map("settings_mirror")
+  @@map("mirror_presets")
 }
 
 model SettingsDisplay {

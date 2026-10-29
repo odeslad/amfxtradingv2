@@ -11,9 +11,23 @@ interface BalanceChartProps {
   title: string;
 }
 
-const COLOR_LINE = '#f5a623';
-const COLOR_AREA_TOP = 'rgba(245, 166, 35, 0.45)';
-const COLOR_AREA_BOTTOM = 'rgba(245, 166, 35, 0.03)';
+interface CurvePalette {
+  line: string;
+  areaTop: string;
+  areaBottom: string;
+}
+
+const PALETTE_PROFIT: CurvePalette = {
+  line: 'rgba(76, 175, 132, 0.85)',
+  areaTop: 'rgba(76, 175, 132, 0.28)',
+  areaBottom: 'rgba(76, 175, 132, 0.02)',
+};
+const PALETTE_LOSS: CurvePalette = {
+  line: 'rgba(224, 92, 92, 0.85)',
+  areaTop: 'rgba(224, 92, 92, 0.28)',
+  areaBottom: 'rgba(224, 92, 92, 0.02)',
+};
+const COLOR_BREAKEVEN = 'rgba(255, 255, 255, 0.18)';
 
 export function BalanceChart({ curve, title }: BalanceChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -50,16 +64,27 @@ export function BalanceChart({ curve, title }: BalanceChartProps) {
       handleScale: false,
     });
 
+    const breakeven = curve[0]?.balance ?? 0;
+    const last = curve[curve.length - 1]?.balance ?? breakeven;
+    const palette = last >= breakeven ? PALETTE_PROFIT : PALETTE_LOSS;
+
     const series = chart.addSeries(AreaSeries, {
-      lineColor: COLOR_LINE,
-      topColor: COLOR_AREA_TOP,
-      bottomColor: COLOR_AREA_BOTTOM,
+      lineColor: palette.line,
+      topColor: palette.areaTop,
+      bottomColor: palette.areaBottom,
       lineWidth: 1,
       priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
       priceLineVisible: false,
       lastValueVisible: true,
     });
     series.setData(curve.map(p => ({ time: p.date as Time, value: p.balance })));
+    series.createPriceLine({
+      price: breakeven,
+      color: COLOR_BREAKEVEN,
+      lineWidth: 1,
+      lineStyle: LineStyle.Dashed,
+      axisLabelVisible: false,
+    });
 
     chart.timeScale().fitContent();
     chartRef.current = chart;

@@ -3,7 +3,7 @@ import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { addToast } from '../../lib/toast';
 import { useEmaNotifications, type EmaNotification, type NotificationInput } from '../../lib/useEmaNotifications';
 import { ConfirmPanel } from '../journal/ConfirmPanel';
-import { MirrorTab, type AccountInfo, type MirrorBroker } from './MirrorTab';
+import { MirrorTab, type AccountInfo, type MirrorBroker, type MirrorPreset } from './MirrorTab';
 import { DisplayTab, type DisplaySettingsForm } from './DisplayTab';
 import { NotificationsTab } from './NotificationsTab';
 import { NotificationPanel } from './NotificationPanel';
@@ -16,8 +16,14 @@ import styles from './SettingsPage.module.css';
 
 type Tab = 'mirror' | 'display' | 'notifications' | 'visibility';
 
+interface SavedPreset {
+  id: number;
+  name: string;
+  brokers: MirrorBroker[];
+}
+
 interface SettingsResponse {
-  mirror: MirrorBroker[];
+  presets: SavedPreset[];
   display: Partial<DisplaySettingsForm>;
   visibility?: Partial<Visibility>;
 }
@@ -29,11 +35,27 @@ interface Balance {
   currency: string;
 }
 
+let presetKeySeq = 0;
+const newPresetKey = (): string => `preset-${++presetKeySeq}`;
+
+// Every preset lists every connected broker; one the preset has never seen starts disabled.
+const toFormPreset = (preset: SavedPreset, brokerNames: string[]): MirrorPreset => {
+  const existing = new Map(preset.brokers.map(m => [m.broker, m]));
+  return {
+    id: preset.id,
+    key: `saved-${preset.id}`,
+    name: preset.name,
+    brokers: brokerNames.map(b => existing.get(b) ?? { broker: b, enabled: false, lotsMode: 'fixed' as const, lots: 0.01 }),
+  };
+};
+
 const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1, rectLabels: true, showSpread: false };
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('mirror');
-  const [mirror, setMirror] = useState<MirrorBroker[]>([]);
+  const [brokerNames, setBrokerNames] = useState<string[]>([]);
+  const [presets, setPresets] = useState<MirrorPreset[]>([]);
+  const [selectedPresetKey, setSelectedPresetKey] = useState('');
   const [accounts, setAccounts] = useState<Record<string, AccountInfo>>({});
   const [display, setDisplay] = useState<DisplaySettingsForm>(DEFAULT_DISPLAY);
   const [visibility, setVisibility] = useState<Visibility>(EMPTY_VISIBILITY);
@@ -55,8 +77,11 @@ export function SettingsPage() {
       apiFetch<SettingsResponse>('/settings', { signal: ac.signal }),
       apiFetch<Balance[]>('/balances', { signal: ac.signal }),
     ]).then(([settings, balances]) => {
-      const existing = new Map(settings.mirror.map(m => [m.broker, m]));
-      setMirror(balances.map(b => existing.get(b.broker) ?? { broker: b.broker, enabled: false, lotsMode: 'fixed' as const, lots: 0.01 }));
+      const names = balances.map(b => b.broker);
+      const formPresets = settings.presets.map(p => toFormPreset(p, names));
+      setBrokerNames(names);
+      setPresets(formPresets);
+      setSelectedPresetKey(formPresets[0]?.key ?? '');
       setAccounts(Object.fromEntries(balances.map(b => [b.broker, { name: b.name, balance: b.balance, currency: b.currency }])));
       setDisplay({ ...DEFAULT_DISPLAY, ...settings.display });
       setVisibility({ ...EMPTY_VISIBILITY, ...settings.visibility });
@@ -67,7 +92,7 @@ export function SettingsPage() {
   // Symbol lists are only needed by the Visibility tab: fetched once per broker the first time it opens.
   useEffect(() => {
     if (tab !== 'visibility') return;
-    const missing = mirror.map(m => m.broker).filter(b => symbols[b] === undefined);
+    const missing = brokerNames.filter(b => symbols[b] === undefined);
     if (missing.length === 0) return;
     const ac = new AbortController();
     Promise.all(missing.map(b => apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(b)}`, { signal: ac.signal })
@@ -75,12 +100,35 @@ export function SettingsPage() {
       .then(entries => setSymbols(prev => ({ ...prev, ...Object.fromEntries(entries) })))
       .catch(() => {});
     return () => ac.abort();
-  }, [tab, mirror, symbols]);
+  }, [tab, brokerNames, symbols]);
+
+  const updatePreset = useCallback((patch: (p: MirrorPreset) => MirrorPreset) => {
+    setPresets(prev => prev.map(p => p.key === selectedPresetKey ? patch(p) : p));
+    setDirty(true);
+  }, [selectedPresetKey]);
 
   const updateBroker = useCallback((broker: string, patch: Partial<MirrorBroker>) => {
-    setMirror(prev => prev.map(m => m.broker === broker ? { ...m, ...patch } : m));
+    updatePreset(p => ({ ...p, brokers: p.brokers.map(m => m.broker === broker ? { ...m, ...patch } : m) }));
+  }, [updatePreset]);
+
+  const renamePreset = useCallback((name: string) => updatePreset(p => ({ ...p, name })), [updatePreset]);
+
+  const addPreset = useCallback(() => {
+    const source = presets.find(p => p.key === selectedPresetKey) ?? presets[0];
+    const key = newPresetKey();
+    setPresets(prev => [...prev, { key, name: 'New preset', brokers: source ? source.brokers.map(m => ({ ...m })) : [] }]);
+    setSelectedPresetKey(key);
     setDirty(true);
-  }, []);
+  }, [presets, selectedPresetKey]);
+
+  const deletePreset = useCallback(() => {
+    if (presets.length <= 1) return;
+    const index = presets.findIndex(p => p.key === selectedPresetKey);
+    const rest = presets.filter(p => p.key !== selectedPresetKey);
+    setPresets(rest);
+    setSelectedPresetKey(rest[Math.max(0, index - 1)]?.key ?? '');
+    setDirty(true);
+  }, [presets, selectedPresetKey]);
 
   const updateDisplay = useCallback((patch: Partial<DisplaySettingsForm>) => {
     setDisplay(prev => ({ ...prev, ...patch }));
@@ -112,7 +160,12 @@ export function SettingsPage() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      const saved = await apiSend<SettingsResponse>('/settings', 'PUT', { mirror, display, visibility });
+      const body = { presets: presets.map(p => ({ id: p.id, name: p.name.trim(), brokers: p.brokers })), display, visibility };
+      const saved = await apiSend<SettingsResponse>('/settings', 'PUT', body);
+      const selectedIndex = Math.max(0, presets.findIndex(p => p.key === selectedPresetKey));
+      const savedPresets = saved.presets.map(p => toFormPreset(p, brokerNames));
+      setPresets(savedPresets);
+      setSelectedPresetKey(savedPresets[selectedIndex]?.key ?? savedPresets[0]?.key ?? '');
       publishVisibility({ ...EMPTY_VISIBILITY, ...saved.visibility });
       setDirty(false);
       addToast('Settings saved', 'success');
@@ -143,7 +196,7 @@ export function SettingsPage() {
     }
   };
 
-  const brokers = mirror.map(m => m.broker);
+  const brokers = brokerNames;
   // The notification panel lists the saved visibility, not the unsaved form.
   const savedVisibility = useVisibility();
   const notificationBrokers = brokers.filter(b => isBrokerVisible(savedVisibility, b));
@@ -184,7 +237,18 @@ export function SettingsPage() {
         </div>
       </div>
 
-      {tab === 'mirror' && <MirrorTab mirror={mirror} accounts={accounts} onChange={updateBroker} />}
+      {tab === 'mirror' && (
+        <MirrorTab
+          presets={presets}
+          selectedKey={selectedPresetKey}
+          accounts={accounts}
+          onSelect={setSelectedPresetKey}
+          onAdd={addPreset}
+          onRename={renamePreset}
+          onDelete={deletePreset}
+          onChange={updateBroker}
+        />
+      )}
       {tab === 'display' && <DisplayTab display={display} onChange={updateDisplay} />}
       {tab === 'visibility' && (
         <VisibilityTab

@@ -453,3 +453,81 @@
     overflow-x: hidden;
   }
 }
+
+.presetChips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.presetChip {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  border-radius: 2px;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.presetChip:hover {
+  color: var(--text);
+}
+
+.presetChipActive {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: rgba(245, 166, 35, 0.08);
+}
+
+.presetChipActive:hover {
+  color: var(--orange);
+}
+
+.presetChipAdd {
+  border-style: dashed;
+}
+
+.presetBar {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.presetName {
+  flex: 1;
+  max-width: 320px;
+  padding: 0 10px;
+}
+
+.presetName:focus {
+  border-color: var(--orange);
+}
+
+.presetDelete {
+  height: 27px;
+  padding: 0 10px;
+  background: transparent;
+  border: 1px solid var(--red);
+  color: var(--red);
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-wide);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.presetDelete:hover:not(:disabled) {
+  background: rgba(224, 92, 92, 0.15);
+}
+
+.presetDelete:disabled {
+  opacity: 0.35;
+  cursor: default;
+}

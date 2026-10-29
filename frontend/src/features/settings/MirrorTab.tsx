@@ -8,6 +8,13 @@ export interface MirrorBroker {
   lots: number;
 }
 
+export interface MirrorPreset {
+  id?: number;
+  key: string;
+  name: string;
+  brokers: MirrorBroker[];
+}
+
 export interface AccountInfo {
   name: string;
   balance: number;
@@ -15,8 +22,13 @@ export interface AccountInfo {
 }
 
 interface MirrorTabProps {
-  mirror: MirrorBroker[];
+  presets: MirrorPreset[];
+  selectedKey: string;
   accounts: Record<string, AccountInfo>;
+  onSelect: (key: string) => void;
+  onAdd: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
   onChange: (broker: string, patch: Partial<MirrorBroker>) => void;
 }
 
@@ -66,12 +78,55 @@ function Toggle({ m, onChange, className }: { m: MirrorBroker; onChange: (patch:
   );
 }
 
-export function MirrorTab({ mirror, accounts, onChange }: MirrorTabProps) {
+function PresetBar({ presets, selected, onSelect, onAdd, onRename, onDelete }: {
+  presets: MirrorPreset[];
+  selected: MirrorPreset;
+  onSelect: (key: string) => void;
+  onAdd: () => void;
+  onRename: (name: string) => void;
+  onDelete: () => void;
+}) {
+  return (
+    <>
+      <div className={styles.presetChips}>
+        {presets.map(p => (
+          <button
+            key={p.key}
+            type="button"
+            className={`${styles.presetChip} ${p.key === selected.key ? styles.presetChipActive : ''}`}
+            onClick={() => onSelect(p.key)}
+          >
+            {p.name.trim() || 'Untitled'}
+          </button>
+        ))}
+        <button type="button" className={`${styles.presetChip} ${styles.presetChipAdd}`} onClick={onAdd}>+ New</button>
+      </div>
+      <div className={styles.presetBar}>
+        <input
+          className={`${styles.input} ${styles.presetName}`}
+          type="text"
+          value={selected.name}
+          maxLength={40}
+          onChange={e => onRename(e.target.value)}
+          aria-label="Preset name"
+        />
+        <button type="button" className={styles.presetDelete} onClick={onDelete} disabled={presets.length <= 1}>Delete</button>
+      </div>
+    </>
+  );
+}
+
+export function MirrorTab({ presets, selectedKey, accounts, onSelect, onAdd, onRename, onDelete, onChange }: MirrorTabProps) {
+  const selected = presets.find(p => p.key === selectedKey) ?? presets[0];
+  if (!selected) return null;
+  const mirror = selected.brokers;
   if (mirror.length === 0) return <div className={styles.empty}>No brokers connected</div>;
 
   return (
     <>
-      <p className={styles.desc}>Replicate trades across brokers. Lots per broker: fixed, or % risk over the SL distance.</p>
+      <p className={styles.desc}>Replicate trades across brokers. Each preset sets lots per broker: fixed, or % risk over the SL distance.</p>
+
+      <PresetBar presets={presets} selected={selected} onSelect={onSelect} onAdd={onAdd} onRename={onRename} onDelete={onDelete} />
 
       <div className={styles.tableWrapper}>
         <table className={styles.table}>
@@ -80,7 +135,7 @@ export function MirrorTab({ mirror, accounts, onChange }: MirrorTabProps) {
           </thead>
           <tbody>
             {mirror.map(m => (
-              <tr key={m.broker} className={m.enabled ? undefined : styles.dim}>
+              <tr key={`${selected.key}-${m.broker}`} className={m.enabled ? undefined : styles.dim}>
                 <td className={styles.broker}>{m.broker}</td>
                 <td><Toggle m={m} onChange={patch => onChange(m.broker, patch)} /></td>
                 <td><SizingSelect m={m} onChange={patch => onChange(m.broker, patch)} /></td>
@@ -95,7 +150,7 @@ export function MirrorTab({ mirror, accounts, onChange }: MirrorTabProps) {
 
       <div className={styles.cards}>
         {mirror.map(m => (
-          <div key={m.broker} className={`${styles.card} ${m.enabled ? '' : styles.dim}`}>
+          <div key={`${selected.key}-${m.broker}`} className={`${styles.card} ${m.enabled ? '' : styles.dim}`}>
             <span className={styles.cardName}>{m.broker}</span>
             <Toggle m={m} onChange={patch => onChange(m.broker, patch)} className={styles.cardToggle} />
             <SizingSelect m={m} onChange={patch => onChange(m.broker, patch)} />

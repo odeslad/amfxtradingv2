@@ -1,6 +1,6 @@
 # 031 — Reliable EA reload after deploy
 
-> Status: **draft**
+> Status: **closed**
 
 ## Context
 The EA pipeline (`.github/workflows/deploy-ea.yml`) ends with `ea/scripts/restart-mt4.ps1`, which reloads the EA on every MT4 terminal: it stops one terminal, runs the AMFX-Watchdog scheduled task (`infra/scripts/startup.ps1`) so it starts it again in the interactive session, and waits up to 120 s for it. The task is configured with `MultipleInstances = IgnoreNew` and each Watchdog run takes a while (backend health check, a delay between terminals), so a `/run` issued while the previous one is still going is silently ignored and the terminal only comes back on a later run. In run #41 (spec 030, EA 3.15) 6 of 12 terminals were reported `[FAILED]`, the script itself printed `Terminals running: 12/12`, the job still exited 1 (red), and the whole reload took ~15 min.

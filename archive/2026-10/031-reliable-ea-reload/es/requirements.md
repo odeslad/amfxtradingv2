@@ -1,6 +1,6 @@
 # 031 — Recarga fiable del EA tras el despliegue
 
-> Estado: **borrador**
+> Estado: **cerrada**
 
 ## Contexto
 El pipeline del EA (`.github/workflows/deploy-ea.yml`) termina con `ea/scripts/restart-mt4.ps1`, que recarga el EA en cada terminal MT4: para un terminal, lanza la tarea programada AMFX-Watchdog (`infra/scripts/startup.ps1`) para que lo vuelva a arrancar en la sesión interactiva y espera hasta 120 s. La tarea está configurada con `MultipleInstances = IgnoreNew` y cada ejecución del Watchdog tarda (comprobación de salud del backend, una pausa entre terminales), así que un `/run` lanzado mientras la anterior sigue en marcha se ignora en silencio y el terminal solo vuelve en una ejecución posterior. En el run #41 (spec 030, EA 3.15) 6 de 12 terminales salieron como `[FAILED]`, el propio script imprimió `Terminals running: 12/12`, el job terminó igualmente con exit 1 (rojo) y la recarga completa tardó ~15 min.

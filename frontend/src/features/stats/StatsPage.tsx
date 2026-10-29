@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage } from '../../lib/api';
 import { useLocalStorage } from '../../lib/useLocalStorage';
+import { useTradesUpdated } from '../../lib/useTradesUpdated';
 import { isBrokerVisible, useVisibility, visibleSymbols } from '../../lib/visibility';
 import { dateRangeBounds, normalizeDateRange } from '../journal/utils/dateRange';
 import { StatsFilters, type StatsFilterValues } from './StatsFilters';
@@ -46,6 +47,8 @@ export function StatsPage() {
   const symbol = filters.symbol && (!knownSymbols || symbols.includes(filters.symbol)) ? filters.symbol : '';
   const { from, to } = dateRangeBounds(filters);
   const requestKey = `${broker}|${symbol}|${from ?? ''}|${to ?? ''}`;
+  // Not part of requestKey: the shown result stays until the refreshed one arrives.
+  const refreshKey = useTradesUpdated(broker);
 
   useEffect(() => {
     if (!broker) return;
@@ -62,7 +65,7 @@ export function StatsPage() {
       })
       .catch((err: unknown) => { if (!cancelled) setResult({ key: requestKey, error: errorMessage(err, 'Failed to load stats') }); });
     return () => { cancelled = true; };
-  }, [broker, symbol, from, to, requestKey]);
+  }, [broker, symbol, from, to, requestKey, refreshKey]);
 
   const current = result?.key === requestKey ? result : null;
   const error = brokersError || current?.error || '';

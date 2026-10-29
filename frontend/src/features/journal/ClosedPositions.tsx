@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiFetch, errorMessage, isAbortError } from '../../lib/api';
 import { isVisible, useVisibility } from '../../lib/visibility';
+import { useTradesUpdated } from '../../lib/useTradesUpdated';
 import { type Trade, fmt, fmtPnl, fmtLocalTime, currencySymbol } from './utils/position';
 import { type FilterValues, type FilterOptions } from './FiltersPanel';
 import { dateRangeBounds } from './utils/dateRange';
@@ -32,6 +33,8 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
     setError('');
   }
 
+  const refreshKey = useTradesUpdated();
+
   useEffect(() => {
     const params = new URLSearchParams();
     if (from) params.set('from', from);
@@ -43,7 +46,7 @@ export function ClosedPositions({ filters, onOptionsChange }: ClosedPositionsPro
       .catch((err: unknown) => { if (!isAbortError(err)) setError(errorMessage(err, 'Failed to load trades')); })
       .finally(() => { if (!ac.signal.aborted) setLoading(false); });
     return () => ac.abort();
-  }, [from, to]);
+  }, [from, to, refreshKey]);
 
   useEffect(() => {
     const brokers = [...new Set(trades.map(t => t.broker).filter(Boolean))].sort();

@@ -1,6 +1,6 @@
 # 030 — Reflejo rápido de los trades cerrados
 
-> Estado: **borrador**
+> Estado: **cerrada**
 
 ## Contexto
 Una posición cerrada tarda hasta ~90 s en llegar a la base de datos y nunca llega sola a una página abierta. El EA escribe `history.json` cada `STATE_EVERY_S` (60 s), el file watcher del backend lo lee cada 30 s, y las páginas de Historial (posiciones cerradas del journal) y Stats solo cargan al montarse o al cambiar filtros: no hay señal por WS para los trades cerrados. Las posiciones abiertas, en cambio, llegan por el pipe cada segundo, así que una posición cerrada desaparece al instante pero aparece en Historial/Stats mucho después.

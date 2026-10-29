@@ -1,6 +1,6 @@
 # 030 — Fast reflection of closed trades
 
-> Status: **draft**
+> Status: **closed**
 
 ## Context
 A closed position takes up to ~90 s to reach the database and never reaches an open page on its own. The EA writes `history.json` every `STATE_EVERY_S` (60 s), the backend file watcher reads it every 30 s, and the History (journal closed positions) and Stats pages only fetch on mount or filter change — there is no WS signal for closed trades. Open positions, by contrast, arrive through the pipe every second, so a closed position disappears instantly but shows up in History/Stats much later.

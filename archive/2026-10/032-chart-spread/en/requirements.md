@@ -1,6 +1,6 @@
 # 032 — Spread on the chart (ASK and BID lines)
 
-> Status: **draft**
+> Status: **closed**
 
 ## Context
 The chart builds its candles and its current-price line from the bid only. The EA already sends `bid` and `ask` in every tick, and the backend forwards the tick batch to the frontend over WS unchanged, but the chart ignores `ask`. The operator wants to see the spread: an optional display setting that replaces the current-price line with two lines, ASK and BID.

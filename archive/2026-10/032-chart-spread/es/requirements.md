@@ -1,6 +1,6 @@
 # 032 — Spread en el gráfico (líneas ASK y BID)
 
-> Estado: **borrador**
+> Estado: **cerrada**
 
 ## Contexto
 El gráfico construye las velas y la línea de precio actual solo con el bid. El EA ya envía `bid` y `ask` en cada tick, y el backend reenvía el lote de ticks al frontend por WS sin cambios, pero el gráfico ignora el `ask`. El operador quiere ver el spread: un ajuste de visualización opcional que sustituya la línea de precio actual por dos líneas, ASK y BID.

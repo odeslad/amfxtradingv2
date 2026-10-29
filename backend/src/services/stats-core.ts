@@ -173,8 +173,13 @@ export function computeStats({ broker, latest, trades: allTrades, operations: ra
   if (periodStart) {
     // The page sends the viewer's local midnight, which in UTC can fall on the evening
     // before: round to the nearest UTC day so the chart has no extra leading day.
-    const firstDay = startOfUtcDay(new Date(periodStart.getTime() + DAY_MS / 2));
+    const requestedDay = startOfUtcDay(new Date(periodStart.getTime() + (from ? DAY_MS / 2 : 0)));
+    const firstTradeDay = periodTrades[0] ? startOfUtcDay(periodTrades[0].time) : null;
+    const firstDay = firstTradeDay && firstTradeDay > requestedDay ? firstTradeDay : requestedDay;
     const lastDay = startOfUtcDay(periodEnd);
+    // Baseline the day before, so the curve always opens at the value it is measured against.
+    const baselineTime = new Date(firstDay.getTime() - 1);
+    curve.push({ date: dayKey(new Date(firstDay.getTime() - DAY_MS)), balance: asset ? 0 : balanceAt(baselineTime) });
     let cumulative = 0;
     let next = 0;
     for (let d = firstDay.getTime(); d <= lastDay.getTime(); d += DAY_MS) {

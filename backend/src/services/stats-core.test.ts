@@ -55,9 +55,9 @@ describe('computeStats', () => {
     expect(may.returnPct).toBeCloseTo(-30 / 1250 * 100, 10);              // 1250 before May
   });
 
-  it('draws a daily curve across the period with end-of-day balances', () => {
-    expect(stats.curve).toHaveLength(92);                                  // Mar 31 + Apr 30 + May 31
-    expect(stats.curve[0]).toEqual({ date: '2026-03-01', balance: 500 });
+  it('draws a daily curve from the first trade with end-of-day balances and a baseline the day before', () => {
+    expect(stats.curve).toHaveLength(84);                                  // baseline + Mar 22 + Apr 30 + May 31
+    expect(stats.curve[0]).toEqual({ date: '2026-03-09', balance: 500 });
     expect(stats.curve.find(p => p.date === '2026-03-10')?.balance).toBe(600);
     expect(stats.curve.find(p => p.date === '2026-04-05')?.balance).toBe(1050);
     expect(stats.curve.at(-1)).toEqual({ date: '2026-05-31', balance: 1220 });
@@ -100,22 +100,30 @@ describe('computeStats', () => {
     expect(asset.startBalance).toBeNull();
     expect(asset.returnPct).toBeNull();
     expect(asset.monthly.every(m => m.returnPct === null && m.cashFlow === 0)).toBe(true);
-    expect(asset.curve[0]).toEqual({ date: '2026-03-01', balance: 0 });
+    expect(asset.curve[0]).toEqual({ date: '2026-03-09', balance: 0 });
     expect(asset.curve.find(p => p.date === '2026-03-10')?.balance).toBe(100);
     expect(asset.curve.find(p => p.date === '2026-04-20')?.balance).toBe(250);
     expect(asset.curve.at(-1)).toEqual({ date: '2026-05-31', balance: 220 });
   });
 
   it('starts the curve on the viewer\'s day when the period opens at local midnight', () => {
-    const localMidnight = at('2026-02-28T23:00:00Z');                    // 1 March 00:00 in UTC+1
+    const localMidnight = at('2026-03-14T23:00:00Z');                    // 15 March 00:00 in UTC+1
     const local = computeStats({ broker: 'test', latest, trades, operations, from: localMidnight, to });
-    expect(local.curve[0].date).toBe('2026-03-01');
+    expect(local.curve[0]).toEqual({ date: '2026-03-14', balance: 600 });
+    expect(local.curve[1].date).toBe('2026-03-15');
+  });
+
+  it('without a period starts on the day of the first trade even when it is in the evening', () => {
+    const evening = [{ amount: 40, time: at('2026-03-10T20:00:00Z') }];
+    const open = computeStats({ broker: 'test', latest: null, trades: evening, operations: [], mode: 'asset', now: at('2026-03-12T00:00:00Z') });
+    expect(open.curve.map(p => p.date)).toEqual(['2026-03-09', '2026-03-10', '2026-03-11', '2026-03-12']);
+    expect(open.curve.map(p => p.balance)).toEqual([0, 40, 40, 40]);
   });
 
   it('starts at the account start when the period reaches further back', () => {
     const early = computeStats({ broker: 'test', latest, trades, operations, from: at('2025-01-01T00:00:00Z'), to, accountStart: at('2026-03-10T10:00:00Z') });
     expect(early.period.from).toBe('2026-03-10T10:00:00.000Z');
-    expect(early.curve[0].date).toBe('2026-03-10');
+    expect(early.curve[1].date).toBe('2026-03-10');
     expect(early.monthly.map(m => m.month)).toEqual(['2026-03', '2026-04', '2026-05']);
   });
 

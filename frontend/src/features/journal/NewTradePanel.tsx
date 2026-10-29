@@ -4,7 +4,7 @@ import { apiFetch } from '../../lib/api';
 import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
-import { useVisibility, visibleSymbols } from '../../lib/visibility';
+import { useVisibility, visibleSymbols, isSymbolVisible } from '../../lib/visibility';
 import styles from './NewTradePanel.module.css';
 
 interface NewTradePanelProps {
@@ -23,6 +23,34 @@ interface MirrorBroker {
   lots: number;
 }
 
+interface MirrorPreset {
+  id: number;
+  name: string;
+  brokers: MirrorBroker[];
+}
+
+const PRESET_STORAGE_KEY = 'amfx.mirrorPreset';
+const DEFAULT_SYMBOL = 'EURUSD';
+
+const readStoredPresetId = (): number | null => {
+  try {
+    const value = Number(localStorage.getItem(PRESET_STORAGE_KEY));
+    return Number.isInteger(value) && value > 0 ? value : null;
+  } catch {
+    return null;
+  }
+};
+
+const storePresetId = (id: number) => {
+  try { localStorage.setItem(PRESET_STORAGE_KEY, String(id)); } catch { /* storage unavailable */ }
+};
+
+// Chart symbol first, then EURUSD; brokers spell symbols in different case.
+const pickDefaultSymbol = (list: string[], chartSymbol?: string): string => {
+  const find = (wanted?: string) => wanted ? list.find(s => s.toUpperCase() === wanted.toUpperCase()) : undefined;
+  return find(chartSymbol) ?? find(DEFAULT_SYMBOL) ?? '';
+};
+
 const ACTION_OPTIONS: CommandAction[] = ['buy', 'sell', 'buylimit', 'selllimit', 'buystop', 'sellstop'];
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DEFAULT_EMA_FAST = 24;
@@ -40,10 +68,11 @@ interface SetupLevels {
 
 export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initialBroker, initialSymbol, initialTimeframe }: NewTradePanelProps) {
   const [mode, setMode] = useState<Mode>('manual');
-  const [mirrorBrokers, setMirrorBrokers] = useState<MirrorBroker[]>([]);
+  const [presets, setPresets] = useState<MirrorPreset[]>([]);
+  const [presetId, setPresetId] = useState<number | null>(null);
   const [allBrokers, setBrokers] = useState<string[]>([]);
   const visibility = useVisibility();
-  // Hidden brokers / symbols (spec 024) leave the manual lists; mirror targets are untouched.
+  // Hidden brokers / symbols (spec 024) leave the lists; mirror targets are the preset's.
   const brokers = allBrokers.filter(b => !visibility.hiddenBrokers.includes(b));
   const [action, setAction] = useState<CommandAction>('buy');
   const [broker, setBroker] = useState('');
@@ -54,7 +83,12 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
   const [allSymbols, setSymbols] = useState<string[]>([]);
-  const symbols = mode === 'manual' && broker ? visibleSymbols(visibility, broker, allSymbols) : allSymbols;
+  const preset = presets.find(p => p.id === presetId) ?? presets[0];
+  const activeMirrorBrokers = (preset?.brokers ?? []).filter(m => m.enabled);
+  const activeMirrorKey = activeMirrorBrokers.map(m => m.broker).join('|');
+  const symbols = mode === 'manual'
+    ? (broker ? visibleSymbols(visibility, broker, allSymbols) : allSymbols)
+    : allSymbols.filter(s => activeMirrorBrokers.every(m => isSymbolVisible(visibility, m.broker, s)));
   const [submitting, setSubmitting] = useState(false);
   const [timeframe, setTimeframe] = useState('H1');
   const [setup, setSetup] = useState<SetupLevels | null>(null);
@@ -87,10 +121,13 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   useEffect(() => {
     if (!open) return;
     Promise.all([
-      apiFetch<{ mirror: MirrorBroker[] }>('/settings'),
+      apiFetch<{ presets: MirrorPreset[] }>('/settings'),
       apiFetch<{ broker: string }[]>('/balances'),
     ]).then(([settings, balances]) => {
-      setMirrorBrokers(settings.mirror ?? []);
+      const list = settings.presets ?? [];
+      const stored = readStoredPresetId();
+      setPresets(list);
+      setPresetId(list.some(p => p.id === stored) ? stored : list[0]?.id ?? null);
       setBrokers(balances.map(b => b.broker));
     }).catch(() => {});
   }, [open]);
@@ -120,8 +157,11 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
     }
   }
 
-  const activeMirrorBrokers = mirrorBrokers.filter(m => m.enabled);
-  const activeMirrorKey = activeMirrorBrokers.map(m => m.broker).join('|');
+  // The selected symbol follows the visible list: kept while listed, else the default.
+  if (symbols.length > 0 && !symbols.includes(symbol)) {
+    const fallback = pickDefaultSymbol(symbols, initialSymbol);
+    if (fallback !== symbol) setSymbol(fallback);
+  }
 
   // Load symbols when broker changes (manual) or when mirror brokers change
   // No source of symbols (no broker in manual mode, no enabled mirror broker):
@@ -137,16 +177,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
     if (mode === 'manual') {
       if (!broker) return;
       apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(broker)}`)
-        .then(list => {
-          setSymbols(list);
-          // Keep the current symbol if still available, else use the chart's.
-          setSymbol(prev => {
-            if (prev && list.includes(prev)) return prev;
-            const wanted = initialSymbolRef.current;
-            if (wanted && list.includes(wanted)) return wanted;
-            return '';
-          });
-        })
+        .then(setSymbols)
         .catch(() => {});
     } else {
       const mirrorNames = activeMirrorKey ? activeMirrorKey.split('|') : [];
@@ -155,13 +186,12 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
         mirrorNames.map(name => apiFetch<string[]>(`/symbols?broker=${encodeURIComponent(name)}`))
       ).then(results => {
         const [first, ...rest] = results;
-        const common = first.filter(s => rest.every(r => r.includes(s)));
-        setSymbols(common);
-        setSymbol('');
+        setSymbols(first.filter(s => rest.every(r => r.includes(s))));
       }).catch(() => {});
     }
   }, [broker, mode, activeMirrorKey]);
-  const mirrorDisabled = activeMirrorBrokers.length === 0;
+  const mirrorDisabled = !presets.some(p => p.brokers.some(m => m.enabled));
+  const presetEmpty = activeMirrorBrokers.length === 0;
   const isPending = ['buylimit', 'selllimit', 'buystop', 'sellstop'].includes(action);
 
   // Fetch the current setup levels for the chosen broker/symbol/timeframe.
@@ -274,6 +304,29 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
         )}
 
         {mode === 'mirror' && !mirrorDisabled && (
+          <div className={styles.field}>
+            <label className={styles.label} htmlFor="new-trade-preset">Preset</label>
+            <select
+              id="new-trade-preset"
+              className={styles.input}
+              value={preset?.id ?? ''}
+              onChange={e => { const id = Number(e.target.value); setPresetId(id); storePresetId(id); }}
+            >
+              {presets.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+        )}
+
+        {mode === 'mirror' && !mirrorDisabled && presetEmpty && (
+          <div className={styles.mirrorWarning}>
+            No brokers enabled in this preset.{' '}
+            <Link to="/settings" className={styles.mirrorWarningLink} onClick={onClose}>
+              Configure in Settings
+            </Link>
+          </div>
+        )}
+
+        {mode === 'mirror' && !mirrorDisabled && !presetEmpty && (
           <div className={styles.mirrorBrokers}>
             {activeMirrorBrokers.map(m => (
               <div key={m.broker} className={styles.mirrorBrokerRow}>
@@ -418,7 +471,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
           <button
             type="submit"
             className={`${styles.submitBtn} ${action.startsWith('buy') ? styles.submitBuy : styles.submitSell}`}
-            disabled={submitting}
+            disabled={submitting || (mode === 'mirror' && presetEmpty)}
           >
             {submitting ? 'Pending...' : action.toUpperCase()}
           </button>

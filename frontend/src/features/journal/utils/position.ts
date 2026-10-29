@@ -75,6 +75,11 @@ export function isBuySide(type: number): boolean {
   return type === 0 || type === 2 || type === 4;
 }
 
+// Brokers spell the same symbol in different case (Darwinex sends "eurusd").
+export function sameSymbol(a: string, b: string): boolean {
+  return a.toUpperCase() === b.toUpperCase();
+}
+
 const CURRENCY_SYMBOL: Record<string, string> = {
   USD: '$',
   EUR: '€',

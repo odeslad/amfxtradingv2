@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { type Position, fmt, fmtDistance, fmtLocalTime, TYPE_LABEL, isBuySide, isPending, orderDistancePips } from './utils/position';
+import { type Position, fmt, fmtDistance, fmtLocalTime, TYPE_LABEL, isBuySide, isPending, orderDistancePips, sameSymbol } from './utils/position';
 import { type FilterOptions } from './FiltersPanel';
 import { type OrderFilterValues } from './utils/orderFilters';
 import { OrderCard } from './OrderCard';
@@ -61,7 +61,7 @@ export function PendingOrders({ filters, onOptionsChange, onGroupChange, onEdit,
   const group = useMemo(() => {
     if (filtered.length < 1) return null;
     const { symbol, type } = filtered[0];
-    return filtered.every(p => p.symbol === symbol && p.type === type) ? filtered : null;
+    return filtered.every(p => sameSymbol(p.symbol, symbol) && p.type === type) ? filtered : null;
   }, [filtered]);
 
   const groupKey = group ? group.map(p => `${p.broker}:${p.ticket}`).join(',') : '';

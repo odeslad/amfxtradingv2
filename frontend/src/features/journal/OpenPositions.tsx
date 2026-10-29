@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { errorMessage } from '../../lib/api';
 import { closeCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
-import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide, isPending } from './utils/position';
+import { type Position, fmt, fmtPnlMode, calcPnl, currentQuote, fmtLocalTime, currencySymbol, TYPE_LABEL, isBuySide, isPending, sameSymbol } from './utils/position';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useBalances } from '../../lib/useBalances';
 import { isVisible, useVisibility } from '../../lib/visibility';
@@ -95,7 +95,7 @@ export function OpenPositions({ filters, onOptionsChange, onBulkChange }: OpenPo
     if (filtered.length < 1) return null;
     const symbol = filtered[0].symbol;
     const type = filtered[0].type;
-    return filtered.every(p => p.symbol === symbol && p.type === type)
+    return filtered.every(p => sameSymbol(p.symbol, symbol) && p.type === type)
       ? { symbol, type, positions: filtered }
       : null;
   }, [filtered]);

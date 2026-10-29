@@ -93,13 +93,11 @@ export function JournalPage() {
 
   const handleTabChange = (next: Tab) => {
     setTab(next);
-    setBulk(null);
   };
 
   const handleSelectBroker = (broker: string) => {
     setFilters(f => ({ ...f, broker }));
     setTab('open');
-    setBulk(null);
   };
 
   const handleBulkChange = useCallback((group: BulkGroup | null) => {

@@ -1,5 +1,5 @@
 #property copyright "HttpBridge"
-#property version   "3.14"
+#property version   "3.15"
 #property strict
 
 #import "kernel32.dll"
@@ -20,6 +20,7 @@ input int    POSITIONS_EVERY_S = 1;      // seconds between live position pushes
 input int    ACCOUNT_EVERY_S = 1;        // seconds between live account pushes over the pipe.
 input int    HISTORY_MAX    = 50;        // closed trades per history.json write (0 = no limit).
 input bool   HISTORY_FULL_ON_START = true; // first history.json write after start exports every closed trade.
+input int    HISTORY_MIN_GAP_S = 3;      // min seconds between history.json writes triggered by a history change.
 
 bool g_historyFullPending = HISTORY_FULL_ON_START;
 
@@ -39,6 +40,8 @@ ulong  lastStateSend      = 0;
 ulong  lastPositionsSend  = 0;
 ulong  lastAccountSend    = 0;
 int    g_lastPositionCount = -1;
+int    g_lastHistoryTotal  = -1;
+ulong  lastHistoryWrite    = 0;
 
 // ── Symbol list ──────────────────────────────────────────────────────────────
 string g_symbols[];
@@ -303,6 +306,13 @@ void OnTimer() {
       PipeWrite("{\"type\":\"account\"," + BuildAccountJson() + "}\n");
    }
 
+   // ── history.json as soon as the account history changes (a close, a deposit) ──
+   if (g_lastHistoryTotal >= 0 && OrdersHistoryTotal() != g_lastHistoryTotal
+       && now - lastHistoryWrite >= (ulong)(HISTORY_MIN_GAP_S * 1000)) {
+      Print("[STATE] History changed | orders: ", OrdersHistoryTotal(), " | broker: ", g_brokerName);
+      WriteHistory();
+   }
+
    // ── State update: positions, account, history, candles every STATE_EVERY_S ──
    if (now - lastStateSend >= (ulong)(STATE_EVERY_S * 1000)) {
       lastStateSend = now;
@@ -416,6 +426,8 @@ void WriteHistory() {
    }
    j += "]";
    WriteFile("history.json", j);
+   g_lastHistoryTotal = total;
+   lastHistoryWrite = GetTickCount();
 }
 
 string PeriodToLabel(int period) {

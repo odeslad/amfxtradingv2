@@ -1,0 +1,6 @@
+# 033 — Mirror presets · Verification
+
+| Task | Mechanism | Commands | Outcome | Evidence | Est | Actual |
+|---|---|---|---|---|---|---|
+| 1. [db] `MirrorPreset` model + migration | prisma generate + build (together with task 2) | `npx prisma generate`, `npm run build` (backend) | ✅ pass | Client generated, `tsc` clean once task 2 dropped the `settingsMirror` uses. Migration `20261030000000_mirror_presets`: creates `mirror_presets` (pkey + `mirror_presets_name_key` as Prisma names them), inserts `Default` from `settings_mirror` (`jsonb_agg` ordered by broker, `[]` when empty), drops `settings_mirror`. Deviation agreed with the user: no dry run against production; the copy is checked after the deploy in task 5 (`Default` must hold today's mirror configuration) | 0.75 | 0.4 |
+| 2. [backend] `/settings` with `presets` | vitest + build | `npx vitest run src/routes/settings.test.ts`, `npx vitest run`, `npm run build` | ✅ pass | 8/8 settings tests (5 new for `parsePresets`: valid list with trimmed names, empty list → 400, repeated names → 400, empty / 41-char name → 400, bad broker item → 400); whole backend suite 123/123. PUT replaces the list in one transaction (delete the missing ones, rename the kept ones out of the way, then update / create in order) | 1.25 | 0.6 |

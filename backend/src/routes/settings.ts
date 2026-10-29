@@ -18,6 +18,12 @@ interface MirrorItem {
   lots: number;
 }
 
+interface PresetInput {
+  id?: number;
+  name: string;
+  brokers: MirrorItem[];
+}
+
 interface DisplayInput {
   pnlMode: (typeof PNL_MODES)[number];
   trendlineColor?: string;
@@ -43,11 +49,11 @@ interface DisplayRow {
   hiddenSymbols: Prisma.JsonValue;
 }
 
-function parseMirror(value: unknown): MirrorItem[] {
-  if (!Array.isArray(value)) throw new BadRequest('mirror must be an array');
+function parseMirror(value: unknown, prefix: string): MirrorItem[] {
+  if (!Array.isArray(value)) throw new BadRequest(`${prefix} must be an array`);
   return value.map((item, i) => {
     const row = bodyRecord(item);
-    const key = `mirror[${i}]`;
+    const key = `${prefix}[${i}]`;
     if (typeof row.enabled !== 'boolean') throw new BadRequest(`${key}.enabled must be a boolean`);
     return {
       broker: nonEmptyString(row.broker, `${key}.broker`),
@@ -55,6 +61,23 @@ function parseMirror(value: unknown): MirrorItem[] {
       lotsMode: oneOf(row.lotsMode, `${key}.lotsMode`, LOTS_MODES),
       lots: finiteNumber(row.lots, `${key}.lots`, { positive: true }),
     };
+  });
+}
+
+const PRESET_NAME_MAX = 40;
+
+export function parsePresets(value: unknown): PresetInput[] {
+  if (!Array.isArray(value) || value.length === 0) throw new BadRequest('presets must be a non-empty array');
+  const names = new Set<string>();
+  return value.map((item, i) => {
+    const row = bodyRecord(item);
+    const key = `presets[${i}]`;
+    const name = nonEmptyString(row.name, `${key}.name`).trim();
+    if (name.length === 0 || name.length > PRESET_NAME_MAX) throw new BadRequest(`${key}.name must be 1-${PRESET_NAME_MAX} characters`);
+    if (names.has(name)) throw new BadRequest(`${key}.name is repeated`);
+    names.add(name);
+    const id = row.id === undefined ? undefined : optionalInteger(row.id, `${key}.id`, { min: 1 });
+    return { id, name, brokers: parseMirror(row.brokers, `${key}.brokers`) };
   });
 }
 
@@ -102,9 +125,15 @@ function readHiddenSymbols(value: Prisma.JsonValue | undefined): Record<string, 
   return out;
 }
 
-function toResponse(mirror: unknown[], display: DisplayRow | null) {
+interface PresetRow {
+  id: number;
+  name: string;
+  brokers: Prisma.JsonValue;
+}
+
+function toResponse(presets: PresetRow[], display: DisplayRow | null) {
   return {
-    mirror,
+    presets: presets.map(({ id, name, brokers }) => ({ id, name, brokers })),
     display: {
       pnlMode: display?.pnlMode ?? 'net',
       trendlineColor: display?.trendlineColor ?? '#8c8c8c',
@@ -122,7 +151,7 @@ function toResponse(mirror: unknown[], display: DisplayRow | null) {
 
 function loadSettings() {
   return Promise.all([
-    db.settingsMirror.findMany({ orderBy: { broker: 'asc' } }),
+    db.mirrorPreset.findMany({ orderBy: { position: 'asc' } }),
     db.settingsDisplay.findFirst({ where: { key: 'global' } }),
   ]);
 }
@@ -130,27 +159,31 @@ function loadSettings() {
 const router = Router();
 
 router.get('/', asyncRoute(async (_req, res) => {
-  const [mirror, display] = await loadSettings();
-  res.json(toResponse(mirror, display));
+  const [presets, display] = await loadSettings();
+  res.json(toResponse(presets, display));
 }));
 
 router.put('/', asyncRoute(async (req, res) => {
   // Parse everything before the first write so a bad item leaves nothing half-saved.
   const body = bodyRecord(req.body);
-  const mirror = body.mirror !== undefined ? parseMirror(body.mirror) : undefined;
+  const presets = body.presets !== undefined ? parsePresets(body.presets) : undefined;
   const display = body.display !== undefined ? parseDisplay(body.display) : undefined;
   const visibility = body.visibility !== undefined ? parseVisibility(body.visibility) : undefined;
 
   const ops: Promise<unknown>[] = [];
 
-  if (mirror !== undefined) {
-    ops.push(...mirror.map(({ broker, enabled, lotsMode, lots }) =>
-      db.settingsMirror.upsert({
-        where: { broker },
-        update: { enabled, lotsMode, lots },
-        create: { broker, enabled, lotsMode, lots },
-      })
-    ));
+  if (presets !== undefined) {
+    // Replace the whole list: names are unique, so free them all before writing the new ones.
+    const keepIds = presets.flatMap(p => (p.id === undefined ? [] : [p.id]));
+    ops.push(db.$transaction(async tx => {
+      await tx.mirrorPreset.deleteMany({ where: { id: { notIn: keepIds } } });
+      for (const id of keepIds) await tx.mirrorPreset.update({ where: { id }, data: { name: `__renaming_${id}` } });
+      for (const [position, p] of presets.entries()) {
+        const data = { name: p.name, position, brokers: p.brokers as unknown as Prisma.InputJsonValue };
+        if (p.id !== undefined) await tx.mirrorPreset.update({ where: { id: p.id }, data });
+        else await tx.mirrorPreset.create({ data });
+      }
+    }));
   }
 
   if (display !== undefined || visibility !== undefined) {
@@ -186,8 +219,8 @@ router.put('/', asyncRoute(async (req, res) => {
 
   await Promise.all(ops);
 
-  const [updatedMirror, updatedDisplay] = await loadSettings();
-  res.json(toResponse(updatedMirror, updatedDisplay));
+  const [updatedPresets, updatedDisplay] = await loadSettings();
+  res.json(toResponse(updatedPresets, updatedDisplay));
 }));
 
 export default router;

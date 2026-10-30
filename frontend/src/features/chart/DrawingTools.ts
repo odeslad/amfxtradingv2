@@ -153,6 +153,7 @@ export class DrawingManager {
   private isDrawing = false;
   private drawStart: Logical | null = null;
   private cursorPixel: Point = { x: 0, y: 0 };
+  private previewShift = false;
 
   private dragHandle: Handle | null = null;
   private dragLastLogical: Logical | null = null;
@@ -525,6 +526,7 @@ export class DrawingManager {
   private handleMove(clientX: number, clientY: number, shiftKey: boolean): boolean {
     const pos = this.clampToPane(this.toCanvas(clientX, clientY));
     this.cursorPixel = pos;
+    this.previewShift = shiftKey;
 
     if (this.isRulerMode && this.rulerStart && !this.rulerFixed) {
       const logical = this.pixelToLogical(pos);
@@ -842,7 +844,8 @@ export class DrawingManager {
       if (this.isDrawing && this.drawKind && this.drawStart) {
         const p1 = this.logicalToPixel(this.drawStart);
         if (p1) {
-          const px = { x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: this.cursorPixel.y };
+          const horizontal = this.previewShift && this.drawKind === 'line';
+          const px = { x1: p1.x, y1: p1.y, x2: this.cursorPixel.x, y2: horizontal ? p1.y : this.cursorPixel.y };
           if (this.drawKind === 'rect') {
             this.paintRect(px, false, true);
             const end = this.pixelToLogical(this.cursorPixel);

@@ -233,7 +233,7 @@ Managed with **Prisma**; see `prisma/schema.prisma`. Migrations are hand-written
 | `trades` | file watcher | `createMany({ skipDuplicates })` by ticket, never updated; indexes `(broker, closeTime)`, `(closeTime)`, `(broker, symbol)` |
 | `balance_operations` | file watcher | deposits/withdrawals from `history.json`, `createMany({ skipDuplicates })` by ticket |
 | `balances` | file watcher | one `upsert` per broker and UTC `day`, `timestamp` refreshed on every poll |
-| `settings_mirror` | `/settings` | EA mirror settings per broker |
+| `mirror_presets` | `/settings` | Named mirror presets, per-broker config as JSON (spec 033) |
 | `settings_display` | `/settings` | display settings (single row) plus `hiddenBrokers` / `hiddenSymbols` (visibility, spec 024) |
 | `position_colors` | `/positions/color` | colour per broker and ticket |
 | `users` | — | created out of band; bcrypt password hash |

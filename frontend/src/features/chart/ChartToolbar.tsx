@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react';
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -27,6 +27,8 @@ interface ChartToolbarProps {
   onAlerts?: () => void;
   alertsActive?: boolean;
   alertsFlashing?: boolean;
+  locked?: boolean;
+  onToggleLock?: () => void;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
 }
@@ -52,7 +54,7 @@ const DRAW_TOOLS: DrawTool[] = [
 export const ChartToolbar = memo(function ChartToolbar({
   brokers, symbols, broker, symbol, brokerHidden, symbolHidden, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
-  onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, onFullscreen, isFullscreen,
+  onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, locked = false, onToggleLock, onFullscreen, isFullscreen,
 }: ChartToolbarProps) {
   // Mobile only: the drawing tools live in a second row opened by Draw (spec 025).
   // Not reset when a drawing ends, so the next one is one tap away.
@@ -118,6 +120,16 @@ export const ChartToolbar = memo(function ChartToolbar({
           aria-label="Price alerts"
         >
           <IconBell size={16} />
+        </button>
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${locked ? styles.iconBtnActive : ''}`}
+          onClick={onToggleLock}
+          title={locked ? 'Unlock drawings, positions and alerts' : 'Lock drawings, positions and alerts'}
+          aria-label={locked ? 'Unlock chart' : 'Lock chart'}
+          aria-pressed={locked}
+        >
+          {locked ? <IconLock size={16} /> : <IconUnlock size={16} />}
         </button>
 
         <div className={`${styles.drawTools} ${drawOpen ? styles.drawToolsOpen : ''}`}>

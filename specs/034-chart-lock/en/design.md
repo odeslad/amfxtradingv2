@@ -1,12 +1,12 @@
 # 034 — Chart lock · Design
 
 ## Approach
-A single `locked` boolean owned by `ChartPage`, stored in `localStorage` (`amfx.chartLocked`), passed to the toolbar (button) and to `LightweightChart`, which forwards it to `DrawingTools`. Every pointer handler that today grabs drawings, levels or alerts checks the flag first and lets the event through to lightweight-charts, which keeps zoom / pan as usual. Nothing is hidden and nothing changes in the backend.
+A single `locked` boolean owned by `ChartPage`, stored in `localStorage` (`chart.locked`), passed to the toolbar (button) and to `LightweightChart`, which forwards it to `DrawingTools`. Every pointer handler that today grabs drawings, levels or alerts checks the flag first and lets the event through to lightweight-charts, which keeps zoom / pan as usual. Nothing is hidden and nothing changes in the backend.
 
 ## Frontend changes
 
 ### `ChartPage.tsx`
-- `const [locked, setLocked] = useState<boolean>(readStoredLock)`; writing it back to `localStorage` on change (try/catch, like the mirror preset in spec 033).
+- `const [locked, setLocked] = useLocalStorage('chart.locked', false)` — the existing hook already used for `chart.selection`.
 - `toggleLock` flips it; `toggleDrawMode` sets `locked` to `false` before entering a tool (AC 6).
 - Passes `locked` / `onToggleLock` to `ChartToolbar` and `locked` to `LightweightChart`.
 

@@ -145,6 +145,7 @@ export function ChartPage() {
     removeAlert(a.id).catch(err => addToast(errorMessage(err, 'Failed to delete alert'), 'error'));
   }, [removeAlert]);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
+  const [locked, setLocked] = useLocalStorage('chart.locked', false);
   const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [positions, setPositions] = useState<Position[]>([]);
   const positionsSigRef = useRef('');
@@ -510,7 +511,11 @@ export function ChartPage() {
   const openFilters = useCallback(() => setFiltersOpen(true), []);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
   const closeAlerts = useCallback(() => setAlertsOpen(false), []);
-  const toggleDrawMode = useCallback((mode: DrawMode) => setDrawMode(prev => (prev === mode ? null : mode)), []);
+  const toggleDrawMode = useCallback((mode: DrawMode) => {
+    setLocked(false);
+    setDrawMode(prev => (prev === mode ? null : mode));
+  }, [setLocked]);
+  const toggleLock = useCallback(() => setLocked(prev => !prev), [setLocked]);
   const clearDrawMode = useCallback(() => setDrawMode(null), []);
   const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev]), []);
   const openNewTrade = useCallback(() => setNewTradeOpen(true), []);
@@ -564,6 +569,8 @@ export function ChartPage() {
         onAlerts={toggleAlerts}
         alertsActive={alertsOpen}
         alertsFlashing={alertFlash}
+        locked={locked}
+        onToggleLock={toggleLock}
         onPositions={cyclePositions}
         positionsMode={positionsMode}
         onFullscreen={toggleFullscreen}

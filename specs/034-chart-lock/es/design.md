@@ -1,12 +1,12 @@
 # 034 — Candado del gráfico · Diseño
 
 ## Enfoque
-Un único booleano `locked` en `ChartPage`, guardado en `localStorage` (`amfx.chartLocked`), que se pasa a la barra (botón) y a `LightweightChart`, que a su vez lo pasa a `DrawingTools`. Cada manejador de puntero que hoy captura dibujos, niveles o alertas mira primero el flag y deja pasar el evento a lightweight-charts, que mantiene el zoom / desplazamiento de siempre. No se oculta nada ni cambia nada en el backend.
+Un único booleano `locked` en `ChartPage`, guardado en `localStorage` (`chart.locked`), que se pasa a la barra (botón) y a `LightweightChart`, que a su vez lo pasa a `DrawingTools`. Cada manejador de puntero que hoy captura dibujos, niveles o alertas mira primero el flag y deja pasar el evento a lightweight-charts, que mantiene el zoom / desplazamiento de siempre. No se oculta nada ni cambia nada en el backend.
 
 ## Cambios en frontend
 
 ### `ChartPage.tsx`
-- `const [locked, setLocked] = useState<boolean>(readStoredLock)`; se escribe en `localStorage` al cambiar (try/catch, como el preset de mirror de la spec 033).
+- `const [locked, setLocked] = useLocalStorage('chart.locked', false)` — el hook existente que ya se usa para `chart.selection`.
 - `toggleLock` lo alterna; `toggleDrawMode` pone `locked` a `false` antes de entrar en una herramienta (AC 6).
 - Pasa `locked` / `onToggleLock` a `ChartToolbar` y `locked` a `LightweightChart`.
 

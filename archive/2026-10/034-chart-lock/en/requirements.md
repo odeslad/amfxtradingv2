@@ -1,6 +1,6 @@
 # 034 — Chart lock
 
-> Status: **draft**
+> Status: **closed**
 
 ## Context
 On the chart, drawings (lines, rectangles, markers, symbols, texts), position and order lines (entry, SL, TP) and price alerts all react to the mouse. When the user zooms or pans the chart and the pointer starts over one of them, that element gets selected or dragged instead of the chart moving, and the user has to fix it afterwards. There is no way to make these elements ignore the mouse.

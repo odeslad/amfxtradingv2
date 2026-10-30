@@ -1,6 +1,6 @@
 # 034 — Candado del gráfico
 
-> Estado: **borrador**
+> Estado: **cerrada**
 
 ## Contexto
 En el gráfico, los dibujos (líneas, rectángulos, marcadores, símbolos, textos), las líneas de posiciones y órdenes (entrada, SL, TP) y las alertas de precio reaccionan al ratón. Cuando el usuario hace zoom o desplaza el gráfico y el puntero empieza sobre uno de ellos, ese elemento se selecciona o se arrastra en lugar de moverse el gráfico, y luego hay que corregirlo. No hay forma de hacer que estos elementos ignoren el ratón.

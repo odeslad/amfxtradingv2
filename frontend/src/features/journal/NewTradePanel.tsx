@@ -304,7 +304,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
         )}
 
         {mode === 'mirror' && !mirrorDisabled && (
-          <div className={styles.field}>
+          <div className={styles.presetField}>
             <label className={styles.label} htmlFor="new-trade-preset">Preset</label>
             <select
               id="new-trade-preset"

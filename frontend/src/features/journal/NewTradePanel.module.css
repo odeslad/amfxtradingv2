@@ -109,6 +109,14 @@
   text-decoration: underline;
 }
 
+.presetField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
 .mirrorBrokers {
   padding: 8px 20px;
   border-bottom: 1px solid var(--border);

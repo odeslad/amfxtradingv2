@@ -44,3 +44,5 @@ Un único booleano `locked` en `ChartPage`, guardado en `localStorage` (`chart.l
 Aprobada: https://claude.ai/artifact/9DFF5pZe396vZDrLefrwHE
 
 Artboards: Escritorio · candado desactivado · Escritorio · candado activado · Móvil · candado desactivado · Móvil · candado activado.
+
+Desviación acordada durante la validación: en móvil el candado empujaba Draw a una segunda fila, así que el botón de Indicadores pasó a la fila de Draw (solo móvil; escritorio sin cambios).

@@ -145,6 +145,15 @@ export const ChartToolbar = memo(function ChartToolbar({
               {t.icon}
             </button>
           ))}
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${styles.mobileOnly}`}
+            onClick={onIndicators}
+            title="Indicators"
+            aria-label="Indicators"
+          >
+            <IconIndicators size={16} />
+          </button>
         </div>
 
         <button
@@ -158,7 +167,7 @@ export const ChartToolbar = memo(function ChartToolbar({
         </button>
         <button
           type="button"
-          className={styles.iconBtn}
+          className={`${styles.iconBtn} ${styles.desktopOnly}`}
           onClick={onIndicators}
           title="Indicators"
           aria-label="Indicators"

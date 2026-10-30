@@ -159,6 +159,10 @@
   .symbolSelects {
     display: none;
   }
+
+  .mobileOnly {
+    display: none;
+  }
 }
 
 /* Mobile: one row of everyday tools plus Draw; the drawing tools wrap into a
@@ -229,7 +233,11 @@
     display: flex;
   }
 
-  /* Eight tools share the row: at 390 px each is ~43 px wide, always 44 px tall. */
+  .desktopOnly {
+    display: none;
+  }
+
+  /* Nine tools (drawings + indicators) share the row: at 390 px each is ~38 px wide, always 44 px tall. */
   .drawTools .iconBtn {
     flex: 1 1 0;
     width: auto;

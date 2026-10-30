@@ -44,3 +44,5 @@ A single `locked` boolean owned by `ChartPage`, stored in `localStorage` (`chart
 Approved: https://claude.ai/artifact/9DFF5pZe396vZDrLefrwHE
 
 Artboards: Desktop · lock off · Desktop · lock on · Mobile · lock off · Mobile · lock on.
+
+Deviation agreed during validation: on mobile the lock pushed Draw to a second row, so the Indicators button moved into the Draw row (mobile only; desktop unchanged).

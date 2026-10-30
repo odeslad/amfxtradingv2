@@ -219,9 +219,10 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   onSelectAlert?: (alertId: number | null) => void;
   showNewTrade?: boolean;
   onNewTrade?: () => void;
+  locked?: boolean;
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', showSpread = false, alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', showSpread = false, alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition, locked = false }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
@@ -291,6 +292,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
   const draggableRef = useRef<DraggableLevel[]>([]);
   const dragStateRef = useRef<DragState | null>(null);
+  // Chart lock (spec 034): levels, alerts and drawings ignore the pointer.
+  const lockedRef = useRef(locked);
+  const releaseLevelsRef = useRef<() => void>(() => { });
   // optimistic SL/TP overrides (id -> price) kept until server feedback matches
   const pendingPriceRef = useRef<Map<string, number>>(new Map());
   const precisionRef = useRef(5);
@@ -736,6 +740,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       manager.setOnCountChange(count => setHasDrawings(count > 0));
       manager.setOnChange(() => onDrawingsChangeRef.current?.(manager.getPersisted()));
       if (trendlineAppearanceRef.current) manager.setAppearance(trendlineAppearanceRef.current);
+      manager.setLocked(lockedRef.current);
       trendlineManagerRef.current = manager;
       if (candlesRef.current.length > 0) {
         const filtered = candlesRef.current.filter(c => {
@@ -1175,6 +1180,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     // it; dragging starts on a level that is already selected. Pointer-down
     // away from any level deselects.
     const startDrag = (clientX: number, clientY: number, tolerance = HIT_PX): boolean => {
+      if (lockedRef.current) return false;
       const hit = findHit(clientX, clientY, tolerance);
       if (!hit) {
         setSelectedLevel(null);
@@ -1235,6 +1241,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     const onMouseMove = (e: MouseEvent) => {
       if (dragStateRef.current) { moveDrag(e.clientY); return; }
       // hover affordance
+      if (lockedRef.current) return;
       container.style.cursor = findHit(e.clientX, e.clientY) ? 'ns-resize' : '';
     };
     const onMouseUp = () => { if (dragStateRef.current) endDrag(); };
@@ -1249,6 +1256,15 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       if (t) { e.preventDefault(); moveDrag(t.clientY); }
     };
     const onTouchEnd = () => { if (dragStateRef.current) endDrag(); };
+
+    releaseLevelsRef.current = () => {
+      if (dragStateRef.current) {
+        applyDragPrice(dragStateRef.current.startPrice);
+        endDrag(false);
+      }
+      container.style.cursor = '';
+      setSelectedLevel(null);
+    };
 
     container.addEventListener('mousedown', onMouseDown, true);
     document.addEventListener('mousemove', onMouseMove, true);
@@ -1267,6 +1283,12 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       document.removeEventListener('keydown', onKeyDown, true);
     };
   }, [alertDisplayPrice]);
+
+  useEffect(() => {
+    lockedRef.current = locked;
+    if (locked) releaseLevelsRef.current();
+    trendlineManagerRef.current?.setLocked(locked);
+  }, [locked]);
 
   const legendPrecision = getPricePrecision(symbol);
 
@@ -1309,13 +1331,13 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       {positionLabels.filter(l => l.visible).map(l => (
         <div
           key={l.id}
-          className={styles.positionLabel}
+          className={`${styles.positionLabel} ${locked ? styles.positionLabelLocked : ''}`}
           style={{ top: l.top, color: l.color, borderColor: l.color }}
           onDoubleClick={() => onEditPosition?.(l.ticket)}
           title="Double-click to edit"
         >
           {l.text}
-          {l.id.endsWith('-entry') && (
+          {l.id.endsWith('-entry') && !locked && (
             <button
               type="button"
               className={styles.positionCloseBtn}

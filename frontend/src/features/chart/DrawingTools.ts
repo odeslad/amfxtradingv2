@@ -154,6 +154,7 @@ export class DrawingManager {
   private drawStart: Logical | null = null;
   private cursorPixel: Point = { x: 0, y: 0 };
   private previewShift = false;
+  private locked = false;
 
   private dragHandle: Handle | null = null;
   private dragLastLogical: Logical | null = null;
@@ -475,6 +476,7 @@ export class DrawingManager {
     }
 
     // 2) not drawing: hit-test for select / drag
+    if (this.locked) return false;
     const hit = this.hitTest(pos, touch);
     if (hit) {
       // Ctrl + drag on the body duplicates and drags the copy
@@ -609,6 +611,18 @@ export class DrawingManager {
     return RECT_HANDLE_CURSOR[handle];
   }
 
+  // Chart lock (spec 034): existing drawings ignore the pointer and the keyboard.
+  setLocked(value: boolean) {
+    this.locked = value;
+    if (!value) return;
+    this.dragHandle = null;
+    this.dragLastLogical = null;
+    this.closeTextInput();
+    this.setSelected(null);
+    this.setCursor('');
+    this.redraw();
+  }
+
   private setSelected(id: string | null) {
     if (this.selectedId === id) return;
     this.selectedId = id;
@@ -626,7 +640,7 @@ export class DrawingManager {
 
   // Double click/tap: cycles a line/rect color, or edits a text drawing.
   private handleDoubleAt(clientX: number, clientY: number, touch: boolean): boolean {
-    if (this.isDrawing || !this.inside(clientX, clientY)) return false;
+    if (this.locked || this.isDrawing || !this.inside(clientX, clientY)) return false;
     const pos = this.toCanvas(clientX, clientY);
     if (!this.inPane(pos)) return false;
     const hit = this.hitTest(pos, touch);
@@ -733,7 +747,7 @@ export class DrawingManager {
   }
 
   private onMouseMove(e: MouseEvent) {
-    if (!this.isDrawing && !this.isRulerMode && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
+    if (!this.locked && !this.isDrawing && !this.isRulerMode && !this.dragHandle && this.inside(e.clientX, e.clientY)) {
       const hit = this.hitTest(this.toCanvas(e.clientX, e.clientY), false);
       // Resize / move cursors only once the shape is selected, like the drag itself.
       this.setCursor(hit ? (hit.id === this.selectedId ? this.cursorFor(hit.handle) : 'pointer') : '');
@@ -787,7 +801,7 @@ export class DrawingManager {
   // ─── keyboard ──────────────────────────────────────────────────────────────
 
   private onKeyDown(e: KeyboardEvent) {
-    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId) {
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId && !this.locked) {
       this.deleteSelected();
     }
     if (e.key === 'Escape' && (this.isRulerMode || this.rulerStart)) {

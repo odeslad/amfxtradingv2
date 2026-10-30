@@ -44,6 +44,11 @@
   gap: 6px;
 }
 
+.positionLabelLocked {
+  pointer-events: none;
+  cursor: default;
+}
+
 .positionCloseBtn {
   background: transparent;
   border: none;

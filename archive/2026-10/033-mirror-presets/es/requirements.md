@@ -1,6 +1,6 @@
 # 033 — Presets de mirror
 
-> Estado: **borrador**
+> Estado: **cerrada**
 
 ## Contexto
 Hoy existe una única configuración de mirror (Settings › Mirror, tabla `settings_mirror`): por cada broker, si participa, el modo de lotes (lotes fijos o % de riesgo) y el valor. New Trade en modo mirror envía una orden por cada broker activo con esa configuración. Para operar con otro riesgo el operador tiene que editar Settings cada vez. Esta spec sustituye la configuración única por presets con nombre ("operaciones 0.5%", "operaciones 1%"…) que el operador elige en el formulario de New Trade.

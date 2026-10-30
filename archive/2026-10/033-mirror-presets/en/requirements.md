@@ -1,6 +1,6 @@
 # 033 — Mirror presets
 
-> Status: **draft**
+> Status: **closed**
 
 ## Context
 Today there is a single mirror configuration (Settings › Mirror, table `settings_mirror`): for each broker, whether it takes part, the lots mode (fixed lots or % risk) and the value. New Trade in mirror mode sends one order per enabled broker with that configuration. To trade with a different risk the operator has to edit Settings every time. This spec replaces the single configuration with named presets ("operaciones 0.5%", "operaciones 1%"…) that the operator picks in the New Trade form.

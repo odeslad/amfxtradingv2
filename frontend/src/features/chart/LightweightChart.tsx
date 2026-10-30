@@ -913,7 +913,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       else line.current = series.createPriceLine({ price, color, lineWidth: 1, lineStyle, axisLabelVisible: true, title });
     };
     if (bid !== null) place(bidLineRef, bid, 'rgba(180,180,180,0.85)', LineStyle.Dotted, 'BID');
-    if (ask !== null && ask > 0) place(askLineRef, ask, 'rgba(180,180,180,0.85)', LineStyle.Dashed, 'ASK');
+    if (ask !== null && ask > 0) place(askLineRef, ask, 'rgba(180,180,180,0.85)', LineStyle.Dotted, 'ASK');
     else removeLine(askLineRef);
   }, []);
 

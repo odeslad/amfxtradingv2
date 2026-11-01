@@ -292,6 +292,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const positionLevelsRef = useRef<Omit<PositionLabel, 'top' | 'visible'>[]>([]);
   const draggableRef = useRef<DraggableLevel[]>([]);
   const dragStateRef = useRef<DragState | null>(null);
+  const panePanRef = useRef<{ startY: number; lastY: number } | null>(null);
   // Chart lock (spec 034): levels, alerts and drawings ignore the pointer.
   const lockedRef = useRef(locked);
   const releaseLevelsRef = useRef<() => void>(() => { });
@@ -1097,6 +1098,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     const HIT_PX = 6;
     // a finger is far less precise than a mouse pointer
     const TOUCH_HIT_PX = 18;
+    const PAN_RESTORE_PX = 4;
 
     const yToClientOffset = (clientY: number) => {
       const rect = container.getBoundingClientRect();
@@ -1237,25 +1239,60 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       onModifyRef.current?.(level.ticket, sl, tp);
     };
 
-    const onMouseDown = (e: MouseEvent) => { if (startDrag(e.clientX, e.clientY)) { e.preventDefault(); e.stopPropagation(); } };
+    // The library ignores vertical panning while the price scale autoscales, so a
+    // press inside the pane turns it off; a click or a horizontal-only drag turns it
+    // back on at release, keeping the automatic fit for everything but a vertical pan.
+    const beginPanePan = (clientX: number, clientY: number) => {
+      const series = seriesRef.current;
+      if (!series || !series.priceScale().options().autoScale) return;
+      const scaleLeft = container.getBoundingClientRect().right - series.priceScale().width();
+      if (clientX >= scaleLeft) return;
+      panePanRef.current = { startY: clientY, lastY: clientY };
+      series.priceScale().applyOptions({ autoScale: false });
+    };
+    const endPanePan = () => {
+      const pan = panePanRef.current;
+      panePanRef.current = null;
+      if (!pan) return;
+      if (Math.abs(pan.lastY - pan.startY) < PAN_RESTORE_PX) {
+        seriesRef.current?.priceScale().applyOptions({ autoScale: true });
+      }
+    };
+
+    const onMouseDown = (e: MouseEvent) => {
+      if (startDrag(e.clientX, e.clientY)) { e.preventDefault(); e.stopPropagation(); return; }
+      if (e.button === 0) beginPanePan(e.clientX, e.clientY);
+    };
     const onMouseMove = (e: MouseEvent) => {
       if (dragStateRef.current) { moveDrag(e.clientY); return; }
+      if (panePanRef.current) panePanRef.current.lastY = e.clientY;
       // hover affordance
       if (lockedRef.current) return;
       container.style.cursor = findHit(e.clientX, e.clientY) ? 'ns-resize' : '';
     };
-    const onMouseUp = () => { if (dragStateRef.current) endDrag(); };
+    const onMouseUp = () => {
+      if (dragStateRef.current) endDrag();
+      endPanePan();
+    };
 
     const onTouchStart = (e: TouchEvent) => {
       const t = e.touches[0];
-      if (t && startDrag(t.clientX, t.clientY, TOUCH_HIT_PX)) { e.preventDefault(); e.stopPropagation(); }
+      if (!t) return;
+      if (startDrag(t.clientX, t.clientY, TOUCH_HIT_PX)) { e.preventDefault(); e.stopPropagation(); return; }
+      if (e.touches.length === 1) beginPanePan(t.clientX, t.clientY);
     };
     const onTouchMove = (e: TouchEvent) => {
-      if (!dragStateRef.current) return;
       const t = e.touches[0];
+      if (!dragStateRef.current) {
+        if (t && panePanRef.current) panePanRef.current.lastY = t.clientY;
+        return;
+      }
       if (t) { e.preventDefault(); moveDrag(t.clientY); }
     };
-    const onTouchEnd = () => { if (dragStateRef.current) endDrag(); };
+    const onTouchEnd = () => {
+      if (dragStateRef.current) endDrag();
+      endPanePan();
+    };
 
     releaseLevelsRef.current = () => {
       if (dragStateRef.current) {

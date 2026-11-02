@@ -66,6 +66,7 @@ model SettingsDisplay {
   trendlineWidth Int      @default(1)
   rectLabels     Boolean  @default(true)
   showSpread     Boolean  @default(false)
+  setupLevels    String[] @default(["ECC", "EMA", "EVL", "MHL"])
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")
   updatedAt      DateTime @updatedAt

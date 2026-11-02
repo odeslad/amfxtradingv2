@@ -816,8 +816,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     const candlesKey = `${brokerRef.current}|${symbolRef.current}|${timeframeRef.current}`;
     const sameChart = candlesKeyRef.current === candlesKey;
     candlesKeyRef.current = candlesKey;
-    // Prepending older candles of the same chart preserves the view; anything else resets it.
-    const preserve = sameChart && oldCandles.length > 0 && candles[0].time < oldCandles[0].time;
+    // Any update of the same chart (older candles prepended, a closed candle appended)
+    // preserves the view; only a different chart resets it.
+    const preserve = sameChart && oldCandles.length > 0;
 
     const filterWeekend = (arr: Candle[]) =>
       arr.filter(c => { const d = new Date(c.time * 1000).getUTCDay(); return d !== 0 && d !== 6; });
@@ -828,9 +829,10 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     let anchorOffset = 0;
     if (preserve && chartRef.current) {
       const vr = chartRef.current.timeScale().getVisibleLogicalRange();
-      if (vr) {
+      // A view scrolled past the first candle has no anchor: the range is left untouched.
+      if (vr && vr.from >= 0) {
         const oldFiltered = filterWeekend(oldCandles);
-        const fromIdx = Math.max(0, Math.round(vr.from));
+        const fromIdx = Math.round(vr.from);
         anchorTime = oldFiltered[fromIdx]?.time ?? null;
         anchorOffset = vr.to - vr.from;
       }

@@ -5,7 +5,7 @@ import { newCommandId, sendCommand, type Command, type CommandAction } from '../
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
 import { useVisibility, visibleSymbols, isSymbolVisible } from '../../lib/visibility';
-import { SETUP_LEVEL_KEYS, type SetupLevelKey } from './utils/position';
+import { SETUP_LEVEL_KEYS, TP_RATIOS, pricePrecision, tpForRatio, type SetupLevelKey, type TpRatio } from './utils/position';
 import styles from './NewTradePanel.module.css';
 
 interface NewTradePanelProps {
@@ -82,6 +82,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [price, setPrice] = useState('');
   const [sl, setSl] = useState('');
   const [tp, setTp] = useState('');
+  const [tpRatio, setTpRatio] = useState<TpRatio | null>(null);
   const [allSymbols, setSymbols] = useState<string[]>([]);
   const preset = presets.find(p => p.id === presetId) ?? presets[0];
   const activeMirrorBrokers = (preset?.brokers ?? []).filter(m => m.enabled);
@@ -93,6 +94,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [timeframe, setTimeframe] = useState('H1');
   const [setup, setSetup] = useState<SetupLevels | null>(null);
   const [bid, setBid] = useState<number | null>(null);
+  const [ask, setAsk] = useState<number | null>(null);
   const [setupLevels, setSetupLevels] = useState<SetupLevelKey[]>([...SETUP_LEVEL_KEYS]);
   const visibleLevels = SETUP_LEVEL_KEYS.filter(k => setupLevels.includes(k));
   // Levels follow the chart's broker when the preset trades it, else the preset's first broker.
@@ -159,8 +161,10 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
       setPrice('');
       setSl('');
       setTp('');
+      setTpRatio(null);
       setSetup(null);
       setBid(null);
+      setAsk(null);
       setSubmitting(false);
     }
   }
@@ -209,7 +213,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [prevLevelsKey, setPrevLevelsKey] = useState(levelsKey);
   if (levelsKey !== prevLevelsKey) {
     setPrevLevelsKey(levelsKey);
-    if (!open || !levelsBroker || !symbol) { setSetup(null); setBid(null); }
+    if (!open || !levelsBroker || !symbol) { setSetup(null); setBid(null); setAsk(null); }
   }
 
   useEffect(() => {
@@ -224,16 +228,25 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
     return () => { cancelled = true; };
   }, [open, levelsBroker, symbol, timeframe]);
 
-  // Live bid for the levels broker/symbol, to show distances to the levels.
+  // Live bid/ask for the levels broker/symbol: distances to the levels and the market entry.
   useEffect(() => {
     if (!open || !levelsBroker || !symbol) return;
     return subscribe((data) => {
-      const m = data as { type?: string; broker?: string; ticks?: { symbol: string; bid: number }[] };
+      const m = data as { type?: string; broker?: string; ticks?: { symbol: string; bid: number; ask: number }[] };
       if (m.type !== 'ticks' || m.broker !== levelsBroker || !m.ticks) return;
       const t = m.ticks.findLast(x => x.symbol === symbol);
-      if (t) setBid(t.bid);
+      if (t) { setBid(t.bid); setAsk(t.ask); }
     });
   }, [open, levelsBroker, symbol]);
+
+  // TP in ratio mode follows the entry (pending price, or ask/bid at market) and the SL.
+  const buySide = action.startsWith('buy');
+  const entry = isPending ? parseFloat(price) : (buySide ? ask : bid);
+  const precision = pricePrecision(symbol);
+  const ratioTp = tpRatio !== null && entry !== null ? tpForRatio(entry, parseFloat(sl), buySide, tpRatio, precision) : null;
+  const ratioTpMissing = tpRatio !== null && ratioTp === null;
+
+  const chooseRatio = (ratio: TpRatio) => { setTpRatio(ratio); setTp(''); };
 
   const resetFeedback = () => {};
 
@@ -247,7 +260,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
     setSubmitting(true);
 
     const slNum = parseFloat(sl) || 0;
-    const tpNum = parseFloat(tp) || 0;
+    const tpNum = tpRatio !== null ? ratioTp ?? 0 : parseFloat(tp) || 0;
     const base = {
       action,
       symbol: symbol.toUpperCase(),
@@ -472,16 +485,40 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
               <input className={styles.input} type="number" step="0.00001" value={sl} onChange={e => setSl(e.target.value)} placeholder="0.00000" />
             </div>
             <div className={styles.field}>
-              <label className={styles.label}>TP</label>
-              <input className={styles.input} type="number" step="0.00001" value={tp} onChange={e => setTp(e.target.value)} placeholder="0.00000" />
+              <div className={styles.tpLabelRow}>
+                <label className={styles.label}>TP</label>
+                <div className={styles.ratioBtns}>
+                  {TP_RATIOS.map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={`${styles.ratioBtn} ${tpRatio === r ? styles.ratioBtnActive : ''}`}
+                      onClick={() => chooseRatio(r)}
+                    >
+                      {r}:1
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {tpRatio === null ? (
+                <input className={styles.input} type="number" step="0.00001" value={tp} onChange={e => setTp(e.target.value)} placeholder="0.00000" />
+              ) : (
+                <div className={styles.ratioChip}>
+                  <span>
+                    <span className={styles.ratioChipRatio}>{tpRatio}:1</span>
+                    {ratioTp !== null && ` · ${ratioTp.toFixed(precision)}`}
+                  </span>
+                  <button type="button" className={styles.ratioChipClear} onClick={() => setTpRatio(null)} aria-label="Back to price">✕</button>
+                </div>
+              )}
             </div>
           </div>
 
 
           <button
             type="submit"
-            className={`${styles.submitBtn} ${action.startsWith('buy') ? styles.submitBuy : styles.submitSell}`}
-            disabled={submitting || (mode === 'mirror' && presetEmpty)}
+            className={`${styles.submitBtn} ${buySide ? styles.submitBuy : styles.submitSell}`}
+            disabled={submitting || (mode === 'mirror' && presetEmpty) || ratioTpMissing}
           >
             {submitting ? 'Pending...' : action.toUpperCase()}
           </button>

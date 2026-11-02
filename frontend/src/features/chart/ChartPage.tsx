@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { modifyCommand, sendCommand } from '../../lib/commands';
@@ -36,9 +36,37 @@ interface SplitState {
   on: boolean;
   rightTimeframe: string;
   ratio: number;
+  // Left timeframe at the moment the split was closed: reopening restores the same pair.
+  leftTimeframe?: string;
 }
 
 const DEFAULT_SPLIT: SplitState = { on: false, rightTimeframe: 'H4', ratio: 0.5 };
+const SPLIT_RATIO_MIN = 0.25;
+const SPLIT_RATIO_MAX = 0.75;
+const DIVIDER_WIDTH = 6;
+
+// Narrowest width a slot can take without clipping its toolbar: the toolbar's two
+// groups never shrink, so their widths plus gap and padding are its min-content.
+const toolbarMinWidth = (area: HTMLElement): number => {
+  const toolbar = area.querySelector<HTMLElement>('[data-chart-toolbar]');
+  if (!toolbar) return 0;
+  const style = getComputedStyle(toolbar);
+  const padding = parseFloat(style.paddingLeft) + parseFloat(style.paddingRight);
+  const gap = parseFloat(style.columnGap) || 0;
+  const groups = Array.from(toolbar.children) as HTMLElement[];
+  return groups.reduce((sum, g) => sum + g.offsetWidth, 0) + gap * Math.max(0, groups.length - 1) + padding;
+};
+
+// Ratio bounds for the current area width: 25–75 %, tightened so neither toolbar clips.
+const clampSplitRatio = (area: HTMLElement, ratio: number): number => {
+  const width = area.getBoundingClientRect().width - DIVIDER_WIDTH;
+  if (width <= 0) return ratio;
+  const minFraction = toolbarMinWidth(area) / width;
+  const min = Math.max(SPLIT_RATIO_MIN, minFraction);
+  const max = Math.min(SPLIT_RATIO_MAX, 1 - minFraction);
+  if (min > max) return 0.5;
+  return Math.min(max, Math.max(min, ratio));
+};
 
 export function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -141,15 +169,73 @@ export function ChartPage() {
   const showSplit = split.on && isDesktop;
   const timeframeRef = useRef(timeframe);
   useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
-  const toggleSplit = useCallback(() => {
-    setSplit(prev => (prev.on
-      ? { ...prev, on: false }
-      : { ...prev, on: true, rightTimeframe: nextTimeframeUp(timeframeRef.current) }));
+  // Closing from a chart keeps that chart: from the right one, its timeframe becomes the
+  // single chart's timeframe (AC 5). Reopening restores the pair that was closed; the very
+  // first split opens the next timeframe up on the right.
+  const toggleSplit = useCallback((side: ChartSide) => {
+    setSplit(prev => {
+      if (!prev.on) {
+        if (prev.leftTimeframe) {
+          setTimeframe(prev.leftTimeframe);
+          return { ...prev, on: true };
+        }
+        return { ...prev, on: true, rightTimeframe: nextTimeframeUp(timeframeRef.current) };
+      }
+      const leftTimeframe = timeframeRef.current;
+      if (side === 'right') setTimeframe(prev.rightTimeframe);
+      return { ...prev, on: false, leftTimeframe };
+    });
   }, [setSplit]);
+  const toggleSplitLeft = useCallback(() => toggleSplit('left'), [toggleSplit]);
+  const toggleSplitRight = useCallback(() => toggleSplit('right'), [toggleSplit]);
   const setRightTimeframe = useCallback((tf: string) => {
     setSplit(prev => ({ ...prev, rightTimeframe: tf }));
   }, [setSplit]);
   const pageRef = useRef<HTMLDivElement>(null);
+  const chartAreaRef = useRef<HTMLDivElement>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // Divider drag (AC 8): the ratio follows the pointer inside the chart area, 25–75 %,
+  // and is persisted with the rest of the split state on release.
+  const startDividerDrag = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
+    const area = chartAreaRef.current;
+    if (!area || e.button !== 0) return;
+    e.preventDefault();
+    const rect = area.getBoundingClientRect();
+    setDragging(true);
+    const onMove = (ev: MouseEvent) => {
+      const ratio = clampSplitRatio(area, (ev.clientX - rect.left) / rect.width);
+      setSplit(prev => (prev.ratio === ratio ? prev : { ...prev, ratio }));
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setDragging(false);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [setSplit]);
+
+  useEffect(() => {
+    if (!dragging) return;
+    document.body.classList.add('chartDividerDragging');
+    return () => document.body.classList.remove('chartDividerDragging');
+  }, [dragging]);
+
+  // A persisted ratio may not fit a narrower window: re-clamp whenever the area resizes.
+  const splitLayoutActive = showSplit && !isFullscreen;
+  useEffect(() => {
+    const area = chartAreaRef.current;
+    if (!splitLayoutActive || !area) return;
+    const observer = new ResizeObserver(() => {
+      setSplit(prev => {
+        const ratio = clampSplitRatio(area, prev.ratio);
+        return ratio === prev.ratio ? prev : { ...prev, ratio };
+      });
+    });
+    observer.observe(area);
+    return () => observer.disconnect();
+  }, [splitLayoutActive, setSplit]);
   const emasRef = useRef<Ema[]>([]);
 
   useEffect(() => { emasRef.current = emas; }, [emas]);
@@ -440,7 +526,6 @@ export function ChartPage() {
     isFullscreen,
     splitAvailable: isDesktop,
     splitActive: showSplit,
-    onSplit: toggleSplit,
   };
   const showLeft = !showSplit || !isFullscreen || fullscreenSide === 'left';
   const showRight = showSplit && (!isFullscreen || fullscreenSide === 'right');
@@ -449,8 +534,9 @@ export function ChartPage() {
   return (
     <div className={`${styles.page} ${isFullscreen ? styles.pageFullscreen : ''}`} ref={pageRef}>
       <div
+        ref={chartAreaRef}
         className={`${styles.chartArea} ${splitLayout ? styles.split : ''}`}
-        style={splitLayout ? { gridTemplateColumns: `minmax(0, ${split.ratio}fr) 6px minmax(0, ${1 - split.ratio}fr)` } : undefined}
+        style={splitLayout ? { gridTemplateColumns: `minmax(0, ${split.ratio}fr) ${DIVIDER_WIDTH}px minmax(0, ${1 - split.ratio}fr)` } : undefined}
       >
         {showLeft && (
           <ChartSlot
@@ -459,9 +545,21 @@ export function ChartPage() {
             timeframe={timeframe}
             onTimeframeChange={setTimeframe}
             onFullscreen={toggleFullscreenLeft}
+            onSplit={toggleSplitLeft}
           />
         )}
-        {splitLayout && <div className={styles.divider} role="separator" aria-orientation="vertical" />}
+        {splitLayout && (
+          <div
+            className={`${styles.divider} ${dragging ? styles.dividerActive : ''}`}
+            role="separator"
+            aria-orientation="vertical"
+            aria-valuenow={Math.round(split.ratio * 100)}
+            aria-valuemin={SPLIT_RATIO_MIN * 100}
+            aria-valuemax={SPLIT_RATIO_MAX * 100}
+            title="Drag to resize"
+            onMouseDown={startDividerDrag}
+          />
+        )}
         {showRight && (
           <ChartSlot
             {...sharedSlotProps}
@@ -469,6 +567,7 @@ export function ChartPage() {
             timeframe={split.rightTimeframe}
             onTimeframeChange={setRightTimeframe}
             onFullscreen={toggleFullscreenRight}
+            onSplit={toggleSplitRight}
           />
         )}
       </div>

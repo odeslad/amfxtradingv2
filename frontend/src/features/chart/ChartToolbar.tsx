@@ -66,7 +66,7 @@ export const ChartToolbar = memo(function ChartToolbar({
   const [drawOpen, setDrawOpen] = useState(false);
 
   return (
-    <div className={styles.toolbar}>
+    <div className={styles.toolbar} data-chart-toolbar>
       <div className={styles.selects}>
         <div className={styles.symbolSelects}>
           <select className={styles.select} value={broker} onChange={e => onBrokerChange(e.target.value)}>

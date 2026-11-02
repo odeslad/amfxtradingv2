@@ -23,3 +23,11 @@
 - **Resultado:** ✅ pasa (el usuario lo comprobó el 2026-11-02 en la app local contra la API de producción). El primer render desbordaba por la derecha: las columnas `fr` del grid no se encogen por debajo del ancho mínimo de la barra → columnas `minmax(0, Nfr)`.
 - **Notas:** `useMediaQuery` usa `useSyncExternalStore` (la regla de lint rechaza setState dentro de un efecto). Pantalla completa por slot implementada como "página en fullscreen, solo ese slot renderizado" (ver riesgos en design.md).
 - **Est vs Actual:** 1.5 SP · 1 SP.
+
+## Tarea 4 · [frontend] Divisor arrastrable
+
+- **Mecanismo:** `npm run build` + arrastre manual hasta ambos límites, recargar mantiene la proporción, cerrar desde cada lado y reabrir.
+- **Comandos:** `npm run build` → ✓ built; `npx eslint src/features/chart` → limpio.
+- **Resultado:** ✅ pasa (el usuario lo comprobó el 2026-11-02 en la app local).
+- **Cambios acordados durante la tarea:** el suelo del 25 % no bastaba (los botones de la barra se cortaban) → el límite usa también el ancho mínimo de la barra, medido desde sus dos grupos, y un `ResizeObserver` recorta un ratio persistido en una ventana más estrecha; cerrar desde el gráfico derecho conserva su timeframe (AC 5 reescrito) y el par cerrado (`leftTimeframe` + `rightTimeframe`) se restaura al reabrir. La tarea 5 pierde la barra compacta.
+- **Est vs Actual:** 0.75 SP · 0.75 SP.

@@ -23,3 +23,11 @@
 - **Outcome:** ✅ pass (user checked on 2026-11-02 in the local app against the production API). First render overflowed on the right: `fr` grid columns do not shrink below the toolbar's min-content width → `minmax(0, Nfr)` columns.
 - **Notes:** `useMediaQuery` uses `useSyncExternalStore` (the lint rule rejects setState inside an effect). Fullscreen per slot implemented as "page fullscreen, only that slot rendered" (see design.md risks).
 - **Est vs Actual:** 1.5 SP · 1 SP.
+
+## Task 4 · [frontend] Draggable divider
+
+- **Mechanism:** `npm run build` + manual drag to both limits, reload keeps the ratio, close from each side and reopen.
+- **Commands:** `npm run build` → ✓ built; `npx eslint src/features/chart` → clean.
+- **Outcome:** ✅ pass (user checked on 2026-11-02 in the local app).
+- **Changes agreed during the task:** the 25 % floor was not enough (toolbar buttons were clipped) → the clamp also uses the toolbar's min-content width, measured from its two groups, and a `ResizeObserver` re-clamps a persisted ratio on a narrower window; closing from the right chart keeps its timeframe (AC 5 reworded) and the closed pair (`leftTimeframe` + `rightTimeframe`) is restored on reopen. Task 5 loses the compact toolbar.
+- **Est vs Actual:** 0.75 SP · 0.75 SP.

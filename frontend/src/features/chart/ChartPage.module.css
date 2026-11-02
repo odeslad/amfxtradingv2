@@ -46,6 +46,18 @@
 
 .divider {
   background: var(--border);
+  cursor: col-resize;
+  transition: background 0.12s ease;
+}
+
+.divider:hover,
+.dividerActive {
+  background: var(--border-bright);
+}
+
+:global(body.chartDividerDragging) {
+  user-select: none;
+  cursor: col-resize;
 }
 
 @media (max-width: 768px) {

@@ -131,6 +131,26 @@ export function pipSize(symbol: string): number {
   return symbol.toUpperCase().includes('JPY') ? 0.01 : 0.0001;
 }
 
+// Decimals a price is quoted with: 3 on JPY pairs, 5 elsewhere.
+export function pricePrecision(symbol: string): number {
+  return symbol.toUpperCase().includes('JPY') ? 3 : 5;
+}
+
+export const SETUP_LEVEL_KEYS = ['ECC', 'EMA', 'EVL', 'MHL'] as const;
+export type SetupLevelKey = (typeof SETUP_LEVEL_KEYS)[number];
+
+export const TP_RATIOS = [2, 3] as const;
+export type TpRatio = (typeof TP_RATIOS)[number];
+
+// Take profit at `ratio` times the entry → SL distance, on the profit side of
+// the entry; null when either price is missing or the stop sits on the entry.
+export function tpForRatio(entry: number, sl: number, buySide: boolean, ratio: number, precision: number): number | null {
+  if (!Number.isFinite(entry) || !Number.isFinite(sl) || entry === sl) return null;
+  const distance = Math.abs(entry - sl) * ratio;
+  const tp = buySide ? entry + distance : entry - distance;
+  return Number(tp.toFixed(precision));
+}
+
 // Pips from the price a pending order fills at (ask for buys, bid for sells) to
 // its price, positive while the market still has to move towards the order and
 // negative once it has crossed it; null without a quote.

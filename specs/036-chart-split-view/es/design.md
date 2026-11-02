@@ -65,7 +65,7 @@ GET/PUT /chart-indicators (página, EMAs compartidas → ambos slots)
 
 - **`DrawingTools` escucha en `document`**: Escape cancela el dibujo en todas las instancias que estén dibujando (inofensivo), Delete solo actúa en la instancia con selección; seleccionar un dibujo en un gráfico no deselecciona el del otro. Aceptable; anotado para el estado "dos gráficos, un dibujo seleccionado" de la maqueta.
 - **Dos gráficos a mitad de ancho**: históricos de 2000 velas se renderizan bien en lightweight-charts; lo justo son las barras, de ahí `.toolbarCompact`.
-- **Pantalla completa por slot**: mover `requestFullscreen` de la página al contenedor del slot mantiene el fallback iOS (`position: fixed; inset: 0`) porque el contenedor es un bloque normal; la clase de body sigue siendo global.
+- **Pantalla completa por slot** (revisado en la tarea 1): los paneles laterales son hijos `position: fixed` de `.page`, así que un slot en fullscreen nativo los ocultaría. `requestFullscreen` sigue sobre la página; en split la página renderiza solo el slot que pidió la pantalla completa (`fullscreenSide`) y los dos de nuevo al salir. El fallback iOS y la clase de body no cambian.
 - **Superficie del refactor**: extraer `ChartSlot` mueve ~300 líneas de `ChartPage`; el comportamiento en modo simple debe ser idéntico. La tarea 1 es solo esa extracción, verificada contra el gráfico de hoy antes de que exista UI de split.
 
 ## Maqueta

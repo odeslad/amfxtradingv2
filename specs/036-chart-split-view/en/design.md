@@ -65,7 +65,7 @@ GET/PUT /chart-indicators (page, shared EMAs → both slots)
 
 - **`DrawingTools` listens on `document`**: Escape cancels a drawing in every instance that is drawing (harmless), Delete only acts on the instance with a selection; selecting a drawing in one chart does not clear the selection in the other. Acceptable; noted for the mockup's "two charts, one selected drawing" state.
 - **Two charts, half the width**: 2000-candle histories render fine in lightweight-charts; the toolbars are the tight spot, hence `.toolbarCompact`.
-- **Fullscreen per slot**: moving `requestFullscreen` from the page to the slot wrapper keeps the iOS fallback (`position: fixed; inset: 0`) working because the wrapper is a plain block; the body class stays global.
+- **Fullscreen per slot** (revised in task 1): the side panels are `position: fixed` children of `.page`, so a slot in native fullscreen would hide them. `requestFullscreen` stays on the page element; in split view the page renders only the slot that asked for fullscreen (`fullscreenSide`) and both again on exit. The iOS fallback and the body class are unchanged.
 - **Refactor surface**: extracting `ChartSlot` moves ~300 lines of `ChartPage`; behaviour must stay byte-for-byte in single mode. Task 1 is that extraction alone, verified against today's chart before any split UI exists.
 
 ## Mockup

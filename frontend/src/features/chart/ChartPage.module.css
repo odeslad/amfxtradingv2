@@ -38,6 +38,16 @@
   background: var(--bg);
 }
 
+/* Split view (spec 036): two charts side by side; the columns come from the inline style. */
+.split {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.divider {
+  background: var(--border);
+}
+
 @media (max-width: 768px) {
   .page {
     position: absolute;

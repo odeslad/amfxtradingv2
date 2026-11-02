@@ -12,10 +12,11 @@ import { useAlerts, type PriceAlert } from '../../lib/useAlerts';
 import { useEmaAlerts } from '../../lib/useEmaAlerts';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
 import { useLocalStorage } from '../../lib/useLocalStorage';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import { isBrokerVisible, isSymbolVisible, useVisibility } from '../../lib/visibility';
 import type { TrendlineAppearance } from './DrawingTools';
 import { IndicatorsPanel } from './IndicatorsPanel';
-import { ChartSlot } from './ChartSlot';
+import { ChartSlot, type ChartSide } from './ChartSlot';
 import { BulkEditPanel } from '../journal/BulkEditPanel';
 import { ClosePositionPanel } from '../journal/ClosePositionPanel';
 import { NewTradePanel } from '../journal/NewTradePanel';
@@ -26,6 +27,18 @@ import styles from './ChartPage.module.css';
 // One string per positions list: setPositions only when something visible changed (spec 019).
 const positionsSignature = (list: Position[]): string =>
   list.map(p => `${p.ticket}|${p.type}|${p.lots}|${p.openPrice}|${p.sl}|${p.tp}|${p.profit}`).join(';');
+
+// Split view (spec 036): the right chart opens one timeframe above the left one.
+const NEXT_TIMEFRAME_UP: Record<string, string> = { M5: 'M15', M15: 'H1', H1: 'H4', H4: 'D1', D1: 'H1' };
+const nextTimeframeUp = (tf: string): string => NEXT_TIMEFRAME_UP[tf] ?? 'H4';
+
+interface SplitState {
+  on: boolean;
+  rightTimeframe: string;
+  ratio: number;
+}
+
+const DEFAULT_SPLIT: SplitState = { on: false, rightTimeframe: 'H4', ratio: 0.5 };
 
 export function ChartPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -119,9 +132,23 @@ export function ChartPage() {
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [emas, setEmas] = useState<Ema[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  // Split toggle (spec 036): persisted state and the second slot arrive in task 3.
-  const [splitOn, setSplitOn] = useState(false);
-  const toggleSplit = useCallback(() => setSplitOn(prev => !prev), []);
+  // Which chart fills the page while fullscreen in split view; both show otherwise.
+  const [fullscreenSide, setFullscreenSide] = useState<ChartSide>('left');
+
+  // Split view (spec 036): desktop only; the right timeframe and the ratio survive a close.
+  const [split, setSplit] = useLocalStorage<SplitState>('chart.split', DEFAULT_SPLIT);
+  const isDesktop = useMediaQuery('(min-width: 769px)');
+  const showSplit = split.on && isDesktop;
+  const timeframeRef = useRef(timeframe);
+  useEffect(() => { timeframeRef.current = timeframe; }, [timeframe]);
+  const toggleSplit = useCallback(() => {
+    setSplit(prev => (prev.on
+      ? { ...prev, on: false }
+      : { ...prev, on: true, rightTimeframe: nextTimeframeUp(timeframeRef.current) }));
+  }, [setSplit]);
+  const setRightTimeframe = useCallback((tf: string) => {
+    setSplit(prev => ({ ...prev, rightTimeframe: tf }));
+  }, [setSplit]);
   const pageRef = useRef<HTMLDivElement>(null);
   const emasRef = useRef<Ema[]>([]);
 
@@ -141,9 +168,12 @@ export function ChartPage() {
     && document.fullscreenEnabled
     && typeof document.documentElement.requestFullscreen === 'function';
 
-  const toggleFullscreen = useCallback(() => {
+  // The page element goes fullscreen (its side panels are fixed children, so they stay
+  // visible); in split view only the chart that asked for it is rendered meanwhile.
+  const toggleFullscreen = useCallback((side: ChartSide) => {
     const el = pageRef.current;
     if (!el) return;
+    setFullscreenSide(side);
     const canNative = document.fullscreenEnabled && typeof el.requestFullscreen === 'function';
     if (canNative) {
       if (document.fullscreenElement) document.exitFullscreen();
@@ -153,6 +183,8 @@ export function ChartPage() {
       setIsFullscreen(prev => !prev);
     }
   }, []);
+  const toggleFullscreenLeft = useCallback(() => toggleFullscreen('left'), [toggleFullscreen]);
+  const toggleFullscreenRight = useCallback(() => toggleFullscreen('right'), [toggleFullscreen]);
 
   // CSS fallback (iPhone): hide the app chrome (topbar + bottom nav) while
   // fullscreen, since `position: fixed` alone is unreliable inside Safari iOS.
@@ -376,47 +408,69 @@ export function ChartPage() {
       .catch(err => addToast(errorMessage(err, 'Network error sending modify'), 'error'));
   }, [positions]);
 
+  const sharedSlotProps = {
+    brokers,
+    symbols,
+    broker,
+    symbol,
+    brokerHidden,
+    symbolHidden,
+    onBrokerChange: setBroker,
+    onSymbolChange: setSymbol,
+    positions,
+    balance: balances[broker],
+    emas,
+    trendlineAppearance,
+    showSpread,
+    pnlMode,
+    alerts: chartAlerts,
+    onMoveAlert: moveAlert,
+    onEditAlertPrice: editAlertFromChart,
+    onToggleAlert: toggleAlertFromChart,
+    onDeleteAlert: deleteAlertFromChart,
+    onIndicators: openIndicators,
+    onFilters: openFilters,
+    onAlerts: toggleAlerts,
+    alertsActive: alertsOpen,
+    alertsFlashing: alertFlash,
+    onNewTrade: openNewTrade,
+    onEditPosition: handleEditPosition,
+    onClosePosition: handleClosePosition,
+    onModifyPosition: handleModifyPosition,
+    isFullscreen,
+    splitAvailable: isDesktop,
+    splitActive: showSplit,
+    onSplit: toggleSplit,
+  };
+  const showLeft = !showSplit || !isFullscreen || fullscreenSide === 'left';
+  const showRight = showSplit && (!isFullscreen || fullscreenSide === 'right');
+  const splitLayout = showLeft && showRight;
+
   return (
     <div className={`${styles.page} ${isFullscreen ? styles.pageFullscreen : ''}`} ref={pageRef}>
-      <div className={styles.chartArea}>
-        <ChartSlot
-          side="left"
-          brokers={brokers}
-          symbols={symbols}
-          broker={broker}
-          symbol={symbol}
-          brokerHidden={brokerHidden}
-          symbolHidden={symbolHidden}
-          onBrokerChange={setBroker}
-          onSymbolChange={setSymbol}
-          timeframe={timeframe}
-          onTimeframeChange={setTimeframe}
-          positions={positions}
-          balance={balances[broker]}
-          emas={emas}
-          trendlineAppearance={trendlineAppearance}
-          showSpread={showSpread}
-          pnlMode={pnlMode}
-          alerts={chartAlerts}
-          onMoveAlert={moveAlert}
-          onEditAlertPrice={editAlertFromChart}
-          onToggleAlert={toggleAlertFromChart}
-          onDeleteAlert={deleteAlertFromChart}
-          onIndicators={openIndicators}
-          onFilters={openFilters}
-          onAlerts={toggleAlerts}
-          alertsActive={alertsOpen}
-          alertsFlashing={alertFlash}
-          onNewTrade={openNewTrade}
-          onEditPosition={handleEditPosition}
-          onClosePosition={handleClosePosition}
-          onModifyPosition={handleModifyPosition}
-          onFullscreen={toggleFullscreen}
-          isFullscreen={isFullscreen}
-          splitAvailable
-          splitActive={splitOn}
-          onSplit={toggleSplit}
-        />
+      <div
+        className={`${styles.chartArea} ${splitLayout ? styles.split : ''}`}
+        style={splitLayout ? { gridTemplateColumns: `minmax(0, ${split.ratio}fr) 6px minmax(0, ${1 - split.ratio}fr)` } : undefined}
+      >
+        {showLeft && (
+          <ChartSlot
+            {...sharedSlotProps}
+            side="left"
+            timeframe={timeframe}
+            onTimeframeChange={setTimeframe}
+            onFullscreen={toggleFullscreenLeft}
+          />
+        )}
+        {splitLayout && <div className={styles.divider} role="separator" aria-orientation="vertical" />}
+        {showRight && (
+          <ChartSlot
+            {...sharedSlotProps}
+            side="right"
+            timeframe={split.rightTimeframe}
+            onTimeframeChange={setRightTimeframe}
+            onFullscreen={toggleFullscreenRight}
+          />
+        )}
       </div>
       <ChartFiltersPanel
         open={filtersOpen}

@@ -15,3 +15,11 @@
 - **Commands:** `npm run build` → ✓ built; `npx eslint src/features/chart src/shared/ui/icons.tsx` → clean.
 - **Outcome:** ✅ pass (user checked on 2026-11-02 in the local app: button next to Fullscreen, toggles active, hidden under 768 px). The page holds a temporary `useState` toggle that task 3 replaces with the persisted split state.
 - **Est vs Actual:** 0.5 SP · 0.25 SP.
+
+## Task 3 · [frontend] Split state and layout
+
+- **Mechanism:** `npm run build` + manual: open split, change each timeframe, change broker/symbol, live ticks on both, close from the right chart, reload keeps the split.
+- **Commands:** `npm run build` → ✓ built; `npx eslint src/features/chart src/lib/useMediaQuery.ts` → clean.
+- **Outcome:** ✅ pass (user checked on 2026-11-02 in the local app against the production API). First render overflowed on the right: `fr` grid columns do not shrink below the toolbar's min-content width → `minmax(0, Nfr)` columns.
+- **Notes:** `useMediaQuery` uses `useSyncExternalStore` (the lint rule rejects setState inside an effect). Fullscreen per slot implemented as "page fullscreen, only that slot rendered" (see design.md risks).
+- **Est vs Actual:** 1.5 SP · 1 SP.

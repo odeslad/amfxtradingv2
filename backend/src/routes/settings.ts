@@ -10,6 +10,8 @@ import {
 const LOTS_MODES = ['fixed', 'risk_pct'] as const;
 const PNL_MODES = ['net', 'gross', 'pips', 'pct'] as const;
 const TRENDLINE_STYLES = ['solid', 'dashed', 'dotted'] as const;
+export const SETUP_LEVEL_KEYS = ['ECC', 'EMA', 'EVL', 'MHL'] as const;
+type SetupLevelKey = (typeof SETUP_LEVEL_KEYS)[number];
 
 interface MirrorItem {
   broker: string;
@@ -31,6 +33,7 @@ interface DisplayInput {
   trendlineWidth?: number;
   rectLabels?: boolean;
   showSpread?: boolean;
+  setupLevels?: SetupLevelKey[];
 }
 
 interface Visibility {
@@ -45,6 +48,7 @@ interface DisplayRow {
   trendlineWidth: number;
   rectLabels: boolean;
   showSpread: boolean;
+  setupLevels: string[];
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -81,6 +85,17 @@ export function parsePresets(value: unknown): PresetInput[] {
   });
 }
 
+// Known level keys only, deduplicated and in canonical order; an empty list hides the panel.
+function parseSetupLevels(value: unknown): SetupLevelKey[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new BadRequest('display.setupLevels must be an array');
+  const isKey = (item: unknown): item is SetupLevelKey => typeof item === 'string' && (SETUP_LEVEL_KEYS as readonly string[]).includes(item);
+  value.forEach((item, i) => {
+    if (!isKey(item)) throw new BadRequest(`display.setupLevels[${i}] must be one of ${SETUP_LEVEL_KEYS.join(', ')}`);
+  });
+  return SETUP_LEVEL_KEYS.filter(key => value.includes(key));
+}
+
 export function parseDisplay(value: unknown): DisplayInput {
   const row = bodyRecord(value);
   return {
@@ -90,6 +105,7 @@ export function parseDisplay(value: unknown): DisplayInput {
     trendlineWidth: optionalInteger(row.trendlineWidth, 'display.trendlineWidth', { min: 1 }),
     rectLabels: optionalBoolean(row.rectLabels, 'display.rectLabels'),
     showSpread: optionalBoolean(row.showSpread, 'display.showSpread'),
+    setupLevels: parseSetupLevels(row.setupLevels),
   };
 }
 
@@ -141,6 +157,7 @@ function toResponse(presets: PresetRow[], display: DisplayRow | null) {
       trendlineWidth: display?.trendlineWidth ?? 1,
       rectLabels: display?.rectLabels ?? true,
       showSpread: display?.showSpread ?? false,
+      setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
     },
     visibility: {
       hiddenBrokers: display?.hiddenBrokers ?? [],
@@ -194,6 +211,7 @@ router.put('/', asyncRoute(async (req, res) => {
       ...(display.trendlineWidth !== undefined ? { trendlineWidth: display.trendlineWidth } : {}),
       ...(display.rectLabels !== undefined ? { rectLabels: display.rectLabels } : {}),
       ...(display.showSpread !== undefined ? { showSpread: display.showSpread } : {}),
+      ...(display.setupLevels !== undefined ? { setupLevels: display.setupLevels } : {}),
     };
     const visibilityFields = visibility === undefined ? {} : {
       hiddenBrokers: visibility.hiddenBrokers,
@@ -211,6 +229,7 @@ router.put('/', asyncRoute(async (req, res) => {
           trendlineWidth: display?.trendlineWidth ?? 1,
           rectLabels: display?.rectLabels ?? true,
           showSpread: display?.showSpread ?? false,
+          setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
           ...visibilityFields,
         },
       })

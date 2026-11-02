@@ -17,6 +17,25 @@ describe('parseDisplay showSpread', () => {
   });
 });
 
+describe('parseDisplay setupLevels', () => {
+  it('leaves it undefined when absent, so the stored value is kept', () => {
+    expect(parseDisplay({ pnlMode: 'net' }).setupLevels).toBeUndefined();
+  });
+
+  it('accepts known keys, deduplicated and in canonical order', () => {
+    expect(parseDisplay({ pnlMode: 'net', setupLevels: ['MHL', 'ECC', 'MHL'] }).setupLevels).toEqual(['ECC', 'MHL']);
+  });
+
+  it('accepts an empty list', () => {
+    expect(parseDisplay({ pnlMode: 'net', setupLevels: [] }).setupLevels).toEqual([]);
+  });
+
+  it('rejects an unknown key or a non-array with 400', () => {
+    expect(() => parseDisplay({ pnlMode: 'net', setupLevels: ['XXX'] })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', setupLevels: 'ECC' })).toThrow(BadRequest);
+  });
+});
+
 describe('parsePresets', () => {
   const broker = { broker: 'ftmo', enabled: true, lotsMode: 'risk_pct', lots: 1 };
 

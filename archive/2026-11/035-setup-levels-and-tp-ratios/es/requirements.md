@@ -1,6 +1,6 @@
 # 035 — Setup levels en modo mirror, visibilidad de niveles y atajos de TP por ratio
 
-> Status: **approved**
+> Status: **closed**
 
 ## Contexto
 

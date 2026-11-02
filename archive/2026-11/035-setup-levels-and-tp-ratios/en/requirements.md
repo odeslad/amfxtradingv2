@@ -1,6 +1,6 @@
 # 035 — Setup levels in mirror mode, level visibility and TP ratio shortcuts
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

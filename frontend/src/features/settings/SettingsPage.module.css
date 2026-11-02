@@ -310,6 +310,45 @@
   color: var(--muted);
 }
 
+.displayRowGroup {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  border-bottom: none;
+}
+
+.levelGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.levelCard {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.levelKey {
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  letter-spacing: var(--tracking-wide);
+  color: var(--text);
+}
+
+.levelMeaning {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--font-sans);
+  font-size: var(--text-2xs);
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
 .colorSwatches {
   display: flex;
   gap: 8px;
@@ -446,6 +485,14 @@
   .displayRowInline {
     flex-direction: row;
     align-items: center;
+  }
+
+  .levelGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .levelCard {
+    min-height: 44px;
   }
 
   .page {

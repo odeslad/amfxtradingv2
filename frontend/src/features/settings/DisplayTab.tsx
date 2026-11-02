@@ -1,4 +1,4 @@
-import type { PnlMode } from '../journal/utils/position';
+import { SETUP_LEVEL_KEYS, type PnlMode, type SetupLevelKey } from '../journal/utils/position';
 import type { TrendlineStyle } from '../chart/DrawingTools';
 import styles from './SettingsPage.module.css';
 
@@ -9,10 +9,18 @@ export interface DisplaySettingsForm {
   trendlineWidth: number;
   rectLabels: boolean;
   showSpread: boolean;
+  setupLevels: SetupLevelKey[];
 }
 
 const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
 const TRENDLINE_WIDTHS = [1, 2, 3];
+
+const LEVEL_MEANING: Record<SetupLevelKey, string> = {
+  ECC: 'Cross candle close',
+  EMA: 'EMA cross price',
+  EVL: 'Fast EMA extreme',
+  MHL: 'Window high / low',
+};
 
 interface DisplayTabProps {
   display: DisplaySettingsForm;
@@ -20,6 +28,11 @@ interface DisplayTabProps {
 }
 
 export function DisplayTab({ display, onChange }: DisplayTabProps) {
+  const toggleLevel = (key: SetupLevelKey, on: boolean) => {
+    const next = SETUP_LEVEL_KEYS.filter(k => (k === key ? on : display.setupLevels.includes(k)));
+    onChange({ setupLevels: next });
+  };
+
   return (
     <>
       <p className={styles.desc}>How data is shown across the app.</p>
@@ -84,6 +97,27 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
             <input type="checkbox" checked={display.showSpread} onChange={e => onChange({ showSpread: e.target.checked })} aria-label="Spread" />
             <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
           </label>
+        </div>
+
+        <div className={`${styles.displayRow} ${styles.displayRowGroup}`}>
+          <span className={styles.displayLabel}>
+            Setup levels
+            <span className={styles.displayHint}>Levels listed in the New Trade panel. All off hides the panel.</span>
+          </span>
+          <div className={styles.levelGrid}>
+            {SETUP_LEVEL_KEYS.map(key => (
+              <div key={key} className={styles.levelCard}>
+                <span className={styles.levelKey}>
+                  {key}
+                  <span className={styles.levelMeaning}>{LEVEL_MEANING[key]}</span>
+                </span>
+                <label className={styles.toggle}>
+                  <input type="checkbox" checked={display.setupLevels.includes(key)} onChange={e => toggleLevel(key, e.target.checked)} aria-label={key} />
+                  <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
+                </label>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>

@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react';
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText, IconSplit } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -31,6 +31,10 @@ interface ChartToolbarProps {
   onToggleLock?: () => void;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
+  // Split view (spec 036): desktop only, hidden when the page cannot split.
+  splitAvailable?: boolean;
+  splitActive?: boolean;
+  onSplit?: () => void;
 }
 
 interface DrawTool {
@@ -55,6 +59,7 @@ export const ChartToolbar = memo(function ChartToolbar({
   brokers, symbols, broker, symbol, brokerHidden, symbolHidden, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
   onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, locked = false, onToggleLock, onFullscreen, isFullscreen,
+  splitAvailable = false, splitActive = false, onSplit,
 }: ChartToolbarProps) {
   // Mobile only: the drawing tools live in a second row opened by Draw (spec 025).
   // Not reset when a drawing ends, so the next one is one tap away.
@@ -174,6 +179,18 @@ export const ChartToolbar = memo(function ChartToolbar({
         >
           <IconIndicators size={16} />
         </button>
+        {splitAvailable && onSplit && (
+          <button
+            type="button"
+            className={`${styles.iconBtn} ${styles.desktopOnly} ${splitActive ? styles.iconBtnActive : ''}`}
+            onClick={onSplit}
+            title={splitActive ? 'Close split view' : 'Split view (two timeframes)'}
+            aria-label={splitActive ? 'Close split view' : 'Split view'}
+            aria-pressed={splitActive}
+          >
+            <IconSplit size={16} />
+          </button>
+        )}
         {onFullscreen && (
           <button
             type="button"

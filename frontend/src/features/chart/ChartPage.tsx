@@ -119,6 +119,9 @@ export function ChartPage() {
   const [trendlineAppearance, setTrendlineAppearance] = useState<TrendlineAppearance>({ color: '#8c8c8c', style: 'dashed', width: 1 });
   const [emas, setEmas] = useState<Ema[]>([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  // Split toggle (spec 036): persisted state and the second slot arrive in task 3.
+  const [splitOn, setSplitOn] = useState(false);
+  const toggleSplit = useCallback(() => setSplitOn(prev => !prev), []);
   const pageRef = useRef<HTMLDivElement>(null);
   const emasRef = useRef<Ema[]>([]);
 
@@ -410,6 +413,9 @@ export function ChartPage() {
           onModifyPosition={handleModifyPosition}
           onFullscreen={toggleFullscreen}
           isFullscreen={isFullscreen}
+          splitAvailable
+          splitActive={splitOn}
+          onSplit={toggleSplit}
         />
       </div>
       <ChartFiltersPanel

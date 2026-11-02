@@ -48,6 +48,9 @@ interface ChartSlotProps {
   onModifyPosition: (ticket: number, sl: number, tp: number) => void;
   onFullscreen: () => void;
   isFullscreen: boolean;
+  splitAvailable?: boolean;
+  splitActive?: boolean;
+  onSplit?: () => void;
 }
 
 interface RawCandle {
@@ -103,6 +106,7 @@ export function ChartSlot({
   alerts, onMoveAlert, onEditAlertPrice, onToggleAlert, onDeleteAlert,
   onIndicators, onFilters, onAlerts, alertsActive, alertsFlashing,
   onNewTrade, onEditPosition, onClosePosition, onModifyPosition, onFullscreen, isFullscreen,
+  splitAvailable, splitActive, onSplit,
 }: ChartSlotProps) {
   const [candles, setCandles] = useState<Candle[]>([]);
   // Live candle: pushed into the chart through its handle, never slot state (spec 019).
@@ -283,6 +287,9 @@ export function ChartSlot({
         positionsMode={positionsMode}
         onFullscreen={onFullscreen}
         isFullscreen={isFullscreen}
+        splitAvailable={splitAvailable}
+        splitActive={splitActive}
+        onSplit={onSplit}
       />
       <div className={styles.slotChart}>
         {broker && symbol

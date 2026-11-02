@@ -119,6 +119,91 @@
 .input:focus { border-color: var(--orange); }
 .input::placeholder { color: var(--muted); }
 
+.tpLabelRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 20px;
+}
+
+.ratioBtns {
+  display: flex;
+  gap: 4px;
+}
+
+.ratioBtn {
+  height: 20px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--border-bright);
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-2xs);
+  letter-spacing: var(--tracking-normal);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.ratioBtn:hover { color: var(--text); }
+
+.ratioBtnActive,
+.ratioBtnActive:hover {
+  border-color: var(--orange);
+  color: var(--orange);
+  background: rgba(245, 166, 35, 0.15);
+}
+
+.ratioChip {
+  height: 34px;
+  padding: 0 4px 0 10px;
+  background: var(--bg);
+  border: 1px solid var(--orange);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+}
+
+.ratioChipRatio { color: var(--orange); }
+
+.ratioChipClear {
+  width: 26px;
+  height: 26px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: color 0.12s ease;
+}
+
+.ratioChipClear:hover { color: var(--text); }
+
+.ratioPreview {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+
+.ratioPreviewRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.ratioPreviewRow:last-child { border-bottom: none; }
+
+.ratioPreviewValue { color: var(--text); }
+.ratioPreviewKept { color: var(--muted); opacity: 0.7; }
+
 .submitBtn {
   height: 48px;
   border: none;
@@ -171,6 +256,31 @@
   .input {
     font-size: var(--text-xl);
     height: 44px;
+  }
+
+  .tpLabelRow { height: 24px; }
+  .ratioBtns { gap: 6px; }
+
+  .ratioBtn {
+    height: 24px;
+    padding: 0 10px;
+    font-size: var(--text-sm);
+  }
+
+  .ratioChip {
+    height: 44px;
+    font-size: var(--text-lg);
+  }
+
+  .ratioChipClear {
+    width: 36px;
+    height: 36px;
+    font-size: var(--text-lg);
+  }
+
+  .ratioPreviewRow {
+    min-height: 44px;
+    padding: 0 12px;
   }
 
   .submitBtn {

@@ -186,6 +186,12 @@
   color: var(--muted);
 }
 
+.levelsBroker {
+  color: var(--muted);
+  letter-spacing: var(--tracking-normal);
+  text-transform: none;
+}
+
 .levelsQuote {
   font-family: var(--font-mono);
   font-size: var(--text-sm);

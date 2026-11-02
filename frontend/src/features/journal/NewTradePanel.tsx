@@ -5,6 +5,7 @@ import { newCommandId, sendCommand, type Command, type CommandAction } from '../
 import { subscribe } from '../../lib/ws';
 import { addToast } from '../../lib/toast';
 import { useVisibility, visibleSymbols, isSymbolVisible } from '../../lib/visibility';
+import { SETUP_LEVEL_KEYS, type SetupLevelKey } from './utils/position';
 import styles from './NewTradePanel.module.css';
 
 interface NewTradePanelProps {
@@ -55,7 +56,6 @@ const ACTION_OPTIONS: CommandAction[] = ['buy', 'sell', 'buylimit', 'selllimit',
 const TIMEFRAMES = ['M5', 'M15', 'H1', 'H4', 'D1'];
 const DEFAULT_EMA_FAST = 24;
 const DEFAULT_EMA_SLOW = 48;
-const LEVEL_KEYS = ['ECC', 'EMA', 'EVL', 'MHL'] as const;
 
 type Mode = 'manual' | 'mirror';
 
@@ -93,6 +93,13 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   const [timeframe, setTimeframe] = useState('H1');
   const [setup, setSetup] = useState<SetupLevels | null>(null);
   const [bid, setBid] = useState<number | null>(null);
+  const [setupLevels, setSetupLevels] = useState<SetupLevelKey[]>([...SETUP_LEVEL_KEYS]);
+  const visibleLevels = SETUP_LEVEL_KEYS.filter(k => setupLevels.includes(k));
+  // Levels follow the chart's broker when the preset trades it, else the preset's first broker.
+  const levelsBroker = mode === 'manual'
+    ? broker
+    : (initialBroker && activeMirrorBrokers.some(m => m.broker === initialBroker) ? initialBroker : activeMirrorBrokers[0]?.broker ?? '');
+  const showLevels = Boolean(levelsBroker && symbol) && visibleLevels.length > 0;
   const pendingIds = useRef<Set<string>>(new Set());
   const onCloseRef = useRef(onClose);
   const initialSymbolRef = useRef(initialSymbol);
@@ -121,12 +128,13 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   useEffect(() => {
     if (!open) return;
     Promise.all([
-      apiFetch<{ presets: MirrorPreset[] }>('/settings'),
+      apiFetch<{ presets: MirrorPreset[]; display?: { setupLevels?: SetupLevelKey[] } }>('/settings'),
       apiFetch<{ broker: string }[]>('/balances'),
     ]).then(([settings, balances]) => {
       const list = settings.presets ?? [];
       const stored = readStoredPresetId();
       setPresets(list);
+      setSetupLevels(settings.display?.setupLevels ?? [...SETUP_LEVEL_KEYS]);
       setPresetId(list.some(p => p.id === stored) ? stored : list[0]?.id ?? null);
       setBrokers(balances.map(b => b.broker));
     }).catch(() => {});
@@ -197,36 +205,35 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
   // Fetch the current setup levels for the chosen broker/symbol/timeframe.
   // Levels and live bid are only meaningful for an open panel with a symbol:
   // clear them during render otherwise.
-  const levelsKey = `${open}|${mode}|${broker}|${symbol}|${timeframe}`;
+  const levelsKey = `${open}|${levelsBroker}|${symbol}|${timeframe}`;
   const [prevLevelsKey, setPrevLevelsKey] = useState(levelsKey);
   if (levelsKey !== prevLevelsKey) {
     setPrevLevelsKey(levelsKey);
-    if (!open || mode !== 'manual' || !broker || !symbol) setSetup(null);
-    if (!open || !broker || !symbol) setBid(null);
+    if (!open || !levelsBroker || !symbol) { setSetup(null); setBid(null); }
   }
 
   useEffect(() => {
-    if (!open || mode !== 'manual' || !broker || !symbol) return;
+    if (!open || !levelsBroker || !symbol) return;
     let cancelled = false;
     apiFetch<{ setup: SetupLevels | null }>(
-      `/setup-levels?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}` +
+      `/setup-levels?broker=${encodeURIComponent(levelsBroker)}&symbol=${encodeURIComponent(symbol)}` +
       `&tf=${timeframe}&emaFast=${DEFAULT_EMA_FAST}&emaSlow=${DEFAULT_EMA_SLOW}`,
     )
       .then(data => { if (!cancelled) setSetup(data.setup); })
       .catch(() => { if (!cancelled) setSetup(null); });
     return () => { cancelled = true; };
-  }, [open, mode, broker, symbol, timeframe]);
+  }, [open, levelsBroker, symbol, timeframe]);
 
-  // Live bid for the chosen broker/symbol, to show distances to the levels.
+  // Live bid for the levels broker/symbol, to show distances to the levels.
   useEffect(() => {
-    if (!open || !broker || !symbol) return;
+    if (!open || !levelsBroker || !symbol) return;
     return subscribe((data) => {
       const m = data as { type?: string; broker?: string; ticks?: { symbol: string; bid: number }[] };
-      if (m.type !== 'ticks' || m.broker !== broker || !m.ticks) return;
+      if (m.type !== 'ticks' || m.broker !== levelsBroker || !m.ticks) return;
       const t = m.ticks.findLast(x => x.symbol === symbol);
       if (t) setBid(t.bid);
     });
-  }, [open, broker, symbol]);
+  }, [open, levelsBroker, symbol]);
 
   const resetFeedback = () => {};
 
@@ -385,7 +392,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
             </select>
           </div>
 
-          {mode === 'manual' && broker && symbol && (
+          {showLevels && (
             <div className={styles.field}>
               <label className={styles.label}>Setup timeframe</label>
               <select className={styles.input} value={timeframe} onChange={e => setTimeframe(e.target.value)}>
@@ -394,10 +401,13 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
             </div>
           )}
 
-          {mode === 'manual' && broker && symbol && (
+          {showLevels && (
             <div className={styles.levels}>
               <div className={styles.levelsHeader}>
-                <span>Setup levels</span>
+                <span>
+                  Setup levels
+                  {mode === 'mirror' && <span className={styles.levelsBroker}> · {levelsBroker}</span>}
+                </span>
                 <span className={styles.levelsQuote}>{bid !== null ? bid.toFixed(5) : '—'}</span>
               </div>
               {!setup ? (
@@ -405,7 +415,7 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
               ) : (
                 <table className={styles.levelsTable}>
                   <tbody>
-                    {LEVEL_KEYS.map(key => {
+                    {visibleLevels.map(key => {
                       const val = setup.levels[key];
                       const dist = val !== null && bid !== null ? (bid - val) / setup.pipSize : null;
                       return (

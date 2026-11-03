@@ -463,7 +463,12 @@ export function ChartPage() {
   const openFilters = useCallback(() => setFiltersOpen(true), []);
   const closeFilters = useCallback(() => setFiltersOpen(false), []);
   const closeAlerts = useCallback(() => setAlertsOpen(false), []);
-  const openNewTrade = useCallback(() => setNewTradeOpen(true), []);
+  // New Trade carries the timeframe of the chart it was opened from (AC 7).
+  const [newTradeTimeframe, setNewTradeTimeframe] = useState(timeframe);
+  const openNewTrade = useCallback((tf: string) => {
+    setNewTradeTimeframe(tf);
+    setNewTradeOpen(true);
+  }, []);
   const closeNewTrade = useCallback(() => setNewTradeOpen(false), []);
   const clearEdit = useCallback(() => setEditPosition(null), []);
   const clearClose = useCallback(() => setClosePosition(null), []);
@@ -609,7 +614,7 @@ export function ChartPage() {
         onEmasChange={setEmas}
         onSave={saveEmas}
       />
-      <NewTradePanel open={newTradeOpen} onClose={closeNewTrade} initialBroker={broker} initialSymbol={symbol} initialTimeframe={timeframe} />
+      <NewTradePanel open={newTradeOpen} onClose={closeNewTrade} initialBroker={broker} initialSymbol={symbol} initialTimeframe={newTradeTimeframe} />
 
       <BulkEditPanel
         open={!!editPosition}

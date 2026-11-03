@@ -31,3 +31,10 @@
 - **Resultado:** ✅ pasa (el usuario lo comprobó el 2026-11-02 en la app local).
 - **Cambios acordados durante la tarea:** el suelo del 25 % no bastaba (los botones de la barra se cortaban) → el límite usa también el ancho mínimo de la barra, medido desde sus dos grupos, y un `ResizeObserver` recorta un ratio persistido en una ventana más estrecha; cerrar desde el gráfico derecho conserva su timeframe (AC 5 reescrito) y el par cerrado (`leftTimeframe` + `rightTimeframe`) se restaura al reabrir. La tarea 5 pierde la barra compacta.
 - **Est vs Actual:** 0.75 SP · 0.75 SP.
+
+## Tarea 5 · [frontend] Preselección de paneles
+
+- **Mecanismo:** `npm run build` + manual abriendo New Trade desde cada gráfico.
+- **Comandos:** `npm run build` → ✓ built; `npx eslint src/features/chart` → limpio.
+- **Resultado:** ✅ pasa (el usuario lo comprobó el 2026-11-03 en la app local: New Trade abre con el timeframe del gráfico de origen). El precio del panel de alertas no necesita cambio: ambos gráficos comparten símbolo, así que el último bid de la página es el mismo para los dos.
+- **Est vs Actual:** 0.5 SP · 0.25 SP.

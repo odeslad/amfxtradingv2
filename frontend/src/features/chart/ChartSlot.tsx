@@ -42,7 +42,7 @@ interface ChartSlotProps {
   onAlerts: () => void;
   alertsActive: boolean;
   alertsFlashing: boolean;
-  onNewTrade: () => void;
+  onNewTrade: (timeframe: string) => void;
   onEditPosition: (ticket: number) => void;
   onClosePosition: (ticket: number) => void;
   onModifyPosition: (ticket: number, sl: number, tp: number) => void;
@@ -260,6 +260,8 @@ export function ChartSlot({
   const toggleLock = useCallback(() => setLocked(prev => !prev), [setLocked]);
   const clearDrawMode = useCallback(() => setDrawMode(null), []);
   const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev]), []);
+  // New Trade preselects the timeframe of the chart it was opened from (AC 7).
+  const openNewTrade = useCallback(() => onNewTrade(timeframe), [onNewTrade, timeframe]);
 
   return (
     <div className={styles.slot}>
@@ -294,7 +296,7 @@ export function ChartSlot({
       <div className={styles.slotChart}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={onEditPosition} onClosePosition={onClosePosition} onModifyPosition={onModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balance} pnlMode={pnlMode} showSpread={showSpread} alerts={chartAlerts} onMoveAlert={onMoveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={onNewTrade} locked={locked} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={onEditPosition} onClosePosition={onClosePosition} onModifyPosition={onModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balance} pnlMode={pnlMode} showSpread={showSpread} alerts={chartAlerts} onMoveAlert={onMoveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} locked={locked} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
               {selectedAlert && (
                 <AlertActionBar alert={selectedAlert} onEditPrice={onEditAlertPrice} onToggle={onToggleAlert} onDelete={onDeleteAlert} />

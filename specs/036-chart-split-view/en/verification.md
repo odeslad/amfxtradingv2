@@ -31,3 +31,10 @@
 - **Outcome:** ✅ pass (user checked on 2026-11-02 in the local app).
 - **Changes agreed during the task:** the 25 % floor was not enough (toolbar buttons were clipped) → the clamp also uses the toolbar's min-content width, measured from its two groups, and a `ResizeObserver` re-clamps a persisted ratio on a narrower window; closing from the right chart keeps its timeframe (AC 5 reworded) and the closed pair (`leftTimeframe` + `rightTimeframe`) is restored on reopen. Task 5 loses the compact toolbar.
 - **Est vs Actual:** 0.75 SP · 0.75 SP.
+
+## Task 5 · [frontend] Panel preselection
+
+- **Mechanism:** `npm run build` + manual opening New Trade from each chart.
+- **Commands:** `npm run build` → ✓ built; `npx eslint src/features/chart` → clean.
+- **Outcome:** ✅ pass (user checked on 2026-11-03 in the local app: New Trade opens with the timeframe of the chart it came from). The alerts panel price needs no change: both charts share the symbol, so the page's last bid is the same for either.
+- **Est vs Actual:** 0.5 SP · 0.25 SP.

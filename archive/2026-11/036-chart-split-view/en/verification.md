@@ -38,3 +38,31 @@
 - **Commands:** `npm run build` → ✓ built; `npx eslint src/features/chart` → clean.
 - **Outcome:** ✅ pass (user checked on 2026-11-03 in the local app: New Trade opens with the timeframe of the chart it came from). The alerts panel price needs no change: both charts share the symbol, so the page's last bid is the same for either.
 - **Est vs Actual:** 0.5 SP · 0.25 SP.
+
+## Task 6 · [infra] Push and production validation
+
+- **Mechanism:** manual (user validation).
+- **Commands:** `git push origin master` (`e6ae550..430692b`, frontend deploy only); served bundle `index-rZtX1zQ6.js` carries `frontend:242`.
+- **Outcome:** ✅ pass (user validated on 2026-11-03 at https://v2.amfxtrading.com/chart: split button, independent timeframes and toolbars, shared broker/symbol, live data on both, fullscreen per chart, divider limits, persistence, close from each side and reopen, New Trade timeframe; mobile single chart without the button).
+- **Est vs Actual:** 0.5 SP · 0.25 SP.
+
+## Task 7 · [specs] Close
+
+- **Mechanism:** manual. `npm run build` (frontend) → ✓ built.
+- **Outcome:** ✅ closed on 2026-11-03, archived under `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Task | Est | Actual |
+|---|---|---|
+| 1 Extract ChartSlot | 2 | 1.25 |
+| 2 Split button | 0.5 | 0.25 |
+| 3 Split state and layout | 1.5 | 1 |
+| 4 Divider + close/reopen pair | 0.75 | 0.75 |
+| 5 New Trade timeframe | 0.5 | 0.25 |
+| 6 Push + production validation | 0.5 | 0.25 |
+| 7 Close | 0.25 | 0.25 |
+| **Total** | **6** | **4** |
+
+Calibration: the extraction was the only real unknown and came in well under; the divider absorbed two requirement changes (toolbar-based limit, close/reopen keeping the pair) and still matched its estimate. Deviations agreed: fullscreen stays on the page element (see design.md); compact toolbar dropped. Nothing pending on the user.

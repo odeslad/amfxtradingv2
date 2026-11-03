@@ -38,3 +38,31 @@
 - **Comandos:** `npm run build` → ✓ built; `npx eslint src/features/chart` → limpio.
 - **Resultado:** ✅ pasa (el usuario lo comprobó el 2026-11-03 en la app local: New Trade abre con el timeframe del gráfico de origen). El precio del panel de alertas no necesita cambio: ambos gráficos comparten símbolo, así que el último bid de la página es el mismo para los dos.
 - **Est vs Actual:** 0.5 SP · 0.25 SP.
+
+## Tarea 6 · [infra] Push y validación en producción
+
+- **Mecanismo:** manual (validación del usuario).
+- **Comandos:** `git push origin master` (`e6ae550..430692b`, solo deploy de frontend); el bundle servido `index-rZtX1zQ6.js` lleva `frontend:242`.
+- **Resultado:** ✅ pasa (el usuario validó el 2026-11-03 en https://v2.amfxtrading.com/chart: botón de split, timeframes y barras independientes, broker/símbolo compartidos, datos en vivo en ambos, pantalla completa por gráfico, límites del divisor, persistencia, cierre desde cada lado y reapertura, timeframe de New Trade; en móvil un solo gráfico sin el botón).
+- **Est vs Actual:** 0.5 SP · 0.25 SP.
+
+## Tarea 7 · [specs] Cierre
+
+- **Mecanismo:** manual. `npm run build` (frontend) → ✓ built.
+- **Resultado:** ✅ cerrada el 2026-11-03, archivada en `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Tarea | Est | Actual |
+|---|---|---|
+| 1 Extraer ChartSlot | 2 | 1.25 |
+| 2 Botón de split | 0.5 | 0.25 |
+| 3 Estado y layout del split | 1.5 | 1 |
+| 4 Divisor + par al cerrar/reabrir | 0.75 | 0.75 |
+| 5 Timeframe de New Trade | 0.5 | 0.25 |
+| 6 Push + validación en producción | 0.5 | 0.25 |
+| 7 Cierre | 0.25 | 0.25 |
+| **Total** | **6** | **4** |
+
+Calibración: la extracción era la única incógnita real y salió muy por debajo; el divisor absorbió dos cambios de requisitos (límite por la barra, cerrar/reabrir conservando el par) y aun así cuadró con su estimación. Desviaciones acordadas: la pantalla completa sigue sobre la página (ver design.md); barra compacta descartada. Nada pendiente del usuario.

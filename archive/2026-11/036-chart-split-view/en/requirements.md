@@ -1,6 +1,6 @@
 # 036 — Chart split view
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 The Chart section shows one chart of the selected broker and symbol, with a timeframe row (M5 · M15 · H1 · H4 · D1) and a toolbar (indicators, alerts, lock, drawing tools, fullscreen…). To compare two timeframes of the same pair the trader has to switch back and forth, losing the view each time. There is no way to see two timeframes at once.

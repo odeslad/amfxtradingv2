@@ -1,6 +1,6 @@
 # 036 — Vista dividida del gráfico
 
-> Status: **approved**
+> Status: **closed**
 
 ## Contexto
 La sección Chart muestra un gráfico del broker y símbolo seleccionados, con una fila de timeframes (M5 · M15 · H1 · H4 · D1) y una barra de herramientas (indicadores, alertas, bloqueo, herramientas de dibujo, pantalla completa…). Para comparar dos temporalidades del mismo par el operador tiene que cambiar de una a otra, perdiendo la vista cada vez. No hay forma de ver dos temporalidades a la vez.

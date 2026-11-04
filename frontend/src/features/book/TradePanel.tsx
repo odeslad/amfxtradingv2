@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { errorMessage, isAbortError } from '../../lib/api';
 import {
   fmtEur, fmtLots, fmtPips, fmtR, parseBookInput, previewTrade, SLOTS, toBookInput,
@@ -55,6 +55,9 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
   const [preview, setPreview] = useState<TradePreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Edit: once the first preview says the stored lots were the 1 % proposal, the field
+  // is emptied so the lots keep following the entry and SL instead of staying frozen.
+  const lotsCheckedRef = useRef<string | null>(null);
   if (open && synced !== key) {
     setSynced(key);
     setFields(fieldsOf(scheme, trade));
@@ -83,11 +86,18 @@ export function TradePanel({ open, scheme, trade, nonce, onSave, onClose }: Trad
         slot: fields.slot, direction: fields.direction, entry, sl, openTime: openTime ?? new Date().toISOString(),
         closeTime: closeComplete ? closeTime : null, closePrice: closeComplete ? closePrice : null, lots, tradeId: trade?.id,
       }, { signal: controller.signal })
-        .then(p => { setPreview(p); setPreviewError(null); })
+        .then(p => {
+          setPreview(p);
+          setPreviewError(null);
+          if (trade && lotsCheckedRef.current !== key) {
+            lotsCheckedRef.current = key;
+            if (Math.abs(trade.lots - p.proposedLots) < 0.005) setFields(f => ({ ...f, lots: '' }));
+          }
+        })
         .catch(err => { if (!isAbortError(err)) setPreviewError(errorMessage(err)); });
     }, 300);
     return () => { clearTimeout(timer); controller.abort(); };
-  }, [open, ready, fields.slot, fields.direction, entry, sl, openTime, closeTime, closePrice, closeComplete, lots, trade?.id]);
+  }, [open, ready, fields.slot, fields.direction, entry, sl, openTime, closeTime, closePrice, closeComplete, lots, trade, key]);
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();

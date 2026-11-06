@@ -67,6 +67,7 @@ model SettingsDisplay {
   rectLabels     Boolean  @default(true)
   showSpread     Boolean  @default(false)
   setupLevels    String[] @default(["ECC", "EMA", "EVL", "MHL"])
+  fibLevels      Float[]  @default([0, 23.6, 38.2, 50, 61.8, 78.6, 100])
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")
   updatedAt      DateTime @updatedAt

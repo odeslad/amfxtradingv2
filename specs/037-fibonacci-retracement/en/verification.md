@@ -34,3 +34,11 @@
 - **Commands:** `npm run build` → ✓ built.
 - **Outcome:** ✅ pass on 2026-11-07. The user toggled levels in Settings > Display (0 and 100 locked on), saved, and the chart redrew the existing Fibonacci with the new set; the set survives a reload. Layout: six cards per row on desktop, two on mobile (the mockup's grid).
 - **Est vs Actual:** 1 SP · 0.5 SP.
+
+## Task 3 (follow-up) · [frontend] Touch drag-to-finish for two-anchor drawings
+
+- **Context:** asked by the user during validation (2026-11-07): on mobile the rectangle was placed at the second tap, not where the finger lifted after dragging. AC 6 amended.
+- **Mechanism:** `npm run build` + manual in production (task 6) with the rectangle, the trendline and the Fibonacci on a phone.
+- **Commands:** `npm run build` → ✓ built.
+- **Outcome:** 🕐 pending the user's check on the deployed app.
+- **Est vs Actual:** — · 0.25 SP.

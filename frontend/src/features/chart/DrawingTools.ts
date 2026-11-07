@@ -122,6 +122,7 @@ export type PersistedDrawing = PersistedLine | PersistedRect | PersistedFib | Pe
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
 const HIT_RADIUS_TOUCH = 22;
+const TOUCH_DRAG_THRESHOLD = 10;
 const HANDLE_COLOR = 'rgba(200,200,200,0.9)';
 const HANDLE_ACTIVE_COLOR = '#f5a623';
 const MARKER_BUY_COLOR = '#4caf84';
@@ -188,6 +189,9 @@ export class DrawingManager {
 
   private lastTapTime = 0;
   private lastTapPos: Point | null = null;
+  // Touch: press → drag → release closes a two-anchor drawing where the finger lifts.
+  private touchDrawStart: Point | null = null;
+  private touchLast: Point | null = null;
 
   private textInput: HTMLInputElement | null = null;
 
@@ -231,7 +235,7 @@ export class DrawingManager {
     this.boundKeyDown = e => this.onKeyDown(e);
     this.boundTouchStart = e => this.onTouchStart(e);
     this.boundTouchMove = e => this.onTouchMove(e);
-    this.boundTouchEnd = () => this.endDrag();
+    this.boundTouchEnd = () => this.onTouchEnd();
     this.boundRangeChange = () => this.redraw();
 
     document.addEventListener('dblclick', this.boundDblClick, true);
@@ -505,17 +509,7 @@ export class DrawingManager {
         const end: Logical = shiftKey && this.drawKind === 'line'
           ? { logical: logical.logical, price: this.drawStart.price }
           : logical;
-        const d: TwoAnchorDrawing = {
-          id: `dr-${Date.now()}`,
-          kind: this.drawKind,
-          logical1: this.drawStart.logical,
-          price1: this.drawStart.price,
-          logical2: end.logical,
-          price2: end.price,
-        };
-        this.drawings.push(d);
-        this.setSelected(d.id);
-        this.finishDrawing();
+        this.commitSecondAnchor(end);
       }
       return true;
     }
@@ -556,6 +550,21 @@ export class DrawingManager {
       this.redraw();
     }
     return false;
+  }
+
+  private commitSecondAnchor(end: Logical) {
+    if (!this.drawStart || this.drawKind !== 'line' && this.drawKind !== 'rect' && this.drawKind !== 'fib') return;
+    const d: TwoAnchorDrawing = {
+      id: `dr-${Date.now()}`,
+      kind: this.drawKind,
+      logical1: this.drawStart.logical,
+      price1: this.drawStart.price,
+      logical2: end.logical,
+      price2: end.price,
+    };
+    this.drawings.push(d);
+    this.setSelected(d.id);
+    this.finishDrawing();
   }
 
   private finishDrawing() {
@@ -825,7 +834,10 @@ export class DrawingManager {
       return;
     }
 
+    const hadStart = this.drawStart !== null;
     const consumed = this.handleDown(t.clientX, t.clientY, false, false, true, e.target);
+    this.touchDrawStart = !hadStart && this.isDrawing && this.drawStart ? { x: t.clientX, y: t.clientY } : null;
+    this.touchLast = null;
     if (consumed) {
       e.preventDefault();
       e.stopPropagation();
@@ -836,11 +848,26 @@ export class DrawingManager {
     if (e.touches.length !== 1) return;
     if (!this.isDrawing && !this.isRulerMode && !this.dragHandle) return;
     const t = e.touches[0];
+    if (this.touchDrawStart) this.touchLast = { x: t.clientX, y: t.clientY };
     const consumed = this.handleMove(t.clientX, t.clientY, false);
     if (consumed || this.isDrawing || this.isRulerMode) {
       e.preventDefault();
       e.stopPropagation();
     }
+  }
+
+  // A finger that dragged since the first anchor closes the drawing where it lifts; a plain
+  // tap keeps the two-tap flow.
+  private onTouchEnd() {
+    const start = this.touchDrawStart;
+    const last = this.touchLast;
+    this.touchDrawStart = null;
+    this.touchLast = null;
+    if (start && last && this.isDrawing && this.drawStart && Math.hypot(last.x - start.x, last.y - start.y) > TOUCH_DRAG_THRESHOLD) {
+      const logical = this.pixelToLogical(this.clampToPane(this.toCanvas(last.x, last.y)));
+      if (logical) this.commitSecondAnchor(logical);
+    }
+    this.endDrag();
   }
 
   // ─── keyboard ──────────────────────────────────────────────────────────────

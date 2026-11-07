@@ -34,3 +34,11 @@
 - **Comandos:** `npm run build` → ✓ built.
 - **Resultado:** ✅ pass el 2026-11-07. El usuario cambió niveles en Ajustes > Display (0 y 100 fijos), guardó y el chart redibujó el Fibonacci existente con el nuevo conjunto; el conjunto sobrevive a una recarga. Maquetación: seis tarjetas por fila en escritorio, dos en móvil (la rejilla de la maqueta).
 - **Est vs Actual:** 1 SP · 0.5 SP.
+
+## Tarea 3 (ajuste) · [frontend] Arrastrar y soltar cierra los dibujos de dos anclas en táctil
+
+- **Contexto:** pedido por el usuario durante la validación (2026-11-07): en móvil el rectángulo se colocaba en el segundo toque, no donde se levantaba el dedo tras arrastrar. AC 6 ampliado.
+- **Mecanismo:** `npm run build` + manual en producción (tarea 6) con el rectángulo, la línea de tendencia y el Fibonacci en un móvil.
+- **Comandos:** `npm run build` → ✓ built.
+- **Resultado:** 🕐 pendiente de la comprobación del usuario en la app desplegada.
+- **Est vs Actual:** — · 0.25 SP.

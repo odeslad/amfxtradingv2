@@ -1,5 +1,5 @@
 import { SETUP_LEVEL_KEYS, type PnlMode, type SetupLevelKey } from '../journal/utils/position';
-import type { TrendlineStyle } from '../chart/DrawingTools';
+import { FIB_LEVEL_ANCHORS, FIB_LEVEL_CATALOGUE, type TrendlineStyle } from '../chart/DrawingTools';
 import styles from './SettingsPage.module.css';
 
 export interface DisplaySettingsForm {
@@ -10,6 +10,7 @@ export interface DisplaySettingsForm {
   rectLabels: boolean;
   showSpread: boolean;
   setupLevels: SetupLevelKey[];
+  fibLevels: number[];
 }
 
 const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
@@ -31,6 +32,11 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
   const toggleLevel = (key: SetupLevelKey, on: boolean) => {
     const next = SETUP_LEVEL_KEYS.filter(k => (k === key ? on : display.setupLevels.includes(k)));
     onChange({ setupLevels: next });
+  };
+
+  const toggleFibLevel = (level: number, on: boolean) => {
+    const next = FIB_LEVEL_CATALOGUE.filter(l => FIB_LEVEL_ANCHORS.includes(l) || (l === level ? on : display.fibLevels.includes(l)));
+    onChange({ fibLevels: next });
   };
 
   return (
@@ -86,6 +92,33 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
             <input type="checkbox" checked={display.rectLabels} onChange={e => onChange({ rectLabels: e.target.checked })} aria-label="Rectangle labels" />
             <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
           </label>
+        </div>
+
+        <div className={`${styles.displayRow} ${styles.displayRowGroup}`}>
+          <span className={styles.displayLabel}>
+            Fibonacci levels
+            <span className={styles.displayHint}>Levels drawn by the Fibonacci tool on every chart. 0 and 100 are the anchors and stay on.</span>
+          </span>
+          <div className={`${styles.levelGrid} ${styles.fibGrid}`}>
+            {FIB_LEVEL_CATALOGUE.map(level => {
+              const anchor = FIB_LEVEL_ANCHORS.includes(level);
+              return (
+                <div key={level} className={styles.levelCard}>
+                  <span className={styles.levelKey}>{level} %</span>
+                  <label className={styles.toggle}>
+                    <input
+                      type="checkbox"
+                      checked={anchor || display.fibLevels.includes(level)}
+                      disabled={anchor}
+                      onChange={e => toggleFibLevel(level, e.target.checked)}
+                      aria-label={`Fibonacci level ${level} %`}
+                    />
+                    <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
+                  </label>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
         <div className={`${styles.displayRow} ${styles.displayRowInline}`}>

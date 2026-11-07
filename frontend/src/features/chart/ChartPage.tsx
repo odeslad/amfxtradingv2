@@ -287,19 +287,21 @@ export function ChartPage() {
   }, []);
 
   useEffect(() => {
-    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number; rectLabels?: boolean; showSpread?: boolean } }>('/settings')
+    apiFetch<{ display: { trendlineColor?: string; trendlineStyle?: string; trendlineWidth?: number; rectLabels?: boolean; showSpread?: boolean; fibLevels?: number[] } }>('/settings')
       .then(data => {
         setShowSpread(data.display?.showSpread ?? false);
         const color = data.display?.trendlineColor;
         const style = data.display?.trendlineStyle;
         const width = data.display?.trendlineWidth;
         const rectLabels = data.display?.rectLabels;
-        if (color || style || width || rectLabels !== undefined) {
+        const fibLevels = data.display?.fibLevels;
+        if (color || style || width || rectLabels !== undefined || fibLevels) {
           setTrendlineAppearance(prev => ({
             color: color ?? prev.color,
             style: (style as TrendlineAppearance['style']) ?? prev.style,
             width: width ?? prev.width,
             rectLabels: rectLabels ?? prev.rectLabels,
+            fibLevels: fibLevels ?? prev.fibLevels,
           }));
         }
       })

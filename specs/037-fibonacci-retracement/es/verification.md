@@ -27,3 +27,10 @@
 - **Comandos:** `npm run build` → ✓ built.
 - **Resultado:** ✅ pass el 2026-11-07. `IconFib` tras el rectángulo, estado activo mientras se dibuja; el usuario creó un Fibonacci desde él. Fila Draw en móvil y split view se recomprueban en producción (tarea 6).
 - **Est vs Actual:** 0.75 SP · 0.25 SP.
+
+## Tarea 5 · [frontend] Niveles de Fibonacci en Ajustes > Display
+
+- **Mecanismo:** `npm run build` + manual en el stack local.
+- **Comandos:** `npm run build` → ✓ built.
+- **Resultado:** ✅ pass el 2026-11-07. El usuario cambió niveles en Ajustes > Display (0 y 100 fijos), guardó y el chart redibujó el Fibonacci existente con el nuevo conjunto; el conjunto sobrevive a una recarga. Maquetación: seis tarjetas por fila en escritorio, dos en móvil (la rejilla de la maqueta).
+- **Est vs Actual:** 1 SP · 0.5 SP.

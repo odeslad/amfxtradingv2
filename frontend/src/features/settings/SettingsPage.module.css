@@ -210,6 +210,11 @@
   background: var(--orange);
 }
 
+.toggle input:disabled + .toggleTrack {
+  opacity: 0.5;
+  cursor: default;
+}
+
 .toggleThumb {
   position: absolute;
   top: 3px;
@@ -321,6 +326,11 @@
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
+}
+
+.fibGrid {
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
 }
 
 .levelCard {
@@ -489,6 +499,10 @@
 
   .levelGrid {
     grid-template-columns: 1fr;
+  }
+
+  .fibGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .levelCard {

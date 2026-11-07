@@ -27,3 +27,10 @@
 - **Commands:** `npm run build` → ✓ built.
 - **Outcome:** ✅ pass on 2026-11-07. `IconFib` after the rectangle, active state while drawing; the user created a Fibonacci from it. Mobile Draw row and split view re-checked in production (task 6).
 - **Est vs Actual:** 0.75 SP · 0.25 SP.
+
+## Task 5 · [frontend] Fibonacci levels in Settings > Display
+
+- **Mechanism:** `npm run build` + manual on the local stack.
+- **Commands:** `npm run build` → ✓ built.
+- **Outcome:** ✅ pass on 2026-11-07. The user toggled levels in Settings > Display (0 and 100 locked on), saved, and the chart redrew the existing Fibonacci with the new set; the set survives a reload. Layout: six cards per row on desktop, two on mobile (the mockup's grid).
+- **Est vs Actual:** 1 SP · 0.5 SP.

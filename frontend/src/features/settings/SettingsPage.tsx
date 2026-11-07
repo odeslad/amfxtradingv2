@@ -4,6 +4,7 @@ import { addToast } from '../../lib/toast';
 import { useEmaNotifications, type EmaNotification, type NotificationInput } from '../../lib/useEmaNotifications';
 import { ConfirmPanel } from '../journal/ConfirmPanel';
 import { SETUP_LEVEL_KEYS } from '../journal/utils/position';
+import { DEFAULT_FIB_LEVELS } from '../chart/DrawingTools';
 import { MirrorTab, type AccountInfo, type MirrorBroker, type MirrorPreset } from './MirrorTab';
 import { DisplayTab, type DisplaySettingsForm } from './DisplayTab';
 import { NotificationsTab } from './NotificationsTab';
@@ -50,7 +51,7 @@ const toFormPreset = (preset: SavedPreset, brokerNames: string[]): MirrorPreset 
   };
 };
 
-const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1, rectLabels: true, showSpread: false, setupLevels: [...SETUP_LEVEL_KEYS] };
+const DEFAULT_DISPLAY: DisplaySettingsForm = { pnlMode: 'net', trendlineColor: '#8c8c8c', trendlineStyle: 'dashed', trendlineWidth: 1, rectLabels: true, showSpread: false, setupLevels: [...SETUP_LEVEL_KEYS], fibLevels: DEFAULT_FIB_LEVELS };
 
 export function SettingsPage() {
   const [tab, setTab] = useState<Tab>('mirror');

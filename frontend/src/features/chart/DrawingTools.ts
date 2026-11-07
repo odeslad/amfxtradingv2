@@ -165,6 +165,8 @@ const MOVE_CROSS_SIZE = 10;
 const SELECTION_RING_GAP = 4;
 type Point = { x: number; y: number };
 type Logical = { logical: number; price: number };
+type TwoAnchor = { logical1: number; price1: number; logical2: number; price2: number };
+const RULER_ID = 'ruler';
 
 export class DrawingManager {
   private canvas: HTMLCanvasElement;
@@ -195,12 +197,11 @@ export class DrawingManager {
 
   private textInput: HTMLInputElement | null = null;
 
-  // Ephemeral pip ruler: two clicks measure, any later click clears it.
+  // Ephemeral pip ruler (spec 038): measured like a two-anchor drawing, selectable and
+  // resizable through the reserved RULER_ID, never persisted nor counted.
   private pipSize = 0.0001;
   private isRulerMode = false;
-  private rulerStart: Logical | null = null;
-  private rulerEnd: Logical | null = null;
-  private rulerFixed = false;
+  private ruler: TwoAnchor | null = null;
 
   private appearance: TrendlineAppearance = { color: '#8c8c8c', style: 'dashed', width: 1 };
   private onDone: (() => void) | null = null;
@@ -254,11 +255,11 @@ export class DrawingManager {
   // RAF loop — only active when there are drawings to repaint on price rescale.
   private scheduleRaf() {
     cancelAnimationFrame(this.rafId);
-    if (this.drawings.length === 0 && !this.rulerStart) return;
+    if (this.drawings.length === 0 && !this.ruler) return;
     const anchorPrice = () => {
       const d = this.drawings[0];
       if (d) return 'price' in d ? d.price : d.price1;
-      return this.rulerStart?.price ?? 0;
+      return this.ruler?.price1 ?? 0;
     };
     const safeCoord = () => {
       try { return this.series.priceToCoordinate(anchorPrice()) ?? 0; }
@@ -341,7 +342,7 @@ export class DrawingManager {
 
   // ─── hit testing ─────────────────────────────────────────────────────────
 
-  private segPixels(d: TwoAnchorDrawing) {
+  private segPixels(d: TwoAnchor) {
     const p1 = this.logicalToPixel({ logical: d.logical1, price: d.price1 });
     const p2 = this.logicalToPixel({ logical: d.logical2, price: d.price2 });
     if (!p1 || !p2) return null;
@@ -350,6 +351,15 @@ export class DrawingManager {
 
   private hitTest(pos: Point, touch: boolean): { id: string; handle: Handle } | null {
     const r = touch ? HIT_RADIUS_TOUCH : HIT_RADIUS_MOUSE;
+    // The ruler is temporary and sits on top: it is always grabbable over the drawings.
+    const rulerPx = this.ruler ? this.segPixels(this.ruler) : null;
+    if (rulerPx) {
+      if (Math.hypot(pos.x - rulerPx.x1, pos.y - rulerPx.y1) < r) return { id: RULER_ID, handle: 'start' };
+      if (Math.hypot(pos.x - rulerPx.x2, pos.y - rulerPx.y2) < r) return { id: RULER_ID, handle: 'end' };
+      if (this.distToSegment(pos, rulerPx) < r / 2 || this.onRectEdge(pos, rulerPx, r / 2) || this.insideRect(pos, rulerPx)) {
+        return { id: RULER_ID, handle: 'line' };
+      }
+    }
     for (const d of [...this.drawings].reverse()) {
       if (d.kind === 'marker' || d.kind === 'symbol') {
         const p = this.logicalToPixel({ logical: d.logical, price: d.price });
@@ -433,6 +443,11 @@ export class DrawingManager {
     return nearV(left) || nearV(right) || nearH(top) || nearH(bottom);
   }
 
+  private insideRect(p: Point, px: { x1: number; y1: number; x2: number; y2: number }): boolean {
+    return p.x >= Math.min(px.x1, px.x2) && p.x <= Math.max(px.x1, px.x2)
+      && p.y >= Math.min(px.y1, px.y2) && p.y <= Math.max(px.y1, px.y2);
+  }
+
   private distToSegment(p: Point, seg: { x1: number; y1: number; x2: number; y2: number }): number {
     const dx = seg.x2 - seg.x1;
     const dy = seg.y2 - seg.y1;
@@ -457,23 +472,17 @@ export class DrawingManager {
       return false;
     }
 
-    // 0) ruler
-    if (this.rulerFixed) this.clearRuler();
-    if (this.isRulerMode) {
+    // 0) measuring: two clicks like a two-anchor drawing (touch drag-to-finish included)
+    if (this.isDrawing && this.isRulerMode) {
       const logical = this.pixelToLogical(pos);
       if (!logical) return true;
-      if (!this.rulerStart) {
-        this.rulerStart = logical;
-        this.rulerEnd = logical;
-        this.scheduleRaf();
+      if (!this.drawStart) {
+        this.drawStart = logical;
+        this.cursorPixel = pos;
+        this.redraw();
       } else {
-        this.rulerEnd = logical;
-        this.rulerFixed = true;
-        this.isRulerMode = false;
-        this.setCursor('');
-        this.onDone?.();
+        this.commitRuler(logical);
       }
-      this.redraw();
       return true;
     }
 
@@ -552,7 +561,29 @@ export class DrawingManager {
     return false;
   }
 
+  private commitRuler(end: Logical) {
+    if (!this.drawStart) return;
+    this.ruler = { logical1: this.drawStart.logical, price1: this.drawStart.price, logical2: end.logical, price2: end.price };
+    this.drawStart = null;
+    this.isDrawing = false;
+    this.isRulerMode = false;
+    this.setCursor('');
+    this.setSelected(RULER_ID);
+    this.scheduleRaf();
+    this.redraw();
+    this.onDone?.();
+  }
+
+  private clearRuler() {
+    if (!this.ruler) return;
+    this.ruler = null;
+    if (this.selectedId === RULER_ID) this.setSelected(null);
+    this.scheduleRaf();
+    this.redraw();
+  }
+
   private commitSecondAnchor(end: Logical) {
+    if (this.isRulerMode) { this.commitRuler(end); return; }
     if (!this.drawStart || this.drawKind !== 'line' && this.drawKind !== 'rect' && this.drawKind !== 'fib') return;
     const d: TwoAnchorDrawing = {
       id: `dr-${Date.now()}`,
@@ -584,18 +615,18 @@ export class DrawingManager {
     this.cursorPixel = pos;
     this.previewShift = shiftKey;
 
-    if (this.isRulerMode && this.rulerStart && !this.rulerFixed) {
-      const logical = this.pixelToLogical(pos);
-      if (logical) {
-        this.rulerEnd = logical;
-        this.redraw();
-      }
-      return false;
-    }
-
     if (this.isDrawing) {
       if (this.drawStart) this.redraw();
       return false;
+    }
+
+    if (this.dragHandle && this.selectedId === RULER_ID && this.ruler) {
+      const logical = this.pixelToLogical(pos);
+      if (!logical) return true;
+      this.moveTwoAnchor(this.ruler, this.dragHandle, logical);
+      this.dragLastLogical = logical;
+      this.redraw();
+      return true;
     }
 
     if (this.dragHandle && this.selectedId) {
@@ -632,6 +663,24 @@ export class DrawingManager {
     }
 
     return false;
+  }
+
+  // `start` / `end` move one anchor; anything else shifts both by the pointer delta.
+  private moveTwoAnchor(d: TwoAnchor, handle: Handle, logical: Logical) {
+    if (handle === 'start') {
+      d.logical1 = logical.logical;
+      d.price1 = logical.price;
+    } else if (handle === 'end') {
+      d.logical2 = logical.logical;
+      d.price2 = logical.price;
+    } else if (this.dragLastLogical) {
+      const dl = logical.logical - this.dragLastLogical.logical;
+      const dp = logical.price - this.dragLastLogical.price;
+      d.logical1 += dl;
+      d.logical2 += dl;
+      d.price1 += dp;
+      d.price2 += dp;
+    }
   }
 
   private endDrag() {
@@ -876,11 +925,14 @@ export class DrawingManager {
     if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedId && !this.locked) {
       this.deleteSelected();
     }
-    if (e.key === 'Escape' && (this.isRulerMode || this.rulerStart)) {
+    if (e.key === 'Escape' && (this.isRulerMode || this.ruler)) {
       const wasMeasuring = this.isRulerMode;
       this.isRulerMode = false;
+      this.isDrawing = wasMeasuring ? false : this.isDrawing;
+      this.drawStart = wasMeasuring ? null : this.drawStart;
       this.setCursor('');
       this.clearRuler();
+      this.redraw();
       if (wasMeasuring) this.onDone?.();
     }
     if (e.key === 'Escape' && this.isDrawing) {
@@ -928,6 +980,16 @@ export class DrawingManager {
         }
       }
 
+      if (this.ruler) this.paintRuler(this.ruler, this.selectedId === RULER_ID, false);
+
+      // preview while measuring: the ruler follows the cursor from the first click
+      if (this.isDrawing && this.isRulerMode && this.drawStart) {
+        const end = this.pixelToLogical(this.cursorPixel);
+        if (end) {
+          this.paintRuler({ logical1: this.drawStart.logical, price1: this.drawStart.price, logical2: end.logical, price2: end.price }, false, true);
+        }
+      }
+
       // preview while drawing
       if (this.isDrawing && this.drawKind && this.drawStart) {
         const p1 = this.logicalToPixel(this.drawStart);
@@ -944,8 +1006,6 @@ export class DrawingManager {
           } else this.paintLine(px, false, true);
         }
       }
-
-      if (this.rulerStart && this.rulerEnd) this.paintRuler();
 
       this.ctx.restore();
     } catch {
@@ -1212,13 +1272,12 @@ export class DrawingManager {
     ctx.fillText(text, p.x, p.y);
   }
 
-  private paintRuler() {
-    if (!this.rulerStart || !this.rulerEnd) return;
-    const p1 = this.logicalToPixel(this.rulerStart);
-    const p2 = this.logicalToPixel(this.rulerEnd);
+  private paintRuler(ruler: TwoAnchor, selected: boolean, preview: boolean) {
+    const p1 = this.logicalToPixel({ logical: ruler.logical1, price: ruler.price1 });
+    const p2 = this.logicalToPixel({ logical: ruler.logical2, price: ruler.price2 });
     if (!p1 || !p2) return;
 
-    const up = this.rulerEnd.price >= this.rulerStart.price;
+    const up = ruler.price2 >= ruler.price1;
     const color = up ? RECT_GREEN : RECT_RED;
     const ctx = this.ctx;
 
@@ -1240,10 +1299,10 @@ export class DrawingManager {
     ctx.lineTo(p2.x, p2.y);
     ctx.stroke();
 
-    const dPrice = this.rulerEnd.price - this.rulerStart.price;
+    const dPrice = ruler.price2 - ruler.price1;
     const pips = dPrice / this.pipSize;
-    const bars = Math.round(Math.abs(this.rulerEnd.logical - this.rulerStart.logical));
-    const pct = this.rulerStart.price !== 0 ? (dPrice / this.rulerStart.price) * 100 : 0;
+    const bars = Math.round(Math.abs(ruler.logical2 - ruler.logical1));
+    const pct = ruler.price1 !== 0 ? (dPrice / ruler.price1) * 100 : 0;
     const sign = (n: number) => (n >= 0 ? '+' : '');
     const text = `${sign(pips)}${pips.toFixed(1)} pips · ${bars} bars · ${sign(pct)}${pct.toFixed(2)}%`;
 
@@ -1261,14 +1320,12 @@ export class DrawingManager {
     ctx.fillStyle = '#000';
     ctx.textBaseline = 'middle';
     ctx.fillText(text, bx + pad, by + bh / 2 + 1);
-  }
 
-  private clearRuler() {
-    this.rulerStart = null;
-    this.rulerEnd = null;
-    this.rulerFixed = false;
-    this.scheduleRaf();
-    this.redraw();
+    if (selected || preview) {
+      const handleColor = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
+      this.paintHandle(p1.x, p1.y, handleColor);
+      this.paintHandle(p2.x, p2.y, handleColor);
+    }
   }
 
   private paintHandle(x: number, y: number, color: string) {
@@ -1292,6 +1349,8 @@ export class DrawingManager {
     this.drawStart = null;
     this.onDone = onDone ?? null;
     this.setSelected(null);
+    // Picking a drawing tool ends the measurement: the ruler is a temporary aid.
+    this.clearRuler();
     this.setCursor('crosshair');
     this.redraw();
   }
@@ -1300,34 +1359,32 @@ export class DrawingManager {
     this.isDrawing = false;
     this.drawKind = null;
     this.drawStart = null;
+    // a completed measurement stays on screen; a half-made one is discarded with drawStart
     this.isRulerMode = false;
-    // keep a completed measurement on screen; discard a half-made one
-    if (!this.rulerFixed && this.rulerStart) this.clearRuler();
     this.setCursor('');
     this.redraw();
   }
 
   startRuler(onDone?: () => void) {
-    this.isDrawing = false;
+    this.isDrawing = true;
     this.drawKind = null;
     this.drawStart = null;
-    this.rulerStart = null;
-    this.rulerEnd = null;
-    this.rulerFixed = false;
     this.isRulerMode = true;
     this.onDone = onDone ?? null;
     this.setSelected(null);
+    this.clearRuler();
     this.setCursor('crosshair');
     this.redraw();
   }
 
   setPipSize(pipSize: number) {
     if (pipSize > 0) this.pipSize = pipSize;
-    if (this.rulerStart) this.redraw();
+    if (this.ruler) this.redraw();
   }
 
   deleteSelected() {
     if (!this.selectedId) return;
+    if (this.selectedId === RULER_ID) { this.clearRuler(); return; }
     this.drawings = this.drawings.filter(d => d.id !== this.selectedId);
     this.setSelected(null);
     this.scheduleRaf();
@@ -1337,6 +1394,7 @@ export class DrawingManager {
   }
 
   clearAll() {
+    this.clearRuler();
     if (this.drawings.length === 0) return;
     this.drawings = [];
     this.setSelected(null);
@@ -1474,6 +1532,8 @@ export class DrawingManager {
   }
 
   loadPersisted(items: PersistedDrawing[]) {
+    // A new dataset (timeframe, symbol, broker, reload): the measurement no longer applies.
+    this.clearRuler();
     this.drawings = [];
     items.forEach((it, idx) => {
       if (it.kind === 'marker' || it.kind === 'symbol' || it.kind === 'text') {

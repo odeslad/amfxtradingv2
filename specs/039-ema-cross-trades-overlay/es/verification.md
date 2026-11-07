@@ -25,5 +25,12 @@
 
 - **Mecanismo:** `npm run build` + eslint + manual en el stack local.
 - **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre los ficheros de chart tocados → limpio (el hook guarda la clave de la petición junto a su resultado en vez de vaciar el estado dentro del efecto, que la regla `react-hooks/set-state-in-effect` señala).
-- **Resultado:** ✅ build y lint el 2026-11-07; el usuario prefirió comprobar el botón y las peticiones `/setup-levels?…&limit` junto con el overlay pintado en la tarea 5.
+- **Resultado:** ✅ pass el 2026-11-07: build y lint, y después comprobado junto con la tarea 5 en el chart local (botón resaltado, overlay pedido y pintado para EURUSD H1).
 - **Est vs Actual:** 1.25 SP · 0.75 SP.
+
+## Tarea 5 · [frontend] Pintado del overlay en `LightweightChart`
+
+- **Mecanismo:** `npm run build` + eslint + manual en el stack local contra la maqueta.
+- **Comandos:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx` → limpio.
+- **Resultado:** ✅ pass el 2026-11-07. En EURUSD H1 (solidary III) el usuario vio el trade de venta vivo del 06 Nov 04:00: línea vertical discontinua en la vela del cruce, línea de entrada dorada, línea de SL roja discontinua con `SL 47.2 p`, relleno tenue, etiqueta `SELL <precio>` al final, proyección más allá de la última vela. Una duda resuelta sobre la marcha: la entrada quedaba 10 pips bajo el cierre porque Ajustes tenía `entryPips = 10` de la prueba de la tarea 3; la regla (cierre ± offset en la dirección del trade) queda confirmada.
+- **Est vs Actual:** 1.5 SP · 1 SP.

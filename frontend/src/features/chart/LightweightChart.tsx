@@ -43,6 +43,15 @@ interface Candle {
 }
 
 const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1', 'H4', 'D1']);
+const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
+// EMA cross trades overlay (spec 039)
+const EMA_TRADE_ENTRY_COLOR = '#c8a840';
+const EMA_TRADE_SL_COLOR = '#e05c5c';
+const EMA_TRADE_CROSS_COLOR = 'rgba(200,168,64,0.35)';
+const EMA_TRADE_FILL = 'rgba(224,92,92,0.07)';
+const EMA_TRADE_LABEL_H = 16;
+const EMA_TRADE_LABEL_PAD = 6;
+const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 // timeframes that only show the weekly (sunday) rollover line, not the daily ones
 const WEEKLY_ONLY_TIMEFRAMES = new Set(['H4']);
 // timeframes that show month-start lines
@@ -515,6 +524,109 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     }
   }, [alertDisplayPrice]);
 
+  // EMA cross trades (spec 039): for each trade a faint vertical line at the cross candle, the
+  // entry (gold, solid) and the SL (red, dashed) from the cross to the end, a faint fill between
+  // them, a tag at the top and price / pips labels at the end. A live trade projects past the
+  // last candle by bar spacing. Clipped to the pane like the rollover lines.
+  const drawEmaCrossTrades = useCallback((
+    ctx: CanvasRenderingContext2D,
+    chart: IChartApi,
+    series: ISeriesApi<'Candlestick'>,
+  ) => {
+    const trades = emaCrossTradesRef.current;
+    const data = candlesRef.current;
+    if (trades.length === 0 || data.length === 0) return;
+
+    const timeScale = chart.timeScale();
+    const right = ctx.canvas.width - chart.priceScale('right').width();
+    const bottom = ctx.canvas.height - timeScale.height();
+    const tfSec = TF_SECONDS[timeframeRef.current] ?? 3600;
+    const lastTime = data[data.length - 1].time;
+    const lastX = timeScale.timeToCoordinate(lastTime as Time);
+    const barSpacing = timeScale.options().barSpacing;
+    const precision = precisionRef.current;
+
+    const xForTime = (t: number): number | null => {
+      const exact = timeScale.timeToCoordinate(t as Time);
+      if (exact !== null) return exact;
+      if (t > lastTime) return lastX === null ? null : lastX + ((t - lastTime) / tfSec) * barSpacing;
+      const next = data.find(c => c.time >= t);
+      return next ? timeScale.timeToCoordinate(next.time as Time) : null;
+    };
+    const tagDate = (t: number) => {
+      const d = new Date((t - DISPLAY_TIME_SHIFT_SEC) * 1000);
+      const hh = String(d.getUTCHours()).padStart(2, '0');
+      const mm = String(d.getUTCMinutes()).padStart(2, '0');
+      return `${String(d.getUTCDate()).padStart(2, '0')} ${MONTHS_SHORT[d.getUTCMonth()]} ${hh}:${mm}`;
+    };
+    const label = (text: string, x: number, y: number, bg: string, fg: string) => {
+      const w = ctx.measureText(text).width + EMA_TRADE_LABEL_PAD * 2;
+      const left = x + 4 + w > right ? x - 4 - w : x + 4;
+      const top = Math.round(y - EMA_TRADE_LABEL_H / 2);
+      ctx.fillStyle = bg;
+      ctx.fillRect(left, top, w, EMA_TRADE_LABEL_H);
+      ctx.fillStyle = fg;
+      ctx.fillText(text, left + EMA_TRADE_LABEL_PAD, top + EMA_TRADE_LABEL_H / 2 + 1);
+    };
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(0, 0, right, bottom);
+    ctx.clip();
+    ctx.font = '9px "DM Mono", monospace';
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+
+    for (const trade of trades) {
+      const x1 = xForTime(trade.startTime);
+      if (x1 === null) continue;
+      const x2 = xForTime(trade.endTime) ?? right;
+      const yEntry = series.priceToCoordinate(trade.entry);
+      if (yEntry === null) continue;
+      const ySl = trade.sl === null ? null : series.priceToCoordinate(trade.sl);
+      const vx = Math.round(x1) + 0.5;
+
+      ctx.strokeStyle = EMA_TRADE_CROSS_COLOR;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(vx, 0);
+      ctx.lineTo(vx, bottom);
+      ctx.stroke();
+
+      if (ySl !== null) {
+        ctx.fillStyle = EMA_TRADE_FILL;
+        ctx.fillRect(x1, Math.min(yEntry, ySl), x2 - x1, Math.abs(ySl - yEntry));
+        ctx.strokeStyle = EMA_TRADE_SL_COLOR;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x1, ySl);
+        ctx.lineTo(x2, ySl);
+        ctx.stroke();
+      }
+
+      ctx.strokeStyle = EMA_TRADE_ENTRY_COLOR;
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([]);
+      ctx.beginPath();
+      ctx.moveTo(x1, yEntry);
+      ctx.lineTo(x2, yEntry);
+      ctx.stroke();
+
+      ctx.fillStyle = EMA_TRADE_ENTRY_COLOR;
+      ctx.fillText(`#${trade.index} ${trade.direction.toUpperCase()} · ${tagDate(trade.startTime)}`, x1 + 4, 14);
+
+      label(`${trade.direction.toUpperCase()} ${fmtPrice(trade.entry, precision)}`, x2, yEntry, EMA_TRADE_ENTRY_COLOR, '#000');
+      if (ySl !== null && trade.riskPips !== null) {
+        label(`SL ${trade.riskPips.toFixed(1)} p`, x2, ySl, EMA_TRADE_SL_COLOR, '#fff');
+      }
+    }
+
+    ctx.setLineDash([]);
+    ctx.restore();
+  }, []);
+
   const drawRollovers = useCallback(() => {
     const canvas = overlayRef.current;
     const chart = chartRef.current;
@@ -597,8 +709,11 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     ctx.restore();
     ctx.setLineDash([]);
 
-    if (seriesRef.current) drawAlertMarkers(ctx, chart, seriesRef.current);
-  }, [drawAlertMarkers]);
+    if (seriesRef.current) {
+      drawAlertMarkers(ctx, chart, seriesRef.current);
+      drawEmaCrossTrades(ctx, chart, seriesRef.current);
+    }
+  }, [drawAlertMarkers, drawEmaCrossTrades]);
 
   useEffect(() => { drawRolloversRef.current = drawRollovers; }, [drawRollovers]);
 

@@ -33,10 +33,10 @@ ALTER TABLE "settings_display" ADD COLUMN "fibLevels" DOUBLE PRECISION[] NOT NUL
 
 **`features/chart/DrawingTools.ts`**
 - `DrawingKind` gains `'fib'`; new `FibDrawing` / `PersistedFib` interfaces with the trendline's fields (`logical1/price1/logical2/price2`, optional `color`).
-- `TrendlineAppearance` gains `fibLevels?: number[]` (percent values from Settings; default `[0, 23.6, 38.2, 50, 61.8, 78.6, 100]`), so the set reaches every `DrawingManager` through the existing `setAppearance` path and a change in Settings redraws every chart. `FIB_KEY_LEVELS = new Set([50, 61.8])`; `FIB_LABEL_FONT = '9px "DM Mono", monospace'` (the rectangle price font) and the existing `TEXT_COLOR` for key levels, `--muted`-like `#8c8c8c` text for the rest.
+- `TrendlineAppearance` gains `fibLevels?: number[]` (percent values from Settings; default `[0, 23.6, 38.2, 50, 61.8, 78.6, 100]`), so the set reaches every `DrawingManager` through the existing `setAppearance` path and a change in Settings redraws every chart. Labels use `RECT_PRICE_FONT` (9 px DM Mono) and `TEXT_COLOR` for every level; `FIB_LABEL_LEVELS = new Set([0, 50, 61.8, 100])` are the ones that keep their label when the levels crowd.
 - `segPixels`, `hitTest`, `handleMove` (`start` / `end` / move), `handleDown` (two-click creation and Ctrl-duplicate), `handleDoubleAt` (colour cycle), `toPersisted`, `applyPersisted`, `loadPersisted`: every `d.kind === 'line'` branch that is about two anchors becomes `line | fib`. Shift-to-horizontal stays trendline-only.
 - `hitTest` for `fib`: anchors first (`start` / `end` handles), then the dashed anchor segment, then each level segment (`distToSegment` against the horizontal span), all returning `line` as the body handle so the existing move code applies.
-- New `paintFib(d, selected, preview)`: computes the level prices, draws each level as a horizontal segment in the drawing's colour (`d.color ?? appearance.color`), width and dash from `appearance` (AC 7), the 50 % and 61.8 % levels always solid, the anchor segment dashed `[4, 4]` at the same colour with 0.6 alpha, then the labels (`pct.toFixed(1) + '  ' + price.toFixed(decimals)`, decimals from `pipSize` as `paintRectPrices` does) with the black outline used by the rectangle labels; handles on both anchors when selected or previewing.
+- New `paintFib(d, selected, preview)`: computes the level prices, draws each level as a horizontal segment in the drawing's colour (`d.color ?? appearance.color`), width and dash from `appearance` (AC 7), the anchor segment dashed `[4, 4]` at the same colour with 0.6 alpha, then the labels (`pct.toFixed(1) + '  ' + price.toFixed(decimals)`, decimals from `pipSize` as `paintRectPrices` does) with the black outline used by the rectangle labels; handles on both anchors when selected or previewing.
 - `redraw`: the preview branch paints a `fib` from `drawStart` to the cursor exactly as the committed shape (same rule as line / rect).
 - `scheduleRaf` anchor price: unchanged (`price1` exists on the fib).
 
@@ -65,14 +65,14 @@ Levels: Settings > Display → `PUT /settings { display: { fibLevels } }` → `s
 
 - **Label clutter on small swings**: seven labels within a few pixels. Mitigation: when two consecutive levels are closer than 12 px, only the key levels (0, 50, 61.8, 100) keep their label; the lines are still drawn.
 - **Hit testing seven horizontal segments per Fibonacci** on every `mousemove`: trivial cost against the existing per-drawing loop.
-- **`color` cycling** reuses the line palette (default → red → green); the key levels keep the bright text colour in every case.
+- **`color` cycling** reuses the line palette (default → red → green); the labels keep the bright text colour in every case.
 
 ## Mockup
 
 Approved by the user on 2026-11-06: https://claude.ai/artifact/4wZvwzaDDSCtwAwKnUaywj
 
 Artboards:
-- Desktop · Fibonacci drawn and selected — levels 0 to 100 between the two anchors, 50 % and 61.8 % solid with bright labels, the rest dashed in grey; dashed anchor segment; orange handles; Delete / Clear all; Fibonacci tool active in the toolbar after the rectangle.
+- Desktop · Fibonacci drawn and selected — levels 0 to 100 between the two anchors, every level in the trendline style with a bright label (the mockup's solid key lines and grey labels were dropped during task 3 at the user's request); dashed anchor segment; orange handles; Delete / Clear all; Fibonacci tool active in the toolbar after the rectangle.
 - Desktop · after the first click — the preview follows the cursor with grey handles and the crosshair.
 - Mobile · Draw row open with the Fibonacci tool active and the same drawing.
 - Desktop · Settings > Display · Fibonacci levels group — eleven level cards with toggles, 0 and 100 on and dimmed, the default seven on.

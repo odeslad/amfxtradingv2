@@ -33,10 +33,10 @@ ALTER TABLE "settings_display" ADD COLUMN "fibLevels" DOUBLE PRECISION[] NOT NUL
 
 **`features/chart/DrawingTools.ts`**
 - `DrawingKind` gana `'fib'`; nuevas interfaces `FibDrawing` / `PersistedFib` con los campos de la línea de tendencia (`logical1/price1/logical2/price2`, `color` opcional).
-- `TrendlineAppearance` gana `fibLevels?: number[]` (valores en porcentaje desde Ajustes; por defecto `[0, 23.6, 38.2, 50, 61.8, 78.6, 100]`), así el conjunto llega a cada `DrawingManager` por el `setAppearance` existente y un cambio en Ajustes redibuja todos los charts. `FIB_KEY_LEVELS = new Set([50, 61.8])`; `FIB_LABEL_FONT = '9px "DM Mono", monospace'` (la fuente de precios del rectángulo) y el `TEXT_COLOR` existente para los niveles clave, texto tipo `--muted` `#8c8c8c` para el resto.
+- `TrendlineAppearance` gana `fibLevels?: number[]` (valores en porcentaje desde Ajustes; por defecto `[0, 23.6, 38.2, 50, 61.8, 78.6, 100]`), así el conjunto llega a cada `DrawingManager` por el `setAppearance` existente y un cambio en Ajustes redibuja todos los charts. Las etiquetas usan `RECT_PRICE_FONT` (DM Mono 9 px) y `TEXT_COLOR` en todos los niveles; `FIB_LABEL_LEVELS = new Set([0, 50, 61.8, 100])` son los que conservan etiqueta cuando los niveles se amontonan.
 - `segPixels`, `hitTest`, `handleMove` (`start` / `end` / mover), `handleDown` (creación en dos clics y duplicar con Ctrl), `handleDoubleAt` (ciclo de color), `toPersisted`, `applyPersisted`, `loadPersisted`: toda rama `d.kind === 'line'` que trate de dos anclas pasa a `line | fib`. Shift para horizontal sigue siendo solo de la línea de tendencia.
 - `hitTest` para `fib`: primero las anclas (handles `start` / `end`), luego el segmento discontinuo entre anclas, luego cada segmento de nivel (`distToSegment` contra el tramo horizontal), todos devolviendo `line` como handle de cuerpo para que aplique el código de mover existente.
-- Nuevo `paintFib(d, selected, preview)`: calcula los precios de los niveles, pinta cada nivel como segmento horizontal con el color del dibujo (`d.color ?? appearance.color`), grosor y trazo de `appearance` (AC 7), los niveles 50 % y 61.8 % siempre sólidos, el segmento entre anclas discontinuo `[4, 4]` del mismo color con alfa 0.6, y después las etiquetas (`pct.toFixed(1) + '  ' + price.toFixed(decimals)`, decimales desde `pipSize` como hace `paintRectPrices`) con el contorno negro de las etiquetas del rectángulo; handles en ambas anclas cuando está seleccionado o en preview.
+- Nuevo `paintFib(d, selected, preview)`: calcula los precios de los niveles, pinta cada nivel como segmento horizontal con el color del dibujo (`d.color ?? appearance.color`), grosor y trazo de `appearance` (AC 7), el segmento entre anclas discontinuo `[4, 4]` del mismo color con alfa 0.6, y después las etiquetas (`pct.toFixed(1) + '  ' + price.toFixed(decimals)`, decimales desde `pipSize` como hace `paintRectPrices`) con el contorno negro de las etiquetas del rectángulo; handles en ambas anclas cuando está seleccionado o en preview.
 - `redraw`: la rama de preview pinta un `fib` desde `drawStart` hasta el cursor exactamente como la forma definitiva (misma regla que line / rect).
 - Precio ancla de `scheduleRaf`: sin cambios (`price1` existe en el fib).
 
@@ -65,14 +65,14 @@ Niveles: Ajustes > Display → `PUT /settings { display: { fibLevels } }` → `s
 
 - **Etiquetas amontonadas en impulsos pequeños**: siete etiquetas en pocos píxeles. Mitigación: cuando dos niveles consecutivos distan menos de 12 px, solo los niveles clave (0, 50, 61.8, 100) conservan etiqueta; las líneas se pintan igual.
 - **Hit test de siete segmentos horizontales por Fibonacci** en cada `mousemove`: coste trivial frente al bucle por dibujo existente.
-- **El ciclo de `color`** reutiliza la paleta de la línea (por defecto → rojo → verde); los niveles clave mantienen el texto brillante en todos los casos.
+- **El ciclo de `color`** reutiliza la paleta de la línea (por defecto → rojo → verde); las etiquetas mantienen el texto brillante en todos los casos.
 
 ## Maqueta
 
 Aprobada por el usuario el 2026-11-06: https://claude.ai/artifact/4wZvwzaDDSCtwAwKnUaywj
 
 Artboards:
-- Desktop · Fibonacci dibujado y seleccionado — niveles 0 a 100 entre las dos anclas, 50 % y 61.8 % sólidos con etiqueta brillante, el resto discontinuos en gris; segmento discontinuo entre anclas; handles naranjas; Delete / Clear all; herramienta Fibonacci activa en la toolbar tras el rectángulo.
+- Desktop · Fibonacci dibujado y seleccionado — niveles 0 a 100 entre las dos anclas, todos los niveles con el estilo de la línea de tendencia y etiqueta brillante (las líneas sólidas y las etiquetas grises de la maqueta se quitaron en la tarea 3 a petición del usuario); segmento discontinuo entre anclas; handles naranjas; Delete / Clear all; herramienta Fibonacci activa en la toolbar tras el rectángulo.
 - Desktop · tras el primer clic — la preview sigue al cursor con handles grises y el crosshair.
 - Mobile · fila Draw abierta con la herramienta Fibonacci activa y el mismo dibujo.
 - Desktop · Ajustes > Display · grupo Niveles de Fibonacci — once tarjetas de nivel con interruptor, 0 y 100 activos y atenuados, los siete por defecto encendidos.

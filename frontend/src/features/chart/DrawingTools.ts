@@ -1,6 +1,6 @@
 import type { IChartApi, ISeriesApi, Logical as ChartLogical } from 'lightweight-charts';
 
-export type DrawingKind = 'line' | 'rect' | 'marker' | 'symbol' | 'text';
+export type DrawingKind = 'line' | 'rect' | 'fib' | 'marker' | 'symbol' | 'text';
 export type MarkerDirection = 'buy' | 'sell';
 export type SymbolVariant = 'cross' | 'check';
 
@@ -21,6 +21,17 @@ export interface LineDrawing extends BaseDrawing {
 
 export interface RectDrawing extends BaseDrawing {
   kind: 'rect';
+  logical1: number;
+  price1: number;
+  logical2: number;
+  price2: number;
+  color?: string;
+}
+
+// Fibonacci retracement (spec 037): anchor 1 is the first click (level 100), anchor 2 the
+// second (level 0). The level set comes from Settings through `TrendlineAppearance`.
+export interface FibDrawing extends BaseDrawing {
+  kind: 'fib';
   logical1: number;
   price1: number;
   logical2: number;
@@ -49,7 +60,8 @@ export interface TextDrawing extends BaseDrawing {
   text: string;
 }
 
-type Drawing = LineDrawing | RectDrawing | MarkerDrawing | SymbolDrawing | TextDrawing;
+type Drawing = LineDrawing | RectDrawing | FibDrawing | MarkerDrawing | SymbolDrawing | TextDrawing;
+type TwoAnchorDrawing = LineDrawing | RectDrawing | FibDrawing;
 
 // Persisted form: absolute time + price so drawings survive across sessions,
 // dataset changes and timeframe switches. Reconstructed to logical on load.
@@ -68,6 +80,15 @@ export interface PersistedLine extends PersistedBase {
 
 export interface PersistedRect extends PersistedBase {
   kind: 'rect';
+  time1: number;
+  price1: number;
+  time2: number;
+  price2: number;
+  color?: string;
+}
+
+export interface PersistedFib extends PersistedBase {
+  kind: 'fib';
   time1: number;
   price1: number;
   time2: number;
@@ -96,7 +117,7 @@ export interface PersistedText extends PersistedBase {
   text: string;
 }
 
-export type PersistedDrawing = PersistedLine | PersistedRect | PersistedMarker | PersistedSymbol | PersistedText;
+export type PersistedDrawing = PersistedLine | PersistedRect | PersistedFib | PersistedMarker | PersistedSymbol | PersistedText;
 
 const HANDLE_RADIUS = 5;
 const HIT_RADIUS_MOUSE = 10;
@@ -113,6 +134,9 @@ const TEXT_FONT = '11px "DM Mono", monospace';
 const TEXT_COLOR = '#e8e8e8';
 const TEXT_HEIGHT = 12;
 const RECT_PRICE_FONT = '9px "DM Mono", monospace';
+export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
+const FIB_LABEL_LEVELS = new Set([0, 50, 61.8, 100]);
+const FIB_LABEL_MIN_GAP = 12;
 
 export type TrendlineStyle = 'solid' | 'dashed' | 'dotted';
 
@@ -121,6 +145,7 @@ export interface TrendlineAppearance {
   style: TrendlineStyle;
   width: number;
   rectLabels?: boolean;   // Settings > Display; prices and pips around rectangles (spec 025)
+  fibLevels?: number[];   // Settings > Display; percent levels drawn by the Fibonacci tool (spec 037)
 }
 
 // Rectangles (spec 025): a corner resizes freely, a side handle one edge, `move` (the
@@ -310,7 +335,7 @@ export class DrawingManager {
 
   // ─── hit testing ─────────────────────────────────────────────────────────
 
-  private segPixels(d: LineDrawing | RectDrawing) {
+  private segPixels(d: TwoAnchorDrawing) {
     const p1 = this.logicalToPixel({ logical: d.logical1, price: d.price1 });
     const p2 = this.logicalToPixel({ logical: d.logical2, price: d.price2 });
     if (!p1 || !p2) return null;
@@ -353,8 +378,26 @@ export class DrawingManager {
       if (Math.hypot(pos.x - px.x1, pos.y - px.y1) < r) return { id: d.id, handle: 'start' };
       if (Math.hypot(pos.x - px.x2, pos.y - px.y2) < r) return { id: d.id, handle: 'end' };
       if (this.distToSegment(pos, px) < r / 2) return { id: d.id, handle: 'line' };
+      if (d.kind === 'fib') {
+        const left = Math.min(px.x1, px.x2), right = Math.max(px.x1, px.x2);
+        for (const level of this.fibLevelPixels(d.price1, d.price2)) {
+          if (this.distToSegment(pos, { x1: left, y1: level.y, x2: right, y2: level.y }) < r / 2) return { id: d.id, handle: 'line' };
+        }
+      }
     }
     return null;
+  }
+
+  // Levels in pixels, `price1` being level 100 and `price2` level 0; extensions fall past `price1`.
+  private fibLevelPixels(price1: number, price2: number): Array<{ pct: number; price: number; y: number }> {
+    const levels = this.appearance.fibLevels ?? DEFAULT_FIB_LEVELS;
+    const out: Array<{ pct: number; price: number; y: number }> = [];
+    for (const pct of levels) {
+      const price = price2 + (price1 - price2) * (pct / 100);
+      const y = this.series.priceToCoordinate(price);
+      if (y !== null) out.push({ pct, price, y });
+    }
+    return out;
   }
 
   // Stored so that (logical1, price1) is the top-left corner and (logical2, price2) the
@@ -451,7 +494,7 @@ export class DrawingManager {
         return true;
       }
 
-      // line / rect are two-click
+      // line / rect / fib are two-click
       if (!this.drawStart) {
         this.drawStart = logical;
         this.cursorPixel = pos;
@@ -460,7 +503,7 @@ export class DrawingManager {
         const end: Logical = shiftKey && this.drawKind === 'line'
           ? { logical: logical.logical, price: this.drawStart.price }
           : logical;
-        const d: LineDrawing | RectDrawing = {
+        const d: TwoAnchorDrawing = {
           id: `dr-${Date.now()}`,
           kind: this.drawKind,
           logical1: this.drawStart.logical,
@@ -646,11 +689,11 @@ export class DrawingManager {
     const hit = this.hitTest(pos, touch);
     if (!hit) return false;
     const d = this.drawings.find(x => x.id === hit.id);
-    if (!d || (d.kind !== 'line' && d.kind !== 'rect' && d.kind !== 'text')) return false;
+    if (!d || (d.kind !== 'line' && d.kind !== 'rect' && d.kind !== 'fib' && d.kind !== 'text')) return false;
 
     this.dragHandle = null;
     this.dragLastLogical = null;
-    if (d.kind === 'line' || d.kind === 'rect') {
+    if (d.kind !== 'text') {
       d.color = this.nextDrawingColor(d.color);
       this.redraw();
       this.onChange?.();
@@ -850,6 +893,8 @@ export class DrawingManager {
           if (d.kind === 'rect') {
             this.paintRect(px, selected, false, d.color);
             this.paintRectPrices(px, d.price1, d.price2);
+          } else if (d.kind === 'fib') {
+            this.paintFib(px, d.price1, d.price2, selected, false, d.color);
           } else this.paintLine(px, selected, false, d.color);
         }
       }
@@ -864,6 +909,9 @@ export class DrawingManager {
             this.paintRect(px, false, true);
             const end = this.pixelToLogical(this.cursorPixel);
             if (end) this.paintRectPrices(px, this.drawStart.price, end.price);
+          } else if (this.drawKind === 'fib') {
+            const end = this.pixelToLogical(this.cursorPixel);
+            if (end) this.paintFib(px, this.drawStart.price, end.price, false, true);
           } else this.paintLine(px, false, true);
         }
       }
@@ -970,6 +1018,61 @@ export class DrawingManager {
     ctx.textAlign = 'left';
     label(`${pips.toFixed(1)} p`, left + inset, bottom + 3);
     ctx.lineJoin = 'miter';
+  }
+
+  // Horizontal level lines between the two anchors, a dashed segment joining them and a
+  // `pct  price` label at the left end of each level.
+  private paintFib(px: { x1: number; y1: number; x2: number; y2: number }, price1: number, price2: number, selected: boolean, preview = false, colorOverride?: string) {
+    const ctx = this.ctx;
+    const { color: baseColor, style, width } = this.strokeStyleFor();
+    const color = colorOverride ?? baseColor;
+    const left = Math.min(px.x1, px.x2);
+    const right = Math.max(px.x1, px.x2);
+    const levels = this.fibLevelPixels(price1, price2);
+
+    ctx.strokeStyle = color;
+    ctx.lineWidth = width;
+    this.applyDash(style);
+    ctx.beginPath();
+    for (const level of levels) {
+      ctx.moveTo(left, level.y);
+      ctx.lineTo(right, level.y);
+    }
+    ctx.stroke();
+
+    ctx.strokeStyle = this.withAlpha(color, 0.6);
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(px.x1, px.y1);
+    ctx.lineTo(px.x2, px.y2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Seven labels do not fit a small swing: keep only the key ones when the levels crowd.
+    const ys = levels.map(l => l.y).sort((a, b) => a - b);
+    const crowded = ys.some((y, i) => i > 0 && y - ys[i - 1] < FIB_LABEL_MIN_GAP);
+    const decimals = Math.max(0, Math.round(-Math.log10(this.pipSize))) + 1;
+    ctx.font = RECT_PRICE_FONT;
+    ctx.fillStyle = TEXT_COLOR;
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 3;
+    ctx.lineJoin = 'round';
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'bottom';
+    for (const level of levels) {
+      if (crowded && !FIB_LABEL_LEVELS.has(level.pct)) continue;
+      const text = `${level.pct.toFixed(1)}  ${level.price.toFixed(decimals)}`;
+      ctx.strokeText(text, left + 4, level.y - 3);
+      ctx.fillText(text, left + 4, level.y - 3);
+    }
+    ctx.lineJoin = 'miter';
+
+    if (selected || preview) {
+      const handleColor = selected ? HANDLE_ACTIVE_COLOR : HANDLE_COLOR;
+      this.paintHandle(px.x1, px.y1, handleColor);
+      this.paintHandle(px.x2, px.y2, handleColor);
+    }
   }
 
   private paintSideHandle(p: Point) {
@@ -1312,10 +1415,7 @@ export class DrawingManager {
     const t1 = this.logicalToTime(d.logical1);
     const t2 = this.logicalToTime(d.logical2);
     if (t1 === null || t2 === null) return null;
-    if (d.kind === 'rect') {
-      return { kind: 'rect', time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
-    }
-    return { kind: 'line', time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
+    return { kind: d.kind, time1: t1, price1: d.price1, time2: t2, price2: d.price2, color: d.color };
   }
 
   private applyPersisted(d: Drawing, snap: PersistedDrawing) {
@@ -1324,7 +1424,7 @@ export class DrawingManager {
       if (logical === null) return;
       d.logical = logical;
       d.price = snap.price;
-    } else if ((d.kind === 'line' || d.kind === 'rect') && (snap.kind === 'line' || snap.kind === 'rect')) {
+    } else if ((d.kind === 'line' || d.kind === 'rect' || d.kind === 'fib') && (snap.kind === 'line' || snap.kind === 'rect' || snap.kind === 'fib')) {
       const l1 = this.timeToLogical(snap.time1);
       const l2 = this.timeToLogical(snap.time2);
       if (l1 === null || l2 === null) return;

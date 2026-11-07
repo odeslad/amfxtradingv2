@@ -21,7 +21,7 @@ The chart has a set of drawing tools (trendline, rectangle, pip ruler, markers, 
 - AC 4. WHEN the user changes timeframe, reloads the page or opens the chart on another device THEN the Fibonacci comes back on the same prices and times, persisted through the existing `/drawings` endpoint alongside the other drawings. Older frontend builds ignore the new item kind without breaking.
 - AC 5. WHEN the chart is in split view THEN each chart has its own Fibonacci tool and its own drawings, as with every other drawing tool.
 - AC 6. WHEN the viewport is mobile THEN the Fibonacci tool appears in the Draw row with the other tools and the two taps, drag and double-tap work as they do for the trendline.
-- AC 7. WHEN the trader changes the trendline colour, style or width in Settings > Display THEN the Fibonacci level lines follow the same appearance; the 50 % and 61.8 % levels are drawn with the solid style and the bright text colour so they stand out.
+- AC 7. WHEN the trader changes the trendline colour, style or width in Settings > Display THEN the Fibonacci level lines follow the same appearance; every level line and label looks the same (bright label text).
 - AC 8. WHEN the trader opens Settings > Display THEN a Fibonacci levels group lists the catalogue 0 · 23.6 · 38.2 · 50 · 61.8 · 78.6 · 100 · 127.2 · 161.8 · 200 · 261.8 with a toggle each; 0 and 100 are always on (they are the anchors). WHEN the trader toggles a level and saves THEN every Fibonacci on every chart is redrawn with the new set, without touching the stored drawings. Levels above 100 extend past the first anchor in the direction of the swing.
 
 ## Out of scope

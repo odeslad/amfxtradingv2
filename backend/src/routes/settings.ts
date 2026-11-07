@@ -12,6 +12,10 @@ const PNL_MODES = ['net', 'gross', 'pips', 'pct'] as const;
 const TRENDLINE_STYLES = ['solid', 'dashed', 'dotted'] as const;
 export const SETUP_LEVEL_KEYS = ['ECC', 'EMA', 'EVL', 'MHL'] as const;
 type SetupLevelKey = (typeof SETUP_LEVEL_KEYS)[number];
+// Percent values the Fibonacci tool may draw (spec 037); 0 and 100 are the anchors and always stay on.
+export const FIB_LEVEL_CATALOGUE = [0, 23.6, 38.2, 50, 61.8, 78.6, 100, 127.2, 161.8, 200, 261.8] as const;
+const FIB_LEVEL_ANCHORS = [0, 100];
+export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
 
 interface MirrorItem {
   broker: string;
@@ -34,6 +38,7 @@ interface DisplayInput {
   rectLabels?: boolean;
   showSpread?: boolean;
   setupLevels?: SetupLevelKey[];
+  fibLevels?: number[];
 }
 
 interface Visibility {
@@ -49,6 +54,7 @@ interface DisplayRow {
   rectLabels: boolean;
   showSpread: boolean;
   setupLevels: string[];
+  fibLevels: number[];
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -96,6 +102,19 @@ function parseSetupLevels(value: unknown): SetupLevelKey[] | undefined {
   return SETUP_LEVEL_KEYS.filter(key => value.includes(key));
 }
 
+// Catalogue values only, deduplicated and in canonical order; the anchors are forced in.
+function parseFibLevels(value: unknown): number[] | undefined {
+  if (value === undefined) return undefined;
+  if (!Array.isArray(value)) throw new BadRequest('display.fibLevels must be an array');
+  const catalogue: readonly number[] = FIB_LEVEL_CATALOGUE;
+  value.forEach((item, i) => {
+    if (typeof item !== 'number' || !catalogue.includes(item)) {
+      throw new BadRequest(`display.fibLevels[${i}] must be one of ${catalogue.join(', ')}`);
+    }
+  });
+  return catalogue.filter(level => FIB_LEVEL_ANCHORS.includes(level) || value.includes(level));
+}
+
 export function parseDisplay(value: unknown): DisplayInput {
   const row = bodyRecord(value);
   return {
@@ -106,6 +125,7 @@ export function parseDisplay(value: unknown): DisplayInput {
     rectLabels: optionalBoolean(row.rectLabels, 'display.rectLabels'),
     showSpread: optionalBoolean(row.showSpread, 'display.showSpread'),
     setupLevels: parseSetupLevels(row.setupLevels),
+    fibLevels: parseFibLevels(row.fibLevels),
   };
 }
 
@@ -158,6 +178,7 @@ function toResponse(presets: PresetRow[], display: DisplayRow | null) {
       rectLabels: display?.rectLabels ?? true,
       showSpread: display?.showSpread ?? false,
       setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
+      fibLevels: display?.fibLevels ?? DEFAULT_FIB_LEVELS,
     },
     visibility: {
       hiddenBrokers: display?.hiddenBrokers ?? [],
@@ -212,6 +233,7 @@ router.put('/', asyncRoute(async (req, res) => {
       ...(display.rectLabels !== undefined ? { rectLabels: display.rectLabels } : {}),
       ...(display.showSpread !== undefined ? { showSpread: display.showSpread } : {}),
       ...(display.setupLevels !== undefined ? { setupLevels: display.setupLevels } : {}),
+      ...(display.fibLevels !== undefined ? { fibLevels: display.fibLevels } : {}),
     };
     const visibilityFields = visibility === undefined ? {} : {
       hiddenBrokers: visibility.hiddenBrokers,
@@ -230,6 +252,7 @@ router.put('/', asyncRoute(async (req, res) => {
           rectLabels: display?.rectLabels ?? true,
           showSpread: display?.showSpread ?? false,
           setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
+          fibLevels: display?.fibLevels ?? DEFAULT_FIB_LEVELS,
           ...visibilityFields,
         },
       })

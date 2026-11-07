@@ -36,6 +36,27 @@ describe('parseDisplay setupLevels', () => {
   });
 });
 
+describe('parseDisplay fibLevels', () => {
+  it('leaves it undefined when absent, so the stored value is kept', () => {
+    expect(parseDisplay({ pnlMode: 'net' }).fibLevels).toBeUndefined();
+  });
+
+  it('accepts catalogue values, deduplicated and in canonical order', () => {
+    expect(parseDisplay({ pnlMode: 'net', fibLevels: [161.8, 0, 50, 100, 50] }).fibLevels).toEqual([0, 50, 100, 161.8]);
+  });
+
+  it('forces the 0 and 100 anchors in', () => {
+    expect(parseDisplay({ pnlMode: 'net', fibLevels: [61.8] }).fibLevels).toEqual([0, 61.8, 100]);
+    expect(parseDisplay({ pnlMode: 'net', fibLevels: [] }).fibLevels).toEqual([0, 100]);
+  });
+
+  it('rejects a value outside the catalogue, a string or a non-array with 400', () => {
+    expect(() => parseDisplay({ pnlMode: 'net', fibLevels: [33] })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', fibLevels: ['50'] })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', fibLevels: 50 })).toThrow(BadRequest);
+  });
+});
+
 describe('parsePresets', () => {
   const broker = { broker: 'ftmo', enabled: true, lotsMode: 'risk_pct', lots: 1 };
 

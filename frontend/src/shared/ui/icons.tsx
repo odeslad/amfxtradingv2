@@ -121,6 +121,17 @@ export function IconUnlock({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconFib({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <line x1="2.5" y1="4" x2="13.5" y2="4" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="2.5" y1="8" x2="10.5" y2="8" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="2.5" y1="12" x2="7.5" y2="12" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <line x1="2.5" y1="13.5" x2="13.5" y2="2.5" stroke={color} strokeWidth="0.8" strokeDasharray="1.5 1.5" />
+    </svg>
+  );
+}
+
 export function IconRect({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

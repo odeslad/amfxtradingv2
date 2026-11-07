@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react';
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText, IconSplit } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconFib, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText, IconSplit } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -47,6 +47,7 @@ interface DrawTool {
 const DRAW_TOOLS: DrawTool[] = [
   { mode: 'line', title: 'Trendline (Shift = horizontal, Ctrl+drag = duplicate, Del = delete)', label: 'Trendline', icon: <IconTrendline size={16} /> },
   { mode: 'rect', title: 'Rectangle', label: 'Rectangle', icon: <IconRect size={16} /> },
+  { mode: 'fib', title: 'Fibonacci retracement (two clicks, Ctrl+drag = duplicate, Del = delete)', label: 'Fibonacci', icon: <IconFib size={16} /> },
   { mode: 'ruler', title: 'Pip ruler (two clicks to measure, Esc/click to clear)', label: 'Pip ruler', icon: <IconRuler size={16} /> },
   { mode: 'markerBuy', title: 'Buy marker', label: 'Buy marker', icon: <IconMarkerUp size={16} /> },
   { mode: 'markerSell', title: 'Sell marker', label: 'Sell marker', icon: <IconMarkerDown size={16} /> },

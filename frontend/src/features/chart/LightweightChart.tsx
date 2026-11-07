@@ -19,10 +19,11 @@ export interface ChartHandle {
   updateLive(candle: Candle | null, ask?: number): void;
 }
 
-export type DrawMode = 'line' | 'rect' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck' | 'text';
+export type DrawMode = 'line' | 'rect' | 'fib' | 'markerBuy' | 'markerSell' | 'ruler' | 'symbolCross' | 'symbolCheck' | 'text';
 
 function drawModeToKind(mode: DrawMode): { kind: DrawingKind; direction: MarkerDirection; variant: SymbolVariant } {
   if (mode === 'rect') return { kind: 'rect', direction: 'buy', variant: 'cross' };
+  if (mode === 'fib') return { kind: 'fib', direction: 'buy', variant: 'cross' };
   if (mode === 'text') return { kind: 'text', direction: 'buy', variant: 'cross' };
   if (mode === 'markerBuy') return { kind: 'marker', direction: 'buy', variant: 'cross' };
   if (mode === 'markerSell') return { kind: 'marker', direction: 'sell', variant: 'cross' };

@@ -1,6 +1,6 @@
 # 038 — Resizable pip ruler
 
-> Status: **implementing**
+> Status: **closed**
 
 ## Context
 The chart's pip ruler (`DrawingTools.ts`) is a two-click measurement: the first click fixes the start, the second fixes the end, and the box with its `pips · bars · %` badge stays on screen until any later click clears it. It cannot be selected, moved or resized: a wrong second click means measuring again from scratch. The user wants it to feel like the Fibonacci tool shipped in spec 037 (handles, drag, press-drag-release on touch) while staying ephemeral: a measurement, not a drawing to keep. Follow-up of [037-fibonacci-retracement](../../../archive/2026-11/037-fibonacci-retracement/en/requirements.md).

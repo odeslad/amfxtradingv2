@@ -1,6 +1,6 @@
 # 038 — Regla de pips redimensionable
 
-> Status: **implementing**
+> Status: **closed**
 
 ## Contexto
 La regla de pips del chart (`DrawingTools.ts`) es una medición en dos clics: el primero fija el inicio, el segundo el final, y la caja con su etiqueta `pips · barras · %` queda en pantalla hasta que cualquier clic posterior la borra. No se puede seleccionar, mover ni redimensionar: un segundo clic mal dado obliga a medir de nuevo desde cero. El usuario quiere que se comporte como la herramienta Fibonacci de la spec 037 (handles, arrastre, pulsar-arrastrar-soltar en táctil) pero que siga siendo efímera: una medición, no un dibujo que se guarda. Continuación de [037-fibonacci-retracement](../../../archive/2026-11/037-fibonacci-retracement/es/requirements.md).

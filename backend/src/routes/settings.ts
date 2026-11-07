@@ -4,7 +4,7 @@ import { db } from '../db/client';
 import { asyncRoute } from '../middleware/asyncRoute';
 import { BadRequest } from '../middleware/errors';
 import {
-  bodyRecord, nonEmptyString, finiteNumber, oneOf, optionalOneOf, optionalString, optionalInteger, optionalBoolean,
+  bodyRecord, nonEmptyString, finiteNumber, integer, oneOf, optionalOneOf, optionalString, optionalInteger, optionalBoolean,
 } from '../middleware/parse';
 
 const LOTS_MODES = ['fixed', 'risk_pct'] as const;
@@ -16,6 +16,18 @@ type SetupLevelKey = (typeof SETUP_LEVEL_KEYS)[number];
 export const FIB_LEVEL_CATALOGUE = [0, 23.6, 38.2, 50, 61.8, 78.6, 100, 127.2, 161.8, 200, 261.8] as const;
 const FIB_LEVEL_ANCHORS = [0, 100];
 export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
+
+// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration and count.
+export interface EmaTradesSettings {
+  fast: number;
+  slow: number;
+  entryPips: number;
+  hours: number;
+  count: number;
+}
+export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, hours: 24, count: 3 };
+const EMA_TRADES_MAX_HOURS = 720;
+const EMA_TRADES_MAX_COUNT = 10;
 
 interface MirrorItem {
   broker: string;
@@ -39,6 +51,7 @@ interface DisplayInput {
   showSpread?: boolean;
   setupLevels?: SetupLevelKey[];
   fibLevels?: number[];
+  emaTrades?: EmaTradesSettings;
 }
 
 interface Visibility {
@@ -55,6 +68,11 @@ interface DisplayRow {
   showSpread: boolean;
   setupLevels: string[];
   fibLevels: number[];
+  emaTradesFast: number;
+  emaTradesSlow: number;
+  emaTradesEntryPips: number;
+  emaTradesHours: number;
+  emaTradesCount: number;
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -115,6 +133,40 @@ function parseFibLevels(value: unknown): number[] | undefined {
   return catalogue.filter(level => FIB_LEVEL_ANCHORS.includes(level) || value.includes(level));
 }
 
+function parseEmaTrades(value: unknown): EmaTradesSettings | undefined {
+  if (value === undefined) return undefined;
+  const row = bodyRecord(value);
+  const fast = integer(row.fast, 'display.emaTrades.fast', { min: 1 });
+  const slow = integer(row.slow, 'display.emaTrades.slow', { min: 1 });
+  if (fast === slow) throw new BadRequest('display.emaTrades.fast and slow must differ');
+  const hours = integer(row.hours, 'display.emaTrades.hours', { min: 1 });
+  if (hours > EMA_TRADES_MAX_HOURS) throw new BadRequest(`display.emaTrades.hours must be <= ${EMA_TRADES_MAX_HOURS}`);
+  const count = integer(row.count, 'display.emaTrades.count', { min: 1 });
+  if (count > EMA_TRADES_MAX_COUNT) throw new BadRequest(`display.emaTrades.count must be <= ${EMA_TRADES_MAX_COUNT}`);
+  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), hours, count };
+}
+
+function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
+  if (!display) return DEFAULT_EMA_TRADES;
+  return {
+    fast: display.emaTradesFast,
+    slow: display.emaTradesSlow,
+    entryPips: display.emaTradesEntryPips,
+    hours: display.emaTradesHours,
+    count: display.emaTradesCount,
+  };
+}
+
+function emaTradesColumns(value: EmaTradesSettings) {
+  return {
+    emaTradesFast: value.fast,
+    emaTradesSlow: value.slow,
+    emaTradesEntryPips: value.entryPips,
+    emaTradesHours: value.hours,
+    emaTradesCount: value.count,
+  };
+}
+
 export function parseDisplay(value: unknown): DisplayInput {
   const row = bodyRecord(value);
   return {
@@ -126,6 +178,7 @@ export function parseDisplay(value: unknown): DisplayInput {
     showSpread: optionalBoolean(row.showSpread, 'display.showSpread'),
     setupLevels: parseSetupLevels(row.setupLevels),
     fibLevels: parseFibLevels(row.fibLevels),
+    emaTrades: parseEmaTrades(row.emaTrades),
   };
 }
 
@@ -179,6 +232,7 @@ function toResponse(presets: PresetRow[], display: DisplayRow | null) {
       showSpread: display?.showSpread ?? false,
       setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
       fibLevels: display?.fibLevels ?? DEFAULT_FIB_LEVELS,
+      emaTrades: emaTradesOf(display),
     },
     visibility: {
       hiddenBrokers: display?.hiddenBrokers ?? [],
@@ -234,6 +288,7 @@ router.put('/', asyncRoute(async (req, res) => {
       ...(display.showSpread !== undefined ? { showSpread: display.showSpread } : {}),
       ...(display.setupLevels !== undefined ? { setupLevels: display.setupLevels } : {}),
       ...(display.fibLevels !== undefined ? { fibLevels: display.fibLevels } : {}),
+      ...(display.emaTrades !== undefined ? emaTradesColumns(display.emaTrades) : {}),
     };
     const visibilityFields = visibility === undefined ? {} : {
       hiddenBrokers: visibility.hiddenBrokers,
@@ -253,6 +308,7 @@ router.put('/', asyncRoute(async (req, res) => {
           showSpread: display?.showSpread ?? false,
           setupLevels: display?.setupLevels ?? [...SETUP_LEVEL_KEYS],
           fibLevels: display?.fibLevels ?? DEFAULT_FIB_LEVELS,
+          ...emaTradesColumns(display?.emaTrades ?? DEFAULT_EMA_TRADES),
           ...visibilityFields,
         },
       })

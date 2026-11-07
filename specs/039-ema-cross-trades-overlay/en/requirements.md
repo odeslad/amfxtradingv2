@@ -1,6 +1,6 @@
 # 039 — EMA cross trades overlay
 
-> Status: **approved**
+> Status: **implementing**
 
 ## Context
 The trader works EMA-cross setups: the candle where the fast EMA crosses the slow one activates an entry; the entry sits a few pips beyond that candle's close and the stop sits at the previous extreme of the fast EMA (the EVL that the New Trade panel already lists). Today those levels exist only for the latest setup (`GET /setup-levels`, spec 035) and are read as numbers; nothing shows them on the chart, and nothing shows how the previous setups would have looked. The trader wants a toolbar button that draws the last N of those trades on the chart, with the entry and the SL projected over the life of each setup, using parameters chosen once in Settings.

@@ -68,6 +68,12 @@ model SettingsDisplay {
   showSpread     Boolean  @default(false)
   setupLevels    String[] @default(["ECC", "EMA", "EVL", "MHL"])
   fibLevels      Float[]  @default([0, 23.6, 38.2, 50, 61.8, 78.6, 100])
+  // EMA cross trades overlay (spec 039)
+  emaTradesFast      Int   @default(24)
+  emaTradesSlow      Int   @default(48)
+  emaTradesEntryPips Float @default(5)
+  emaTradesHours     Int   @default(24)
+  emaTradesCount     Int   @default(3)
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")
   updatedAt      DateTime @updatedAt

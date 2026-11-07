@@ -1,6 +1,6 @@
 # 039 — Overlay de trades por cruce de EMAs
 
-> Status: **approved**
+> Status: **implementing**
 
 ## Contexto
 El trader opera setups de cruce de EMAs: la vela en la que la EMA rápida cruza la lenta activa una entrada; la entrada se sitúa unos pips más allá del cierre de esa vela y el stop en el extremo anterior de la EMA rápida (el EVL que ya lista el panel New Trade). Hoy esos niveles existen solo para el último setup (`GET /setup-levels`, spec 035) y se leen como números; nada los muestra en el chart ni enseña cómo habrían quedado los setups anteriores. El trader quiere un botón en la toolbar que dibuje los últimos N trades de ese tipo en el chart, con la entrada y el SL proyectados durante la vida de cada setup, con parámetros elegidos una vez en Ajustes.

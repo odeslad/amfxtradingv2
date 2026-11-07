@@ -20,3 +20,10 @@
 - **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre `DisplayTab.tsx`, `useEmaTradesSettings.ts`, `emaTrades.ts` → limpio.
 - **Resultado:** ✅ pass el 2026-11-07. El usuario vio el grupo con los cinco inputs numéricos (sin spinners), guardó y recargó con los valores conservados, y el caso de EMAs iguales rechazado. Dos notas de maquetación aplicadas durante la prueba: los bloques de grupo (Fibonacci levels, EMA cross trades, Setup levels) terminan ahora con el mismo separador que las filas simples. El cableado del hook en `ChartPage` pasa a la tarea 4, donde se consume.
 - **Est vs Actual:** 1 SP · 0.75 SP.
+
+## Tarea 4 · [frontend] Conmutador de la toolbar, estado por lado y `useEmaCrossTrades`
+
+- **Mecanismo:** `npm run build` + eslint + manual en el stack local.
+- **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre los ficheros de chart tocados → limpio (el hook guarda la clave de la petición junto a su resultado en vez de vaciar el estado dentro del efecto, que la regla `react-hooks/set-state-in-effect` señala).
+- **Resultado:** ✅ build y lint el 2026-11-07; el usuario prefirió comprobar el botón y las peticiones `/setup-levels?…&limit` junto con el overlay pintado en la tarea 5.
+- **Est vs Actual:** 1.25 SP · 0.75 SP.

@@ -11,6 +11,7 @@ import { AlertsPanel } from './AlertsPanel';
 import { useAlerts, type PriceAlert } from '../../lib/useAlerts';
 import { useEmaAlerts } from '../../lib/useEmaAlerts';
 import { useDisplaySettings } from '../../lib/useDisplaySettings';
+import { useEmaTradesSettings } from '../../lib/useEmaTradesSettings';
 import { useLocalStorage } from '../../lib/useLocalStorage';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { isBrokerVisible, isSymbolVisible, useVisibility } from '../../lib/visibility';
@@ -318,6 +319,7 @@ export function ChartPage() {
 
   const [balances, setBalances] = useState<Record<string, number>>({});
   const { pnlMode } = useDisplaySettings();
+  const emaTradesSettings = useEmaTradesSettings();
 
   useEffect(() => {
     apiFetch<{ broker: string; balance: number }[]>('/balances')
@@ -516,6 +518,7 @@ export function ChartPage() {
     trendlineAppearance,
     showSpread,
     pnlMode,
+    emaTradesSettings,
     alerts: chartAlerts,
     onMoveAlert: moveAlert,
     onEditAlertPrice: editAlertFromChart,

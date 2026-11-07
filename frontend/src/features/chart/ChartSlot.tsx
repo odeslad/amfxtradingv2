@@ -9,6 +9,8 @@ import { LightweightChart, type ChartHandle, type DrawMode } from './Lightweight
 import { ChartErrorBoundary } from './ChartErrorBoundary';
 import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { Ema } from './chart.types';
+import type { EmaTradesSettings } from './emaTrades';
+import { useEmaCrossTrades } from './useEmaCrossTrades';
 import { isBuySide, type PnlMode, type Position } from '../journal/utils/position';
 import styles from './ChartSlot.module.css';
 
@@ -32,6 +34,7 @@ interface ChartSlotProps {
   trendlineAppearance: TrendlineAppearance;
   showSpread: boolean;
   pnlMode: PnlMode;
+  emaTradesSettings: EmaTradesSettings;
   alerts: PriceAlert[];
   onMoveAlert: (id: number, price: number) => Promise<void>;
   onEditAlertPrice: (alert: PriceAlert) => void;
@@ -85,6 +88,7 @@ const TF_KEYS: Record<string, { time: string; open: string; high: string; low: s
 };
 
 const LOCK_KEY: Record<ChartSide, string> = { left: 'chart.locked', right: 'chart.locked.right' };
+const EMA_TRADES_KEY: Record<ChartSide, string> = { left: 'chart.emaTrades', right: 'chart.emaTrades.right' };
 
 const parseCandles = (data: RawCandle[]): Candle[] => {
   const parsed = data.map(c => ({
@@ -102,7 +106,7 @@ const parseCandles = (data: RawCandle[]): Candle[] => {
 // drawings, draw mode, lock, positions mode and the selected alert (spec 036).
 export function ChartSlot({
   side, brokers, symbols, broker, symbol, brokerHidden, symbolHidden, onBrokerChange, onSymbolChange,
-  timeframe, onTimeframeChange, positions, balance, emas, trendlineAppearance, showSpread, pnlMode,
+  timeframe, onTimeframeChange, positions, balance, emas, trendlineAppearance, showSpread, pnlMode, emaTradesSettings,
   alerts, onMoveAlert, onEditAlertPrice, onToggleAlert, onDeleteAlert,
   onIndicators, onFilters, onAlerts, alertsActive, alertsFlashing,
   onNewTrade, onEditPosition, onClosePosition, onModifyPosition, onFullscreen, isFullscreen,
@@ -114,6 +118,8 @@ export function ChartSlot({
   const liveCandleRef = useRef<Candle | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
   const [locked, setLocked] = useLocalStorage(LOCK_KEY[side], false);
+  // EMA cross trades overlay (spec 039): remembered per side, recomputed on each closed candle.
+  const [emaTradesOn, setEmaTradesOn] = useLocalStorage(EMA_TRADES_KEY[side], false);
   const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
@@ -258,6 +264,9 @@ export function ChartSlot({
     setDrawMode(prev => (prev === mode ? null : mode));
   }, [setLocked]);
   const toggleLock = useCallback(() => setLocked(prev => !prev), [setLocked]);
+  const toggleEmaTrades = useCallback(() => setEmaTradesOn(prev => !prev), [setEmaTradesOn]);
+  const lastClosedTime = candles.length > 0 ? candles[candles.length - 1].time : null;
+  const emaCrossTrades = useEmaCrossTrades(emaTradesOn, broker, symbol, timeframe, emaTradesSettings, lastClosedTime);
   const clearDrawMode = useCallback(() => setDrawMode(null), []);
   const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev]), []);
   // New Trade preselects the timeframe of the chart it was opened from (AC 7).
@@ -285,6 +294,8 @@ export function ChartSlot({
         alertsFlashing={alertsFlashing}
         locked={locked}
         onToggleLock={toggleLock}
+        emaTradesActive={emaTradesOn}
+        onToggleEmaTrades={toggleEmaTrades}
         onPositions={cyclePositions}
         positionsMode={positionsMode}
         onFullscreen={onFullscreen}
@@ -296,7 +307,7 @@ export function ChartSlot({
       <div className={styles.slotChart}>
         {broker && symbol
           ? <ChartErrorBoundary resetKey={`${broker}-${symbol}-${timeframe}`}>
-              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={onEditPosition} onClosePosition={onClosePosition} onModifyPosition={onModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balance} pnlMode={pnlMode} showSpread={showSpread} alerts={chartAlerts} onMoveAlert={onMoveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} locked={locked} />
+              <LightweightChart ref={chartRef} candles={candles} broker={broker} symbol={symbol} timeframe={timeframe} onLoadMore={hasMore ? loadMoreCandles : undefined} emas={emas} drawMode={drawMode} onDrawDone={clearDrawMode} positions={chartPositions} onEditPosition={onEditPosition} onClosePosition={onClosePosition} onModifyPosition={onModifyPosition} initialDrawings={drawings ?? undefined} onDrawingsChange={handleDrawingsChange} trendlineAppearance={trendlineAppearance} accountBalance={balance} pnlMode={pnlMode} showSpread={showSpread} alerts={chartAlerts} onMoveAlert={onMoveAlert} onSelectAlert={setSelectedAlertId} showNewTrade={positionsMode !== 'none'} onNewTrade={openNewTrade} locked={locked} emaCrossTrades={emaCrossTrades} />
               {chartLoading && <div className={styles.chartLoadingOverlay} />}
               {selectedAlert && (
                 <AlertActionBar alert={selectedAlert} onEditPrice={onEditAlertPrice} onToggle={onToggleAlert} onDelete={onDeleteAlert} />

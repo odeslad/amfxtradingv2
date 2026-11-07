@@ -1,5 +1,5 @@
 import { memo, useState, type ReactNode } from 'react';
-import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconFib, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText, IconSplit } from '../../shared/ui/icons';
+import { IconIndicators, IconFilters, IconTrendline, IconPositions, IconFullscreen, IconFullscreenExit, IconRect, IconFib, IconEmaTrades, IconRuler, IconMarkerUp, IconMarkerDown, IconBell, IconLock, IconUnlock, IconCross, IconCheck, IconText, IconSplit } from '../../shared/ui/icons';
 import type { DrawMode } from './LightweightChart';
 import styles from './ChartToolbar.module.css';
 
@@ -29,6 +29,9 @@ interface ChartToolbarProps {
   alertsFlashing?: boolean;
   locked?: boolean;
   onToggleLock?: () => void;
+  // EMA cross trades overlay (spec 039): a toggle, highlighted while the overlay is on.
+  emaTradesActive?: boolean;
+  onToggleEmaTrades?: () => void;
   onFullscreen?: () => void;
   isFullscreen?: boolean;
   // Split view (spec 036): desktop only, hidden when the page cannot split.
@@ -59,7 +62,7 @@ const DRAW_TOOLS: DrawTool[] = [
 export const ChartToolbar = memo(function ChartToolbar({
   brokers, symbols, broker, symbol, brokerHidden, symbolHidden, timeframe,
   onBrokerChange, onSymbolChange, onTimeframeChange, onIndicators, onFilters, drawMode, onDrawMode,
-  onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, locked = false, onToggleLock, onFullscreen, isFullscreen,
+  onPositions, positionsMode = 'none', onAlerts, alertsActive, alertsFlashing, locked = false, onToggleLock, emaTradesActive = false, onToggleEmaTrades, onFullscreen, isFullscreen,
   splitAvailable = false, splitActive = false, onSplit,
 }: ChartToolbarProps) {
   // Mobile only: the drawing tools live in a second row opened by Draw (spec 025).
@@ -151,6 +154,18 @@ export const ChartToolbar = memo(function ChartToolbar({
               {t.icon}
             </button>
           ))}
+          {onToggleEmaTrades && (
+            <button
+              type="button"
+              className={`${styles.iconBtn} ${emaTradesActive ? styles.iconBtnActive : ''}`}
+              onClick={onToggleEmaTrades}
+              title={emaTradesActive ? 'Hide the EMA cross trades' : 'Show the last EMA cross trades (entry + SL)'}
+              aria-label="EMA cross trades"
+              aria-pressed={emaTradesActive}
+            >
+              <IconEmaTrades size={16} />
+            </button>
+          )}
           <button
             type="button"
             className={`${styles.iconBtn} ${styles.mobileOnly}`}

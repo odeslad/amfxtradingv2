@@ -9,6 +9,7 @@ import {
 import type { Ema } from './chart.types';
 import type { Position } from '../journal/utils/position';
 import { DrawingManager, type PersistedDrawing, type TrendlineAppearance, type DrawingKind, type MarkerDirection, type SymbolVariant } from './DrawingTools';
+import type { EmaCrossTrade } from './useEmaCrossTrades';
 
 import { formatEntryPnl, formatLevelPnl } from './positionRisk';
 import { type PnlMode, isPending, isBuySide, pipSize, TYPE_LABEL } from '../journal/utils/position';
@@ -221,14 +222,22 @@ interface LightweightChartExtendedProps extends LightweightChartProps {
   showNewTrade?: boolean;
   onNewTrade?: () => void;
   locked?: boolean;
+  // EMA cross trades overlay (spec 039), painted on the overlay canvas; never a drawing.
+  emaCrossTrades?: EmaCrossTrade[];
 }
 
-export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', showSpread = false, alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition, locked = false }: LightweightChartExtendedProps) {
+export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLoadMore, emas, drawMode, onDrawDone, positions, onEditPosition, onModifyPosition, initialDrawings, onDrawingsChange, trendlineAppearance, accountBalance, pnlMode = 'net', showSpread = false, alerts, onMoveAlert, onSelectAlert, showNewTrade, onNewTrade, onClosePosition, locked = false, emaCrossTrades }: LightweightChartExtendedProps) {
   const navigate = useNavigate();
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLCanvasElement>(null);
   const alertsRef = useRef(alerts);
   const drawRolloversRef = useRef<() => void>(() => { });
+  // EMA cross trades (spec 039): kept in a ref for the overlay painter; a change repaints once.
+  const emaCrossTradesRef = useRef<EmaCrossTrade[]>(emaCrossTrades ?? []);
+  useEffect(() => {
+    emaCrossTradesRef.current = emaCrossTrades ?? [];
+    drawRolloversRef.current();
+  }, [emaCrossTrades]);
   // Dragged alert prices (alert id -> price), kept after release until the list catches up (spec 028).
   const alertPriceOverrideRef = useRef<Map<number, number>>(new Map());
   const selectedLevelIdRef = useRef<string | null>(null);

@@ -20,3 +20,10 @@
 - **Commands:** `npm run build` → ✓ built · `npx eslint` on `DisplayTab.tsx`, `useEmaTradesSettings.ts`, `emaTrades.ts` → clean.
 - **Outcome:** ✅ pass on 2026-11-07. The user saw the group with the five numeric inputs (no spinners), saved and reloaded with the values kept, and the equal-EMA case rejected. Two layout notes applied during the check: the group blocks (Fibonacci levels, EMA cross trades, Setup levels) now end with the same separator as the plain rows. `ChartPage` wiring of the hook moved to task 4, where it is consumed.
 - **Est vs Actual:** 1 SP · 0.75 SP.
+
+## Task 4 · [frontend] Toolbar toggle, per-side state and `useEmaCrossTrades`
+
+- **Mechanism:** `npm run build` + eslint + manual on the local stack.
+- **Commands:** `npm run build` → ✓ built · `npx eslint` on the touched chart files → clean (the hook keeps the request key next to its result instead of clearing state inside the effect, which the `react-hooks/set-state-in-effect` rule flags).
+- **Outcome:** ✅ build and lint on 2026-11-07; the user chose to check the button and the `/setup-levels?…&limit` requests together with the painted overlay in task 5.
+- **Est vs Actual:** 1.25 SP · 0.75 SP.

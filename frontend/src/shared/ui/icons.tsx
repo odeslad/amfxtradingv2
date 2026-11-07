@@ -132,6 +132,16 @@ export function IconFib({ size = 14, color = 'currentColor' }: IconProps) {
   );
 }
 
+export function IconEmaTrades({ size = 14, color = 'currentColor' }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M2 11c3-5 5-5 7-1s3 2 5-5" stroke={color} strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M2 6c3 4 5 4 7 0s3-2 5 4" stroke={color} strokeWidth="1.2" strokeLinecap="round" opacity="0.6" />
+      <line x1="9.5" y1="3" x2="9.5" y2="13" stroke={color} strokeWidth="1" strokeDasharray="1.5 1.5" />
+    </svg>
+  );
+}
+
 export function IconRect({ size = 14, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">

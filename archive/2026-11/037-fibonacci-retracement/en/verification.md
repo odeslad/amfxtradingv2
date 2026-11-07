@@ -40,5 +40,33 @@
 - **Context:** asked by the user during validation (2026-11-07): on mobile the rectangle was placed at the second tap, not where the finger lifted after dragging. AC 6 amended.
 - **Mechanism:** `npm run build` + manual in production (task 6) with the rectangle, the trendline and the Fibonacci on a phone.
 - **Commands:** `npm run build` → ✓ built.
-- **Outcome:** 🕐 pending the user's check on the deployed app.
+- **Outcome:** ✅ pass on 2026-11-07 (user validated in production).
 - **Est vs Actual:** — · 0.25 SP.
+
+## Task 6 · [infra] Push + production validation
+
+- **Mechanism:** manual (user validation).
+- **Commands:** `git push origin b780650:master` (spec + db + backend; "Deploy Backend to VPS" success, `/health` ok, migration already applied) → `git push origin master` (`b780650..8096da5`, frontend) → `git push origin master` (`37ff8df`, touch fix).
+- **Outcome:** ✅ pass (user validated on 2026-11-07 at https://v2.amfxtrading.com: AC 1–8, including the mobile drag-to-finish).
+- **Est vs Actual:** 0.5 SP · 0.5 SP.
+
+## Task 7 · [specs] Close
+
+- **Mechanism:** manual. `npm run build` (backend) → ✓ · `npm run build` (frontend) → ✓ built.
+- **Outcome:** ✅ closed on 2026-11-07, archived under `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Task | Est | Actual |
+|---|---|---|
+| 1 fibLevels column + migration | 0.5 | 0.25 |
+| 2 fibLevels in /settings | 0.75 | 0.5 |
+| 3 fib drawing kind (+ touch follow-up) | 2.5 | 1.75 |
+| 4 Tool in the toolbar | 0.75 | 0.25 |
+| 5 Levels in Settings > Display | 1 | 0.5 |
+| 6 Push + production validation | 0.5 | 0.5 |
+| 7 Close | 0.25 | 0.25 |
+| **Total** | **6.25** | **4** |
+
+Calibration: reusing the trendline's two-anchor code paid off; the canvas painting was the only real work. Deviations agreed with the user during task 3: no solid style for 50 / 61.8 and every label bright (mockup updated in design.md); touch press-drag-release closes two-anchor drawings (AC 6 amended). Follow-up agreed for a new spec (038): the pip ruler stays ephemeral but becomes selectable and resizable. Nothing pending on the user.

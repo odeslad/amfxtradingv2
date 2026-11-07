@@ -40,5 +40,33 @@
 - **Contexto:** pedido por el usuario durante la validación (2026-11-07): en móvil el rectángulo se colocaba en el segundo toque, no donde se levantaba el dedo tras arrastrar. AC 6 ampliado.
 - **Mecanismo:** `npm run build` + manual en producción (tarea 6) con el rectángulo, la línea de tendencia y el Fibonacci en un móvil.
 - **Comandos:** `npm run build` → ✓ built.
-- **Resultado:** 🕐 pendiente de la comprobación del usuario en la app desplegada.
+- **Resultado:** ✅ pass el 2026-11-07 (validado por el usuario en producción).
 - **Est vs Actual:** — · 0.25 SP.
+
+## Tarea 6 · [infra] Push + validación en producción
+
+- **Mecanismo:** manual (validación del usuario).
+- **Comandos:** `git push origin b780650:master` (spec + db + backend; "Deploy Backend to VPS" success, `/health` ok, migración ya aplicada) → `git push origin master` (`b780650..8096da5`, frontend) → `git push origin master` (`37ff8df`, ajuste táctil).
+- **Resultado:** ✅ pass (validado por el usuario el 2026-11-07 en https://v2.amfxtrading.com: AC 1–8, incluido el arrastrar-soltar en móvil).
+- **Est vs Actual:** 0.5 SP · 0.5 SP.
+
+## Tarea 7 · [specs] Cierre
+
+- **Mecanismo:** manual. `npm run build` (backend) → ✓ · `npm run build` (frontend) → ✓ built.
+- **Resultado:** ✅ cerrada el 2026-11-07, archivada en `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Tarea | Est | Actual |
+|---|---|---|
+| 1 Columna fibLevels + migración | 0.5 | 0.25 |
+| 2 fibLevels en /settings | 0.75 | 0.5 |
+| 3 Tipo de dibujo fib (+ ajuste táctil) | 2.5 | 1.75 |
+| 4 Herramienta en la toolbar | 0.75 | 0.25 |
+| 5 Niveles en Ajustes > Display | 1 | 0.5 |
+| 6 Push + validación en producción | 0.5 | 0.5 |
+| 7 Cierre | 0.25 | 0.25 |
+| **Total** | **6.25** | **4** |
+
+Calibración: reutilizar el código de dos anclas de la línea de tendencia compensó; el pintado en canvas fue el único trabajo real. Desviaciones acordadas con el usuario en la tarea 3: sin estilo sólido para 50 / 61.8 y todas las etiquetas brillantes (maqueta actualizada en design.md); pulsar-arrastrar-soltar en táctil cierra los dibujos de dos anclas (AC 6 ampliado). Continuación acordada como spec nueva (038): la regla de pips sigue efímera pero pasa a ser seleccionable y redimensionable. Nada pendiente del usuario.

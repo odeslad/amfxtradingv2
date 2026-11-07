@@ -1,6 +1,6 @@
 # 037 — Herramienta de retroceso de Fibonacci
 
-> Status: **implementing**
+> Status: **closed**
 
 ## Contexto
 El chart tiene un conjunto de herramientas de dibujo (línea de tendencia, rectángulo, regla de pips, marcadores, símbolos, texto) implementadas sobre un canvas en `DrawingTools.ts` y persistidas por usuario, broker, símbolo y timeframe como una lista JSON a través de `GET/PUT /drawings`. El trader no tiene forma de dibujar los niveles de retroceso de Fibonacci sobre un impulso: hoy traza varias líneas horizontales a mano o lee los niveles en otra plataforma.

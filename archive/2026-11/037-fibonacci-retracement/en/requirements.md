@@ -1,6 +1,6 @@
 # 037 — Fibonacci retracement tool
 
-> Status: **implementing**
+> Status: **closed**
 
 ## Context
 The chart has a set of drawing tools (trendline, rectangle, pip ruler, markers, symbols, text) implemented on a canvas overlay in `DrawingTools.ts` and persisted per user, broker, symbol and timeframe as a JSON list through `GET/PUT /drawings`. The trader has no way to draw Fibonacci retracement levels over a swing: today they draw several horizontal lines by hand or read the levels from another platform.

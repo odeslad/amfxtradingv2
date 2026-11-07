@@ -13,3 +13,10 @@
 - **Commands:** `npm run build` → ✓ · `npx vitest run src/routes/settings.test.ts` → 19 passed (new: valid object and zero pips accepted; equal EMAs, count 11, hours 721, negative pips and a non-integer period → `BadRequest`; absent → undefined) · tsx script over the last 1000 `solidary III` EURUSD H1 candles with EMA 24 / 48 → 12 setups; last three: sell 2026-10-22 15:00 closed 10-29 21:00 (ECC 1.12048, EVL 1.12344), buy 10-29 21:00 closed 11-06 04:00 (ECC 1.1162, EVL 1.11323), sell 11-06 04:00 still open (ECC 1.12059, EVL 1.12431). That is exactly what `setups` returns with `limit=3`.
 - **Outcome:** ✅ pass on 2026-11-07.
 - **Est vs Actual:** 1 SP · 0.75 SP.
+
+## Task 3 · [frontend] "EMA cross trades" group in Settings > Display + `useEmaTradesSettings`
+
+- **Mechanism:** `npm run build` + eslint on the new files + manual on the local stack.
+- **Commands:** `npm run build` → ✓ built · `npx eslint` on `DisplayTab.tsx`, `useEmaTradesSettings.ts`, `emaTrades.ts` → clean.
+- **Outcome:** ✅ pass on 2026-11-07. The user saw the group with the five numeric inputs (no spinners), saved and reloaded with the values kept, and the equal-EMA case rejected. Two layout notes applied during the check: the group blocks (Fibonacci levels, EMA cross trades, Setup levels) now end with the same separator as the plain rows. `ChartPage` wiring of the hook moved to task 4, where it is consumed.
+- **Est vs Actual:** 1 SP · 0.75 SP.

@@ -13,3 +13,10 @@
 - **Comandos:** `npm run build` → ✓ · `npx vitest run src/routes/settings.test.ts` → 19 passed (nuevos: objeto válido y cero pips aceptados; EMAs iguales, count 11, hours 721, pips negativos y periodo no entero → `BadRequest`; ausente → undefined) · script tsx sobre las últimas 1000 velas EURUSD H1 de `solidary III` con EMA 24 / 48 → 12 setups; los tres últimos: venta 2026-10-22 15:00 cerrada 29-10 21:00 (ECC 1.12048, EVL 1.12344), compra 29-10 21:00 cerrada 06-11 04:00 (ECC 1.1162, EVL 1.11323), venta 06-11 04:00 aún abierta (ECC 1.12059, EVL 1.12431). Es exactamente lo que devuelve `setups` con `limit=3`.
 - **Resultado:** ✅ pass el 2026-11-07.
 - **Est vs Actual:** 1 SP · 0.75 SP.
+
+## Tarea 3 · [frontend] Grupo "EMA cross trades" en Ajustes > Display + `useEmaTradesSettings`
+
+- **Mecanismo:** `npm run build` + eslint sobre los ficheros nuevos + manual en el stack local.
+- **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre `DisplayTab.tsx`, `useEmaTradesSettings.ts`, `emaTrades.ts` → limpio.
+- **Resultado:** ✅ pass el 2026-11-07. El usuario vio el grupo con los cinco inputs numéricos (sin spinners), guardó y recargó con los valores conservados, y el caso de EMAs iguales rechazado. Dos notas de maquetación aplicadas durante la prueba: los bloques de grupo (Fibonacci levels, EMA cross trades, Setup levels) terminan ahora con el mismo separador que las filas simples. El cableado del hook en `ChartPage` pasa a la tarea 4, donde se consume.
+- **Est vs Actual:** 1 SP · 0.75 SP.

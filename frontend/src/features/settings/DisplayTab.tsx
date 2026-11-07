@@ -1,5 +1,6 @@
 import { SETUP_LEVEL_KEYS, type PnlMode, type SetupLevelKey } from '../journal/utils/position';
 import { FIB_LEVEL_ANCHORS, FIB_LEVEL_CATALOGUE, type TrendlineStyle } from '../chart/DrawingTools';
+import { EMA_TRADES_LIMITS, type EmaTradesSettings } from '../chart/emaTrades';
 import styles from './SettingsPage.module.css';
 
 export interface DisplaySettingsForm {
@@ -11,7 +12,25 @@ export interface DisplaySettingsForm {
   showSpread: boolean;
   setupLevels: SetupLevelKey[];
   fibLevels: number[];
+  emaTrades: EmaTradesSettings;
 }
+
+interface EmaTradesField {
+  key: keyof EmaTradesSettings;
+  label: string;
+  hint?: string;
+  min: number;
+  max?: number;
+  step: number;
+}
+
+const EMA_TRADES_FIELDS: EmaTradesField[] = [
+  { key: 'fast', label: 'Fast EMA', min: 1, step: 1 },
+  { key: 'slow', label: 'Slow EMA', min: 1, step: 1 },
+  { key: 'entryPips', label: 'Entry offset (pips)', hint: 'Above the cross-candle close for a buy, below it for a sell', min: 0, step: 0.1 },
+  { key: 'hours', label: 'Max duration (hours)', hint: 'Lines end here or at the next opposite cross, whichever comes first', min: EMA_TRADES_LIMITS.hours.min, max: EMA_TRADES_LIMITS.hours.max, step: 1 },
+  { key: 'count', label: 'Trades shown', hint: 'Most recent crosses, both directions', min: EMA_TRADES_LIMITS.count.min, max: EMA_TRADES_LIMITS.count.max, step: 1 },
+];
 
 const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];
 const TRENDLINE_WIDTHS = [1, 2, 3];
@@ -32,6 +51,12 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
   const toggleLevel = (key: SetupLevelKey, on: boolean) => {
     const next = SETUP_LEVEL_KEYS.filter(k => (k === key ? on : display.setupLevels.includes(k)));
     onChange({ setupLevels: next });
+  };
+
+  const updateEmaTrades = (key: keyof EmaTradesSettings, raw: string) => {
+    const value = Number(raw);
+    if (raw === '' || !Number.isFinite(value)) return;
+    onChange({ emaTrades: { ...display.emaTrades, [key]: value } });
   };
 
   const toggleFibLevel = (level: number, on: boolean) => {
@@ -118,6 +143,32 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
                 </div>
               );
             })}
+          </div>
+        </div>
+
+        <div className={`${styles.displayRow} ${styles.displayRowGroup}`}>
+          <span className={styles.displayLabel}>
+            EMA cross trades
+            <span className={styles.displayHint}>Drawn on the chart by the toolbar button: the last crosses of these EMAs, each with its entry and its SL.</span>
+          </span>
+          <div className={styles.emaTradesGrid}>
+            {EMA_TRADES_FIELDS.map(field => (
+              <label key={field.key} className={styles.emaTradesField}>
+                <span className={styles.displayLabel}>
+                  {field.label}
+                  {field.hint && <span className={styles.displayHint}>{field.hint}</span>}
+                </span>
+                <input
+                  type="number"
+                  className={`${styles.input} ${styles.numberInput}`}
+                  value={display.emaTrades[field.key]}
+                  min={field.min}
+                  max={field.max}
+                  step={field.step}
+                  onChange={e => updateEmaTrades(field.key, e.target.value)}
+                />
+              </label>
+            ))}
           </div>
         </div>
 

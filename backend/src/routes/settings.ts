@@ -17,16 +17,16 @@ export const FIB_LEVEL_CATALOGUE = [0, 23.6, 38.2, 50, 61.8, 78.6, 100, 127.2, 1
 const FIB_LEVEL_ANCHORS = [0, 100];
 export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
 
-// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration and count.
+// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration in candles and count.
 export interface EmaTradesSettings {
   fast: number;
   slow: number;
   entryPips: number;
-  hours: number;
+  candles: number;
   count: number;
 }
-export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, hours: 24, count: 3 };
-const EMA_TRADES_MAX_HOURS = 720;
+export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3 };
+const EMA_TRADES_MAX_CANDLES = 50;
 const EMA_TRADES_MAX_COUNT = 10;
 
 interface MirrorItem {
@@ -71,7 +71,7 @@ interface DisplayRow {
   emaTradesFast: number;
   emaTradesSlow: number;
   emaTradesEntryPips: number;
-  emaTradesHours: number;
+  emaTradesCandles: number;
   emaTradesCount: number;
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
@@ -139,11 +139,11 @@ function parseEmaTrades(value: unknown): EmaTradesSettings | undefined {
   const fast = integer(row.fast, 'display.emaTrades.fast', { min: 1 });
   const slow = integer(row.slow, 'display.emaTrades.slow', { min: 1 });
   if (fast === slow) throw new BadRequest('display.emaTrades.fast and slow must differ');
-  const hours = integer(row.hours, 'display.emaTrades.hours', { min: 1 });
-  if (hours > EMA_TRADES_MAX_HOURS) throw new BadRequest(`display.emaTrades.hours must be <= ${EMA_TRADES_MAX_HOURS}`);
+  const candles = integer(row.candles, 'display.emaTrades.candles', { min: 1 });
+  if (candles > EMA_TRADES_MAX_CANDLES) throw new BadRequest(`display.emaTrades.candles must be <= ${EMA_TRADES_MAX_CANDLES}`);
   const count = integer(row.count, 'display.emaTrades.count', { min: 1 });
   if (count > EMA_TRADES_MAX_COUNT) throw new BadRequest(`display.emaTrades.count must be <= ${EMA_TRADES_MAX_COUNT}`);
-  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), hours, count };
+  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), candles, count };
 }
 
 function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
@@ -152,7 +152,7 @@ function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
     fast: display.emaTradesFast,
     slow: display.emaTradesSlow,
     entryPips: display.emaTradesEntryPips,
-    hours: display.emaTradesHours,
+    candles: display.emaTradesCandles,
     count: display.emaTradesCount,
   };
 }
@@ -162,7 +162,7 @@ function emaTradesColumns(value: EmaTradesSettings) {
     emaTradesFast: value.fast,
     emaTradesSlow: value.slow,
     emaTradesEntryPips: value.entryPips,
-    emaTradesHours: value.hours,
+    emaTradesCandles: value.candles,
     emaTradesCount: value.count,
   };
 }

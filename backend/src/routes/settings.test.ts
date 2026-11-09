@@ -58,7 +58,7 @@ describe('parseDisplay fibLevels', () => {
 });
 
 describe('parseDisplay emaTrades', () => {
-  const valid = { fast: 24, slow: 48, entryPips: 5, hours: 24, count: 3 };
+  const valid = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3 };
 
   it('leaves it undefined when absent, so the stored value is kept', () => {
     expect(parseDisplay({ pnlMode: 'net' }).emaTrades).toBeUndefined();
@@ -69,10 +69,10 @@ describe('parseDisplay emaTrades', () => {
     expect(parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, entryPips: 0 } }).emaTrades?.entryPips).toBe(0);
   });
 
-  it('rejects equal EMAs, a count over 10, hours over 720, negative pips or a non-integer period with 400', () => {
+  it('rejects equal EMAs, a count over 10, candles over 50, negative pips or a non-integer period with 400', () => {
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, slow: 24 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, count: 11 } })).toThrow(BadRequest);
-    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, hours: 721 } })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, candles: 51 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, entryPips: -1 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, fast: 2.5 } })).toThrow(BadRequest);
   });

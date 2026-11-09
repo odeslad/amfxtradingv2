@@ -72,7 +72,7 @@ model SettingsDisplay {
   emaTradesFast      Int   @default(24)
   emaTradesSlow      Int   @default(48)
   emaTradesEntryPips Float @default(5)
-  emaTradesHours     Int   @default(24)
+  emaTradesCandles   Int   @default(24)
   emaTradesCount     Int   @default(3)
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")

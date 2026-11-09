@@ -28,7 +28,7 @@ const EMA_TRADES_FIELDS: EmaTradesField[] = [
   { key: 'fast', label: 'Fast EMA', min: 1, step: 1 },
   { key: 'slow', label: 'Slow EMA', min: 1, step: 1 },
   { key: 'entryPips', label: 'Entry offset (pips)', hint: 'Above the cross-candle close for a buy, below it for a sell', min: 0, step: 0.1 },
-  { key: 'hours', label: 'Max duration (hours)', hint: 'Lines end here or at the next opposite cross, whichever comes first', min: EMA_TRADES_LIMITS.hours.min, max: EMA_TRADES_LIMITS.hours.max, step: 1 },
+  { key: 'candles', label: 'Max duration (candles)', hint: 'Candles of the chart timeframe; lines end here or at the next opposite cross, whichever comes first', min: EMA_TRADES_LIMITS.candles.min, max: EMA_TRADES_LIMITS.candles.max, step: 1 },
   { key: 'count', label: 'Trades shown', hint: 'Most recent crosses, both directions', min: EMA_TRADES_LIMITS.count.min, max: EMA_TRADES_LIMITS.count.max, step: 1 },
 ];
 

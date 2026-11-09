@@ -34,3 +34,32 @@
 - **Commands:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx` → clean.
 - **Outcome:** ✅ pass on 2026-11-07. On EURUSD H1 (solidary III) the user saw the live sell trade of 06 Nov 04:00: vertical dashed line at the cross candle, gold entry line, red dashed SL line with `SL 47.2 p`, faint fill, `SELL <price>` end label, projection past the last candle. One doubt resolved on the spot: the entry sat 10 pips under the close because Settings held `entryPips = 10` from the task 3 test; the rule (close ± offset in the trade direction) is confirmed as intended.
 - **Est vs Actual:** 1.5 SP · 1 SP.
+
+## Task 6 · [infra] Push + production validation
+
+- **Mechanism:** manual (user validation).
+- **Commands:** `git push origin 0680563:master` (038 closure, spec, db, backend; "Deploy Backend to VPS" success, `/health` ok, migration already applied) → `git push origin master` (`0680563..76bb164`, frontend; bundle changed).
+- **Outcome:** ✅ pass (user validated on 2026-11-09 at https://v2.amfxtrading.com: Settings group and persistence, overlay on EURUSD H1 with the three trades, reload, symbol / timeframe change, Delete / Clear all / lock, split view, mobile Draw row).
+- **Side fix during validation (out of spec, VPS only):** a hard reload on `/settings` returned the API JSON because the `v2` nginx still proxied an old list of API paths to the backend; the block was removed on 2026-11-09 (backup `nginx.conf.bak-20261109`, service restarted). Not a change of this spec; recorded here because it was found while validating it.
+- **Est vs Actual:** 0.5 SP · 0.75 SP (the nginx detour).
+
+## Task 7 · [specs] Close
+
+- **Mechanism:** manual. `npm run build` (backend) → ✓ · `npm run build` (frontend) → ✓ built.
+- **Outcome:** ✅ closed on 2026-11-09, archived under `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Task | Est | Actual |
+|---|---|---|
+| 1 emaTrades columns + migration | 0.5 | 0.5 |
+| 2 /settings + /setup-levels limit | 1 | 0.75 |
+| 3 Settings group + hook | 1 | 0.75 |
+| 4 Toolbar toggle + fetch hook | 1.25 | 0.75 |
+| 5 Overlay painting | 1.5 | 1 |
+| 6 Push + production validation | 0.5 | 0.75 |
+| 7 Close | 0.25 | 0.25 |
+| **Total** | **6** | **4.75** |
+
+Calibration: reusing `detectEmaCrossSetups` and the overlay canvas kept the code small; the time went to the environment (Cloudflare route outage from the user's ISP, Prisma engine locked by the local backend, nginx detour). Deviations agreed: the `ChartPage` hook wiring moved from task 3 to task 4; the entry offset rule confirmed after a doubt caused by a test value left in Settings. Nothing pending on the user. Follow-up idea noted, not scheduled: document the nginx layout in `infra/README.md`.

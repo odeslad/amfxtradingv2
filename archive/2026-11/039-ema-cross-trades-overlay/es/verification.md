@@ -34,3 +34,32 @@
 - **Comandos:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx` → limpio.
 - **Resultado:** ✅ pass el 2026-11-07. En EURUSD H1 (solidary III) el usuario vio el trade de venta vivo del 06 Nov 04:00: línea vertical discontinua en la vela del cruce, línea de entrada dorada, línea de SL roja discontinua con `SL 47.2 p`, relleno tenue, etiqueta `SELL <precio>` al final, proyección más allá de la última vela. Una duda resuelta sobre la marcha: la entrada quedaba 10 pips bajo el cierre porque Ajustes tenía `entryPips = 10` de la prueba de la tarea 3; la regla (cierre ± offset en la dirección del trade) queda confirmada.
 - **Est vs Actual:** 1.5 SP · 1 SP.
+
+## Tarea 6 · [infra] Push + validación en producción
+
+- **Mecanismo:** manual (validación del usuario).
+- **Comandos:** `git push origin 0680563:master` (cierre 038, spec, db, backend; "Deploy Backend to VPS" success, `/health` ok, migración ya aplicada) → `git push origin master` (`0680563..76bb164`, frontend; bundle cambiado).
+- **Resultado:** ✅ pass (validado por el usuario el 2026-11-09 en https://v2.amfxtrading.com: grupo de Ajustes y persistencia, overlay en EURUSD H1 con los tres trades, recarga, cambio de símbolo / timeframe, Supr / Borrar todo / bloqueo, split view, fila Draw en móvil).
+- **Arreglo colateral durante la validación (fuera de spec, solo VPS):** un F5 en `/settings` devolvía el JSON del API porque el nginx de `v2` aún reenviaba una lista antigua de rutas del API al backend; el bloque se eliminó el 2026-11-09 (copia `nginx.conf.bak-20261109`, servicio reiniciado). No es un cambio de esta spec; queda aquí porque se encontró al validarla.
+- **Est vs Actual:** 0.5 SP · 0.75 SP (el desvío de nginx).
+
+## Tarea 7 · [specs] Cierre
+
+- **Mecanismo:** manual. `npm run build` (backend) → ✓ · `npm run build` (frontend) → ✓ built.
+- **Resultado:** ✅ cerrada el 2026-11-09, archivada en `archive/2026-11/`.
+- **Est vs Actual:** 0.25 SP · 0.25 SP.
+
+## Est vs Actual
+
+| Tarea | Est | Actual |
+|---|---|---|
+| 1 Columnas emaTrades + migración | 0.5 | 0.5 |
+| 2 /settings + limit en /setup-levels | 1 | 0.75 |
+| 3 Grupo de Ajustes + hook | 1 | 0.75 |
+| 4 Conmutador de la toolbar + hook de petición | 1.25 | 0.75 |
+| 5 Pintado del overlay | 1.5 | 1 |
+| 6 Push + validación en producción | 0.5 | 0.75 |
+| 7 Cierre | 0.25 | 0.25 |
+| **Total** | **6** | **4.75** |
+
+Calibración: reutilizar `detectEmaCrossSetups` y el canvas de overlay mantuvo el código pequeño; el tiempo se fue en el entorno (corte de ruta a Cloudflare desde el ISP del usuario, motor de Prisma bloqueado por el backend local, desvío de nginx). Desviaciones acordadas: el cableado del hook en `ChartPage` pasó de la tarea 3 a la 4; la regla del offset de entrada confirmada tras una duda causada por un valor de prueba dejado en Ajustes. Nada pendiente del usuario. Idea de continuación anotada, sin planificar: documentar la disposición de nginx en `infra/README.md`.

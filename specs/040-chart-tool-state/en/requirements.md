@@ -1,6 +1,6 @@
 # 040 — Chart tool state remembered per chart
 
-> Status: **approved**
+> Status: **implementing**
 
 ## Context
 The chart toolbar has several toggles. Some are already remembered in the browser (broker / symbol / timeframe in `chart.selection`, the split view, the lock and the EMA cross trades per chart side), but the **Positions** button (none → all → buys → sells, which also shows the pending orders) is plain React state: every page load starts at "none" and the trader has to cycle it again on each chart. The per-side keys are also scattered across `ChartSlot` (`LOCK_KEY`, `EMA_TRADES_KEY`), so every new toggle repeats the same wiring. The trader wants every toolbar tool to come back as they last left it, per chart.

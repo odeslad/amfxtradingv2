@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch, apiSend, isAbortError } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
-import { useLocalStorage } from '../../lib/useLocalStorage';
 import type { PriceAlert } from '../../lib/useAlerts';
 import { ChartToolbar, type PositionsMode } from './ChartToolbar';
 import { AlertActionBar } from './AlertActionBar';
@@ -11,10 +10,11 @@ import type { PersistedDrawing, TrendlineAppearance } from './DrawingTools';
 import type { Ema } from './chart.types';
 import type { EmaTradesSettings } from './emaTrades';
 import { useEmaCrossTrades } from './useEmaCrossTrades';
+import { useChartToolState, type ChartSide } from './useChartToolState';
 import { isBuySide, type PnlMode, type Position } from '../journal/utils/position';
 import styles from './ChartSlot.module.css';
 
-export type ChartSide = 'left' | 'right';
+export type { ChartSide } from './useChartToolState';
 
 interface ChartSlotProps {
   side: ChartSide;
@@ -87,8 +87,6 @@ const TF_KEYS: Record<string, { time: string; open: string; high: string; low: s
   D1:  { time: 'd1_time',  open: 'd1_open',  high: 'd1_high',  low: 'd1_low'  },
 };
 
-const LOCK_KEY: Record<ChartSide, string> = { left: 'chart.locked', right: 'chart.locked.right' };
-const EMA_TRADES_KEY: Record<ChartSide, string> = { left: 'chart.emaTrades', right: 'chart.emaTrades.right' };
 
 const parseCandles = (data: RawCandle[]): Candle[] => {
   const parsed = data.map(c => ({
@@ -117,10 +115,8 @@ export function ChartSlot({
   const chartRef = useRef<ChartHandle>(null);
   const liveCandleRef = useRef<Candle | null>(null);
   const [drawMode, setDrawMode] = useState<DrawMode | null>(null);
-  const [locked, setLocked] = useLocalStorage(LOCK_KEY[side], false);
-  // EMA cross trades overlay (spec 039): remembered per side, recomputed on each closed candle.
-  const [emaTradesOn, setEmaTradesOn] = useLocalStorage(EMA_TRADES_KEY[side], false);
-  const [positionsMode, setPositionsMode] = useState<PositionsMode>('none');
+  // Lock, EMA cross trades overlay and Positions mode: remembered per side (spec 040).
+  const { locked, setLocked, emaTradesOn, setEmaTradesOn, positionsMode, setPositionsMode } = useChartToolState(side);
   const [selectedAlertId, setSelectedAlertId] = useState<number | null>(null);
   const [drawings, setDrawings] = useState<PersistedDrawing[] | null>(null);
   const [hasMore, setHasMore] = useState(true);
@@ -268,7 +264,7 @@ export function ChartSlot({
   const lastClosedTime = candles.length > 0 ? candles[candles.length - 1].time : null;
   const emaCrossTrades = useEmaCrossTrades(emaTradesOn, broker, symbol, timeframe, emaTradesSettings, lastClosedTime);
   const clearDrawMode = useCallback(() => setDrawMode(null), []);
-  const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev]), []);
+  const cyclePositions = useCallback(() => setPositionsMode(prev => POSITIONS_MODE_CYCLE[prev] ?? 'all'), [setPositionsMode]);
   // New Trade preselects the timeframe of the chart it was opened from (AC 7).
   const openNewTrade = useCallback(() => onNewTrade(timeframe), [onNewTrade, timeframe]);
 

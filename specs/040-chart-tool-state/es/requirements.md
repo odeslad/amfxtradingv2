@@ -1,6 +1,6 @@
 # 040 — Estado de las herramientas del chart recordado por chart
 
-> Status: **approved**
+> Status: **implementing**
 
 ## Contexto
 La toolbar del chart tiene varios conmutadores. Algunos ya se recuerdan en el navegador (broker / símbolo / timeframe en `chart.selection`, el split view, el candado y los EMA cross trades por lado del chart), pero el botón **Positions** (none → all → buys → sells, que también muestra las órdenes pendientes) es estado React sin más: cada carga de página empieza en "none" y el trader tiene que volver a ciclarlo en cada chart. Las claves por lado además están repartidas en `ChartSlot` (`LOCK_KEY`, `EMA_TRADES_KEY`), así que cada conmutador nuevo repite el mismo cableado. El trader quiere que cada herramienta de la toolbar vuelva como la dejó, por chart.

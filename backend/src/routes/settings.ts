@@ -17,17 +17,20 @@ export const FIB_LEVEL_CATALOGUE = [0, 23.6, 38.2, 50, 61.8, 78.6, 100, 127.2, 1
 const FIB_LEVEL_ANCHORS = [0, 100];
 export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
 
-// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration in candles and count.
+// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration in candles, count
+// and take profit as a reward:risk ratio.
 export interface EmaTradesSettings {
   fast: number;
   slow: number;
   entryPips: number;
   candles: number;
   count: number;
+  tpRatio: number;
 }
-export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3 };
+export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2 };
 const EMA_TRADES_MAX_CANDLES = 50;
 const EMA_TRADES_MAX_COUNT = 10;
+const EMA_TRADES_TP_RATIO = { min: 0.5, max: 10 };
 
 interface MirrorItem {
   broker: string;
@@ -73,6 +76,7 @@ interface DisplayRow {
   emaTradesEntryPips: number;
   emaTradesCandles: number;
   emaTradesCount: number;
+  emaTradesTpRatio: number;
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -143,7 +147,9 @@ function parseEmaTrades(value: unknown): EmaTradesSettings | undefined {
   if (candles > EMA_TRADES_MAX_CANDLES) throw new BadRequest(`display.emaTrades.candles must be <= ${EMA_TRADES_MAX_CANDLES}`);
   const count = integer(row.count, 'display.emaTrades.count', { min: 1 });
   if (count > EMA_TRADES_MAX_COUNT) throw new BadRequest(`display.emaTrades.count must be <= ${EMA_TRADES_MAX_COUNT}`);
-  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), candles, count };
+  const tpRatio = finiteNumber(row.tpRatio, 'display.emaTrades.tpRatio', { min: EMA_TRADES_TP_RATIO.min });
+  if (tpRatio > EMA_TRADES_TP_RATIO.max) throw new BadRequest(`display.emaTrades.tpRatio must be <= ${EMA_TRADES_TP_RATIO.max}`);
+  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), candles, count, tpRatio };
 }
 
 function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
@@ -154,6 +160,7 @@ function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
     entryPips: display.emaTradesEntryPips,
     candles: display.emaTradesCandles,
     count: display.emaTradesCount,
+    tpRatio: display.emaTradesTpRatio,
   };
 }
 
@@ -164,6 +171,7 @@ function emaTradesColumns(value: EmaTradesSettings) {
     emaTradesEntryPips: value.entryPips,
     emaTradesCandles: value.candles,
     emaTradesCount: value.count,
+    emaTradesTpRatio: value.tpRatio,
   };
 }
 

@@ -74,6 +74,7 @@ model SettingsDisplay {
   emaTradesEntryPips Float @default(5)
   emaTradesCandles   Int   @default(24)
   emaTradesCount     Int   @default(3)
+  emaTradesTpRatio   Float @default(2)
   hiddenBrokers  String[] @default([])
   hiddenSymbols  Json     @default("{}")
   updatedAt      DateTime @updatedAt

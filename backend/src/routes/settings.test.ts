@@ -58,7 +58,7 @@ describe('parseDisplay fibLevels', () => {
 });
 
 describe('parseDisplay emaTrades', () => {
-  const valid = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3 };
+  const valid = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2 };
 
   it('leaves it undefined when absent, so the stored value is kept', () => {
     expect(parseDisplay({ pnlMode: 'net' }).emaTrades).toBeUndefined();
@@ -75,6 +75,12 @@ describe('parseDisplay emaTrades', () => {
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, candles: 51 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, entryPips: -1 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, fast: 2.5 } })).toThrow(BadRequest);
+  });
+
+  it('rejects a take profit ratio under 0.5 or over 10 with 400', () => {
+    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 0.4 } })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 11 } })).toThrow(BadRequest);
+    expect(parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 1.5 } }).emaTrades?.tpRatio).toBe(1.5);
   });
 });
 

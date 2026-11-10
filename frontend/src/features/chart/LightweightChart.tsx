@@ -47,8 +47,10 @@ const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14
 // EMA cross trades overlay (spec 039)
 const EMA_TRADE_ENTRY_COLOR = '#c8a840';
 const EMA_TRADE_SL_COLOR = '#e05c5c';
+const EMA_TRADE_TP_COLOR = '#4caf84';
 const EMA_TRADE_CROSS_COLOR = 'rgba(200,168,64,0.35)';
 const EMA_TRADE_FILL = 'rgba(224,92,92,0.07)';
+const EMA_TRADE_TP_FILL = 'rgba(76,175,132,0.07)';
 const EMA_TRADE_LABEL_H = 16;
 const EMA_TRADE_LABEL_PAD = 6;
 const MONTHS_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -525,9 +527,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   }, [alertDisplayPrice]);
 
   // EMA cross trades (spec 039): for each trade a faint vertical line at the cross candle, the
-  // entry (gold, solid) and the SL (red, dashed) from the cross to the end, a faint fill between
-  // them, a tag at the top and price / pips labels at the end. A live trade projects past the
-  // last candle by bar spacing. Clipped to the pane like the rollover lines.
+  // entry (gold, solid), the SL (red, dashed) and the TP (green, dashed) from the cross to the
+  // end, faint fills between them, a tag at the top and price / pips labels at the end. A live
+  // trade projects past the last candle by bar spacing. Clipped to the pane like the rollover lines.
   const drawEmaCrossTrades = useCallback((
     ctx: CanvasRenderingContext2D,
     chart: IChartApi,
@@ -584,6 +586,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       const yEntry = series.priceToCoordinate(trade.entry);
       if (yEntry === null) continue;
       const ySl = trade.sl === null ? null : series.priceToCoordinate(trade.sl);
+      const yTp = trade.tp === null ? null : series.priceToCoordinate(trade.tp);
       const vx = Math.round(x1) + 0.5;
 
       ctx.strokeStyle = EMA_TRADE_CROSS_COLOR;
@@ -606,6 +609,18 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
         ctx.stroke();
       }
 
+      if (yTp !== null) {
+        ctx.fillStyle = EMA_TRADE_TP_FILL;
+        ctx.fillRect(x1, Math.min(yEntry, yTp), x2 - x1, Math.abs(yTp - yEntry));
+        ctx.strokeStyle = EMA_TRADE_TP_COLOR;
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(x1, yTp);
+        ctx.lineTo(x2, yTp);
+        ctx.stroke();
+      }
+
       ctx.strokeStyle = EMA_TRADE_ENTRY_COLOR;
       ctx.lineWidth = 1.5;
       ctx.setLineDash([]);
@@ -620,6 +635,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       label(`${trade.direction.toUpperCase()} ${fmtPrice(trade.entry, precision)}`, x2, yEntry, EMA_TRADE_ENTRY_COLOR, '#000');
       if (ySl !== null && trade.riskPips !== null) {
         label(`SL ${trade.riskPips.toFixed(1)} p`, x2, ySl, EMA_TRADE_SL_COLOR, '#fff');
+        if (yTp !== null) {
+          label(`TP ${trade.tpRatio.toFixed(1)}R · ${(trade.riskPips * trade.tpRatio).toFixed(1)} p`, x2, yTp, EMA_TRADE_TP_COLOR, '#000');
+        }
       }
     }
 

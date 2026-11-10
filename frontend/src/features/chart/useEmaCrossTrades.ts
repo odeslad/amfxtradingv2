@@ -10,7 +10,9 @@ export interface EmaCrossTrade {
   endTime: number;
   entry: number;
   sl: number | null;
+  tp: number | null;
   riskPips: number | null;
+  tpRatio: number;
   pipSize: number;
 }
 
@@ -26,8 +28,9 @@ const toSeconds = (iso: string) => Math.floor(new Date(iso).getTime() / 1000);
 
 const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
 
-// Entry = cross-candle close ± the offset in the trade direction; the lines last until the
-// next opposite cross or the configured number of candles, whichever comes first.
+// Entry = cross-candle close ± the offset in the trade direction; TP = entry ± the entry-SL
+// distance times the configured ratio; the lines last until the next opposite cross or the
+// configured number of candles, whichever comes first.
 export function toEmaCrossTrades(setups: SetupRow[], timeframe: string, settings: EmaTradesSettings): EmaCrossTrade[] {
   const tfSeconds = TF_SECONDS[timeframe] ?? 3600;
   return setups.map((s, index) => {
@@ -37,6 +40,8 @@ export function toEmaCrossTrades(setups: SetupRow[], timeframe: string, settings
     const capTime = startTime + settings.candles * tfSeconds;
     const endTime = s.closeTime ? Math.min(toSeconds(s.closeTime), capTime) : capTime;
     const sl = s.levels.EVL;
+    const risk = sl === null ? null : Math.abs(entry - sl);
+    const tp = risk === null ? null : s.direction === 'buy' ? entry + risk * settings.tpRatio : entry - risk * settings.tpRatio;
     return {
       index: index + 1,
       direction: s.direction,
@@ -44,7 +49,9 @@ export function toEmaCrossTrades(setups: SetupRow[], timeframe: string, settings
       endTime,
       entry,
       sl,
-      riskPips: sl === null ? null : Math.abs(entry - sl) / s.pipSize,
+      tp,
+      riskPips: risk === null ? null : risk / s.pipSize,
+      tpRatio: settings.tpRatio,
       pipSize: s.pipSize,
     };
   });
@@ -63,9 +70,9 @@ export function useEmaCrossTrades(
   // The result carries the key it was fetched for, so a stale list is never shown for a
   // new selection while its request is in flight.
   const [result, setResult] = useState<{ key: string; trades: EmaCrossTrade[] }>({ key: '', trades: [] });
-  const { fast, slow, entryPips, candles, count } = settings;
+  const { fast, slow, entryPips, candles, count, tpRatio } = settings;
   const active = enabled && Boolean(broker) && Boolean(symbol);
-  const key = `${broker}|${symbol}|${timeframe}|${fast}|${slow}|${entryPips}|${candles}|${count}|${lastClosedTime ?? ''}`;
+  const key = `${broker}|${symbol}|${timeframe}|${fast}|${slow}|${entryPips}|${candles}|${count}|${tpRatio}|${lastClosedTime ?? ''}`;
 
   useEffect(() => {
     if (!active) return;
@@ -73,10 +80,10 @@ export function useEmaCrossTrades(
     const query = `broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}`
       + `&emaFast=${fast}&emaSlow=${slow}&limit=${count}`;
     apiFetch<{ setups?: SetupRow[] }>(`/setup-levels?${query}`, { signal: ac.signal })
-      .then(data => setResult({ key, trades: toEmaCrossTrades(data.setups ?? [], timeframe, { fast, slow, entryPips, candles, count }) }))
+      .then(data => setResult({ key, trades: toEmaCrossTrades(data.setups ?? [], timeframe, { fast, slow, entryPips, candles, count, tpRatio }) }))
       .catch(err => { if (!isAbortError(err)) setResult({ key, trades: [] }); });
     return () => ac.abort();
-  }, [active, key, broker, symbol, timeframe, fast, slow, entryPips, candles, count]);
+  }, [active, key, broker, symbol, timeframe, fast, slow, entryPips, candles, count, tpRatio]);
 
   return active && result.key === key ? result.trades : EMPTY;
 }

@@ -30,6 +30,7 @@ const EMA_TRADES_FIELDS: EmaTradesField[] = [
   { key: 'entryPips', label: 'Entry offset (pips)', hint: 'Above the cross-candle close for a buy, below it for a sell', min: 0, step: 0.1 },
   { key: 'candles', label: 'Max duration (candles)', hint: 'Candles of the chart timeframe; lines end here or at the next opposite cross, whichever comes first', min: EMA_TRADES_LIMITS.candles.min, max: EMA_TRADES_LIMITS.candles.max, step: 1 },
   { key: 'count', label: 'Trades shown', hint: 'Most recent crosses, both directions', min: EMA_TRADES_LIMITS.count.min, max: EMA_TRADES_LIMITS.count.max, step: 1 },
+  { key: 'tpRatio', label: 'Take profit (R:R)', hint: 'Reward over the entry-SL distance; 2 means the TP sits at twice the risk', min: EMA_TRADES_LIMITS.tpRatio.min, max: EMA_TRADES_LIMITS.tpRatio.max, step: 0.1 },
 ];
 
 const TRENDLINE_COLORS = ['#8c8c8c', '#f5a623', '#3a7bd5', '#4caf84', '#e05c5c', '#c8a840'];

@@ -292,7 +292,7 @@ Un `PipeReader` + un `FileWatcher` **por broker**, configurados en `brokers.json
 
 ### WebSocket `/ws`
 
-Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `candle` (vela cerrada detectada en el tick por el cambio de `<tf>_time`, guardada al momento sin pisar la del EA, spec 025) · `trades_updated` (el watcher guardó un `history.json` con cambios; Historial y Stats recargan, spec 030) · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
+Upgrade solo con `Origin` permitido y cookie JWT válida; ping cada 30 s; backpressure por `bufferedAmount`. Los `ticks` solo llegan a quien se suscribe (spec 041): el cliente envía `{ type: "subscribe", ticks: [{ broker, symbol }, …] }` (máx. 16 pares; cada frame sustituye el conjunto; lista vacía = sin ticks; frame inválido = se ignora) y recibe solo los ticks de esos pares; el resto de mensajes llegan a todos. Mensajes `{ type, broker, ... }` con el `broker` en la **raíz**, no por item (el front lo inyecta antes de ordenar): `ticks` · `positions` (con bid/ask actual y color) · `account` · `candle` (vela cerrada detectada en el tick por el cambio de `<tf>_time`, guardada al momento sin pisar la del EA, spec 025) · `trades_updated` (el watcher guardó un `history.json` con cambios; Historial y Stats recargan, spec 030) · `command_result` · `alert` · `ema_alert` (los dos últimos solo a su dueño).
 
 ### Velas activas y alertas
 

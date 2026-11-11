@@ -207,7 +207,7 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 
 | `type` | Payload | Source |
 |--------|---------|--------|
-| `ticks` | `{ broker, ticks: [ …tick ] }` | pipe, every 100 ms, only when `FEATURE_WS_BROADCAST` is on |
+| `ticks` | `{ broker, ticks: [ …tick ] }` | pipe, every 100 ms, only when `FEATURE_WS_BROADCAST` is on, and only the pairs the client subscribed to (below) |
 | `positions` | `{ broker, currency, brokerOffset, positions: [ …open positions with current bid/ask and colour ] }` | pipe, every 1 s |
 | `account` | `{ broker, account }` | pipe every 1 s, and `account.json` when its content changes |
 | `trades_updated` | `{ broker }` | the watcher synced a changed `history.json` (spec 030): History and Stats refetch |
@@ -216,6 +216,8 @@ Every message is `{ "type", … }` with `broker` at the root (never per item):
 | `alert` | `{ broker, symbol, price, direction }` | price alert, only to its owner |
 | `ema_alert` | `{ broker, symbol, timeframe, direction }` | EMA alert, only to its owner |
 | `ema_notification` | `{ notificationId, broker, symbol, timeframe, kind, direction, gapPips, emaFast, emaSlow, note }` | A standing EMA notification rule fired (spec 023), only to its owner |
+
+**Tick subscription (spec 041).** A client receives no `ticks` until it sends the only inbound message, `{ "type": "subscribe", "ticks": [ { "broker", "symbol" }, … ] }` (at most 16 pairs, names up to 64 characters, frame up to 4 KiB). Each frame replaces the whole set and an empty list stops the ticks; an invalid frame is ignored and the previous set kept. Every batch is filtered per client and skipped when nothing matches, so a client only pays for the charts it has open (the frontend re-sends its set on every reconnect). Every other message type is delivered regardless of the subscription. `scripts/ws-measure.ts` connects as a client and reports the bytes received per type, with or without a subscription.
 
 A tick carries `symbol`, `bid`, `ask`, `time`, `broker_offset` and the open/high/low/time of the current M5, M15, H1, H4 and D1 candles, so the frontend builds the live candle itself; only closed candles are persisted. When a tick's `<tf>_time` advances, the previous bar (its OHLC from the last tick, close = that tick's bid) is upserted into `candles` without overwriting a row the EA already wrote, and broadcast as `candle`; the EA's `candles_<SYM>_<TF>.json` keeps authority because the watcher upserts the file's last two closed bars with their values.
 

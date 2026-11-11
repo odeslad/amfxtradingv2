@@ -401,40 +401,40 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
   const repositionLabelsRef = useRef(repositionLabels);
   useEffect(() => { repositionLabelsRef.current = repositionLabels; }, [repositionLabels]);
 
-  useEffect(() => {
-    let raf = 0;
-    let lastSig = '';
-    let lastAlertSig = '';
-    const tick = () => {
-      const series = seriesRef.current;
-      if (series && positionLevelsRef.current.length > 0) {
-        const sig = positionLevelsRef.current
-          .map(l => `${(series.priceToCoordinate(l.price) ?? -1) | 0}`)
-          .join('|');
-        if (sig !== lastSig) {
-          lastSig = sig;
-          repositionLabelsRef.current();
-        }
-      } else if (lastSig !== '') {
-        lastSig = '';
+  // The price scale can only move when a tick is applied, the visible range changes, the
+  // pane resizes or the user drags / wheels on it (spec 042). Each of those calls this
+  // instead of a 60 fps loop: position labels and alert markers are repositioned only
+  // when their pixel position changed, and the drawings get the same chance.
+  const labelSigRef = useRef('');
+  const alertSigRef = useRef('');
+  const afterScaleChange = useCallback(() => {
+    const series = seriesRef.current;
+    if (series && positionLevelsRef.current.length > 0) {
+      const sig = positionLevelsRef.current
+        .map(l => `${(series.priceToCoordinate(l.price) ?? -1) | 0}`)
+        .join('|');
+      if (sig !== labelSigRef.current) {
+        labelSigRef.current = sig;
+        repositionLabelsRef.current();
       }
+    } else if (labelSigRef.current !== '') {
+      labelSigRef.current = '';
+    }
 
-      // redraw the overlay (alert triangles) when their Y position shifts
-      const list = alertsRef.current;
-      if (series && list) {
-        const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(alertDisplayPrice(a)) ?? -1) | 0}`).join('|')
-          + `#${selectedLevelIdRef.current ?? ''}`;
-        if (sig !== lastAlertSig) {
-          lastAlertSig = sig;
-          drawRolloversRef.current();
-        }
+    const list = alertsRef.current;
+    if (series && list) {
+      const sig = list.map(a => `${a.id}:${a.enabled ? 1 : 0}:${(series.priceToCoordinate(alertDisplayPrice(a)) ?? -1) | 0}`).join('|')
+        + `#${selectedLevelIdRef.current ?? ''}`;
+      if (sig !== alertSigRef.current) {
+        alertSigRef.current = sig;
+        drawRolloversRef.current();
       }
+    }
 
-      raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    trendlineManagerRef.current?.onScaleChange();
   }, [alertDisplayPrice]);
+  const afterScaleChangeRef = useRef(afterScaleChange);
+  useEffect(() => { afterScaleChangeRef.current = afterScaleChange; }, [afterScaleChange]);
 
   // Left-pointing triangle markers pinned to the right edge of the pane (before
   // the price axis) with the alert price as a label. Orange when armed, grey off.
@@ -911,6 +911,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
 
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       drawRollovers();
+      afterScaleChangeRef.current();
       if (!range) return;
       if (range.from <= 30) onLoadMoreRef.current?.();
     });
@@ -928,10 +929,25 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
         trendlineManagerRef.current?.redraw();
       }
       drawRollovers();
+      afterScaleChangeRef.current();
     });
     ro.observe(containerRef.current);
 
+    // Dragging the price axis or wheeling over it rescales without any chart event
+    // (spec 042): one coalesced check per frame while the pointer is active.
+    const container = containerRef.current;
+    let interactionRaf = 0;
+    const onInteraction = (e: Event) => {
+      if (e.type === 'pointermove' && (e as PointerEvent).buttons === 0) return;
+      if (interactionRaf) return;
+      interactionRaf = requestAnimationFrame(() => { interactionRaf = 0; afterScaleChangeRef.current(); });
+    };
+    const interactionEvents = ['pointermove', 'pointerup', 'wheel', 'touchmove', 'touchend'] as const;
+    for (const type of interactionEvents) container.addEventListener(type, onInteraction, { passive: true });
+
     return () => {
+      for (const type of interactionEvents) container.removeEventListener(type, onInteraction);
+      cancelAnimationFrame(interactionRaf);
       ro.disconnect();
       trendlineManagerRef.current?.destroy();
       trendlineManagerRef.current = null;
@@ -1134,6 +1150,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     pendingLiveRef.current = null;
     lastApplyRef.current = performance.now();
     applyLive(candle);
+    afterScaleChangeRef.current();
   }, [applyLive]);
 
   const scheduleApply = useCallback(() => {
@@ -1173,6 +1190,7 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
 
   const fitPrice = useCallback(() => {
     seriesRef.current?.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0, bottom: 0 } });
+    afterScaleChangeRef.current();
   }, []);
 
   useImperativeHandle(ref, () => ({ updateLive }), [updateLive]);

@@ -8,3 +8,12 @@
 - **Pasos manuales (usuario):** Vite contra la API de producción, chart en M5 con 3 EMAs y el spread activo. Esperado: (1) vela viva, EMAs y líneas bid/ask se mueven con fluidez pero no más de ≈ 4 veces por segundo; (2) cambiar a otra pestaña 10 s y volver → la vela salta al precio actual en menos de 250 ms y sigue moviéndose; (3) cambiar de símbolo → ninguna vela vieja del anterior.
 - **Resultado:** 🕐 pendiente de la comprobación manual del usuario.
 - **Est vs Actual:** 1 SP · 0,5 SP de momento.
+
+## Tarea 2 · [frontend] `afterScaleChange()` + `DrawingTools.onScaleChange()`
+
+- **Mecanismo:** `npm run build` + eslint + manual.
+- **Comandos:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx src/features/chart/DrawingTools.ts` → limpio · grep de `requestAnimationFrame` en `features/chart` → no quedan bucles: usos de un solo disparo (enfoque de input, reintento del error boundary, carga del slot), la comprobación coalescida de interacción y el planificador de ticks.
+- **Implementación:** el efecto de 60 fps pasó a ser `afterScaleChange` (las mismas dos comprobaciones de firma, firmas en refs, después `trendlineManagerRef.current?.onScaleChange()`), llamada desde `applyPending`, el handler de rango visible, el `ResizeObserver`, `fitPrice` y un listener pasivo de `pointermove` (con botón pulsado) / `pointerup` / `wheel` / `touchmove` / `touchend` sobre el contenedor coalescido a un frame. `DrawingManager` perdió `rafId` / `scheduleRaf`; `onScaleChange()` repinta cuando la Y del ancla se movió más de 0,5 px y `resetScaleAnchor()` (los antiguos puntos de llamada a `scheduleRaf`) fuerza el siguiente repintado.
+- **Pasos manuales (usuario):** fundidos con la validación en producción de la tarea 4: etiquetas de posición, marcadores de alertas, dibujos y regla siguen a scroll, zoom, arrastre del eje de precio y redimensionado; DevTools Performance no muestra actividad periódica sin ticks (fin de semana) o con la pestaña quieta.
+- **Resultado:** 🕐 build y lint pasan; comprobación manual en la tarea 4.
+- **Est vs Actual:** 1,25 SP · 0,75 SP de momento.

@@ -208,7 +208,9 @@ export class DrawingManager {
   private onSelectionChange: ((hasSelection: boolean) => void) | null = null;
   private onChange: (() => void) | null = null;
   private onCountChange: ((count: number) => void) | null = null;
-  private rafId = 0;
+  // Y of the first drawing's anchor price at the last repaint; null forces the next
+  // onScaleChange to repaint (spec 042: no rAF loop, the chart tells us when to look).
+  private lastAnchorY: number | null = null;
 
   private boundDblClick: (e: MouseEvent) => void;
   private boundMouseDown: (e: MouseEvent) => void;
@@ -249,29 +251,27 @@ export class DrawingManager {
     document.addEventListener('touchend', this.boundTouchEnd, true);
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(this.boundRangeChange);
-    this.scheduleRaf();
   }
 
-  // RAF loop — only active when there are drawings to repaint on price rescale.
-  private scheduleRaf() {
-    cancelAnimationFrame(this.rafId);
+  private resetScaleAnchor() {
+    this.lastAnchorY = null;
+  }
+
+  private anchorY(): number {
+    const d = this.drawings[0];
+    const price = d ? ('price' in d ? d.price : d.price1) : this.ruler?.price1 ?? 0;
+    try { return this.series.priceToCoordinate(price) ?? 0; }
+    catch { return 0; }
+  }
+
+  // Called by the chart whenever the price scale may have moved: repaints only when
+  // the anchor drawing actually shifted on screen.
+  onScaleChange() {
     if (this.drawings.length === 0 && !this.ruler) return;
-    const anchorPrice = () => {
-      const d = this.drawings[0];
-      if (d) return 'price' in d ? d.price : d.price1;
-      return this.ruler?.price1 ?? 0;
-    };
-    const safeCoord = () => {
-      try { return this.series.priceToCoordinate(anchorPrice()) ?? 0; }
-      catch { return 0; }
-    };
-    let lastY = safeCoord();
-    const tick = () => {
-      const y = safeCoord();
-      if (Math.abs(y - lastY) > 0.5) { lastY = y; this.redraw(); }
-      this.rafId = requestAnimationFrame(tick);
-    };
-    this.rafId = requestAnimationFrame(tick);
+    const y = this.anchorY();
+    if (this.lastAnchorY !== null && Math.abs(y - this.lastAnchorY) <= 0.5) return;
+    this.lastAnchorY = y;
+    this.redraw();
   }
 
   destroy() {
@@ -285,7 +285,6 @@ export class DrawingManager {
     document.removeEventListener('touchmove', this.boundTouchMove, true);
     document.removeEventListener('touchend', this.boundTouchEnd, true);
     this.chart.timeScale().unsubscribeVisibleLogicalRangeChange(this.boundRangeChange);
-    cancelAnimationFrame(this.rafId);
   }
 
   // ─── chart panel bounds (exclude price/time axes) ────────────────────────
@@ -536,7 +535,7 @@ export class DrawingManager {
           this.setSelected(copy.id);
           this.dragHandle = hit.handle;
           this.dragLastLogical = this.pixelToLogical(pos);
-          this.scheduleRaf();
+          this.resetScaleAnchor();
           this.redraw();
           this.onChange?.();
           return true;
@@ -569,7 +568,7 @@ export class DrawingManager {
     this.isRulerMode = false;
     this.setCursor('');
     this.setSelected(RULER_ID);
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
     this.onDone?.();
   }
@@ -578,7 +577,7 @@ export class DrawingManager {
     if (!this.ruler) return;
     this.ruler = null;
     if (this.selectedId === RULER_ID) this.setSelected(null);
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
   }
 
@@ -603,7 +602,7 @@ export class DrawingManager {
     this.isDrawing = false;
     this.drawKind = null;
     this.setCursor('');
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
     this.notifyCount();
     this.onDone?.();
@@ -809,7 +808,7 @@ export class DrawingManager {
       } else {
         return;
       }
-      this.scheduleRaf();
+      this.resetScaleAnchor();
       this.redraw();
       this.notifyCount();
       this.onChange?.();
@@ -1387,7 +1386,7 @@ export class DrawingManager {
     if (this.selectedId === RULER_ID) { this.clearRuler(); return; }
     this.drawings = this.drawings.filter(d => d.id !== this.selectedId);
     this.setSelected(null);
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
     this.notifyCount();
     this.onChange?.();
@@ -1398,7 +1397,7 @@ export class DrawingManager {
     if (this.drawings.length === 0) return;
     this.drawings = [];
     this.setSelected(null);
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
     this.notifyCount();
     this.onChange?.();
@@ -1558,7 +1557,7 @@ export class DrawingManager {
         });
       }
     });
-    this.scheduleRaf();
+    this.resetScaleAnchor();
     this.redraw();
     this.notifyCount();
   }

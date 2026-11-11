@@ -635,10 +635,14 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       ctx.fillText(`#${trade.index} ${trade.direction.toUpperCase()} · ${tagDate(trade.startTime)}`, x1 + 4, 14);
 
       label(`${trade.direction.toUpperCase()} ${fmtPrice(trade.entry, precision)}`, x2, yEntry, EMA_TRADE_ENTRY_COLOR, '#000');
-      if (ySl !== null && trade.riskPips !== null) {
-        label(`SL ${trade.riskPips.toFixed(1)} p`, x2, ySl, EMA_TRADE_SL_COLOR, '#fff');
-        if (yTp !== null) {
-          label(`TP ${trade.tpRatio.toFixed(1)}R · ${(trade.riskPips * trade.tpRatio).toFixed(1)} p`, x2, yTp, EMA_TRADE_TP_COLOR, '#000');
+      if (trade.sl !== null && ySl !== null && trade.riskPips !== null) {
+        // SL / TP labels show the parts chosen in Settings (price, R multiple, pips).
+        const parts = (price: number, r: number, pips: number) => trade.labels.map(part =>
+          part === 'price' ? fmtPrice(price, precision) : part === 'r' ? `${r.toFixed(1)}R` : `${pips.toFixed(1)} p`,
+        ).join(' · ');
+        label(`SL ${parts(trade.sl, 1, trade.riskPips)}`, x2, ySl, EMA_TRADE_SL_COLOR, '#fff');
+        if (trade.tp !== null && yTp !== null) {
+          label(`TP ${parts(trade.tp, trade.tpRatio, trade.riskPips * trade.tpRatio)}`, x2, yTp, EMA_TRADE_TP_COLOR, '#000');
         }
       }
     }

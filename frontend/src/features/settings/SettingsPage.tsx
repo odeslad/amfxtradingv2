@@ -86,7 +86,7 @@ export function SettingsPage() {
       setPresets(formPresets);
       setSelectedPresetKey(formPresets[0]?.key ?? '');
       setAccounts(Object.fromEntries(balances.map(b => [b.broker, { name: b.name, balance: b.balance, currency: b.currency }])));
-      setDisplay({ ...DEFAULT_DISPLAY, ...settings.display });
+      setDisplay({ ...DEFAULT_DISPLAY, ...settings.display, emaTrades: { ...DEFAULT_EMA_TRADES, ...settings.display?.emaTrades } });
       setVisibility({ ...EMPTY_VISIBILITY, ...settings.visibility });
     }).catch(() => {});
     return () => ac.abort();

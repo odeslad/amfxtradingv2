@@ -1,6 +1,6 @@
 import { SETUP_LEVEL_KEYS, type PnlMode, type SetupLevelKey } from '../journal/utils/position';
 import { FIB_LEVEL_ANCHORS, FIB_LEVEL_CATALOGUE, type TrendlineStyle } from '../chart/DrawingTools';
-import { EMA_TRADES_LIMITS, type EmaTradesSettings } from '../chart/emaTrades';
+import { EMA_TRADES_LABEL_KEYS, EMA_TRADES_LABEL_NAMES, EMA_TRADES_LIMITS, type EmaTradesLabel, type EmaTradesSettings } from '../chart/emaTrades';
 import styles from './SettingsPage.module.css';
 
 export interface DisplaySettingsForm {
@@ -16,7 +16,7 @@ export interface DisplaySettingsForm {
 }
 
 interface EmaTradesField {
-  key: keyof EmaTradesSettings;
+  key: Exclude<keyof EmaTradesSettings, 'labels'>;
   label: string;
   hint?: string;
   min: number;
@@ -54,10 +54,17 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
     onChange({ setupLevels: next });
   };
 
-  const updateEmaTrades = (key: keyof EmaTradesSettings, raw: string) => {
+  const updateEmaTrades = (key: Exclude<keyof EmaTradesSettings, 'labels'>, raw: string) => {
     const value = Number(raw);
     if (raw === '' || !Number.isFinite(value)) return;
     onChange({ emaTrades: { ...display.emaTrades, [key]: value } });
+  };
+
+  // At least one part stays on so an SL / TP label is never blank.
+  const toggleEmaTradesLabel = (key: EmaTradesLabel, on: boolean) => {
+    const next = EMA_TRADES_LABEL_KEYS.filter(k => (k === key ? on : display.emaTrades.labels.includes(k)));
+    if (next.length === 0) return;
+    onChange({ emaTrades: { ...display.emaTrades, labels: next } });
   };
 
   const toggleFibLevel = (level: number, on: boolean) => {
@@ -169,6 +176,26 @@ export function DisplayTab({ display, onChange }: DisplayTabProps) {
                   onChange={e => updateEmaTrades(field.key, e.target.value)}
                 />
               </label>
+            ))}
+          </div>
+          <span className={styles.displayLabel}>
+            SL / TP labels
+            <span className={styles.displayHint}>What the stop and take profit tags show on the chart; at least one stays on</span>
+          </span>
+          <div className={styles.levelGrid}>
+            {EMA_TRADES_LABEL_KEYS.map(key => (
+              <div key={key} className={styles.levelCard}>
+                <span className={styles.levelKey}>{EMA_TRADES_LABEL_NAMES[key]}</span>
+                <label className={styles.toggle}>
+                  <input
+                    type="checkbox"
+                    checked={display.emaTrades.labels.includes(key)}
+                    onChange={e => toggleEmaTradesLabel(key, e.target.checked)}
+                    aria-label={`EMA trades label ${EMA_TRADES_LABEL_NAMES[key]}`}
+                  />
+                  <span className={styles.toggleTrack}><span className={styles.toggleThumb} /></span>
+                </label>
+              </div>
             ))}
           </div>
         </div>

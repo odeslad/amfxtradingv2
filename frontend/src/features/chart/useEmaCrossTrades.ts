@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiFetch, isAbortError } from '../../lib/api';
-import type { EmaTradesSettings } from './emaTrades';
+import type { EmaTradesLabel, EmaTradesSettings } from './emaTrades';
 
 // One EMA-cross trade for the chart overlay (spec 039). Times in epoch seconds.
 export interface EmaCrossTrade {
@@ -13,6 +13,7 @@ export interface EmaCrossTrade {
   tp: number | null;
   riskPips: number | null;
   tpRatio: number;
+  labels: EmaTradesLabel[];
   pipSize: number;
 }
 
@@ -52,6 +53,7 @@ export function toEmaCrossTrades(setups: SetupRow[], timeframe: string, settings
       tp,
       riskPips: risk === null ? null : risk / s.pipSize,
       tpRatio: settings.tpRatio,
+      labels: settings.labels,
       pipSize: s.pipSize,
     };
   });
@@ -70,9 +72,10 @@ export function useEmaCrossTrades(
   // The result carries the key it was fetched for, so a stale list is never shown for a
   // new selection while its request is in flight.
   const [result, setResult] = useState<{ key: string; trades: EmaCrossTrade[] }>({ key: '', trades: [] });
-  const { fast, slow, entryPips, candles, count, tpRatio } = settings;
+  const { fast, slow, entryPips, candles, count, tpRatio, labels } = settings;
+  const labelsKey = labels.join(',');
   const active = enabled && Boolean(broker) && Boolean(symbol);
-  const key = `${broker}|${symbol}|${timeframe}|${fast}|${slow}|${entryPips}|${candles}|${count}|${tpRatio}|${lastClosedTime ?? ''}`;
+  const key = `${broker}|${symbol}|${timeframe}|${fast}|${slow}|${entryPips}|${candles}|${count}|${tpRatio}|${labelsKey}|${lastClosedTime ?? ''}`;
 
   useEffect(() => {
     if (!active) return;
@@ -80,10 +83,10 @@ export function useEmaCrossTrades(
     const query = `broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}`
       + `&emaFast=${fast}&emaSlow=${slow}&limit=${count}`;
     apiFetch<{ setups?: SetupRow[] }>(`/setup-levels?${query}`, { signal: ac.signal })
-      .then(data => setResult({ key, trades: toEmaCrossTrades(data.setups ?? [], timeframe, { fast, slow, entryPips, candles, count, tpRatio }) }))
+      .then(data => setResult({ key, trades: toEmaCrossTrades(data.setups ?? [], timeframe, { fast, slow, entryPips, candles, count, tpRatio, labels }) }))
       .catch(err => { if (!isAbortError(err)) setResult({ key, trades: [] }); });
     return () => ac.abort();
-  }, [active, key, broker, symbol, timeframe, fast, slow, entryPips, candles, count, tpRatio]);
+  }, [active, key, broker, symbol, timeframe, fast, slow, entryPips, candles, count, tpRatio, labels]);
 
   return active && result.key === key ? result.trades : EMPTY;
 }

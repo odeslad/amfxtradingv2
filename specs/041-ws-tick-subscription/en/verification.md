@@ -22,3 +22,10 @@
 - **Docs:** `backend/docs/architecture.md` WebSocket section (subscription paragraph, `ticks` row) and `.claude/CLAUDE.md` WS line updated.
 - **Outcome:** ✅ pass on 2026-11-11.
 - **Est vs Actual:** 0.5 SP · 0.75 SP (the harness and a stray process on the port).
+
+## Task 4 · [frontend] Subscription registry in `lib/ws.ts` + `useTickSubscription`
+
+- **Mechanism:** `npm run build` + eslint on the new/changed files.
+- **Commands:** `npm run build` → ✓ built · `npx eslint src/lib/ws.ts src/lib/useTickSubscription.ts` → clean.
+- **Outcome:** ✅ pass on 2026-11-11. Ref-counted `Map` of `broker|symbol`, one microtask flush per change, frame skipped when identical to the last one sent, `lastSent` reset on `onopen` so every reconnect re-sends. Behaviour on screen is checked in task 5 together with the consumers.
+- **Est vs Actual:** 0.75 SP · 0.5 SP.

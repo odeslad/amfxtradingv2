@@ -22,3 +22,10 @@
 - **Docs:** sección WebSocket de `backend/docs/architecture.md` (párrafo de suscripción, fila `ticks`) y línea WS de `.claude/CLAUDE.md` actualizadas.
 - **Resultado:** ✅ pasa el 2026-11-11.
 - **Est vs Actual:** 0,5 SP · 0,75 SP (el arnés y un proceso colgado en el puerto).
+
+## Tarea 4 · [frontend] Registro de suscripciones en `lib/ws.ts` + `useTickSubscription`
+
+- **Mecanismo:** `npm run build` + eslint sobre los ficheros nuevos/cambiados.
+- **Comandos:** `npm run build` → ✓ built · `npx eslint src/lib/ws.ts src/lib/useTickSubscription.ts` → limpio.
+- **Resultado:** ✅ pasa el 2026-11-11. `Map` con contador de referencias por `broker|symbol`, un flush en microtarea por cambio, frame omitido cuando es idéntico al último enviado, `lastSent` reiniciado en `onopen` para que cada reconexión reenvíe. El comportamiento en pantalla se comprueba en la tarea 5 junto con los consumidores.
+- **Est vs Actual:** 0,75 SP · 0,5 SP.

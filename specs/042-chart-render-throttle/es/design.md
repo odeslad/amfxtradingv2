@@ -1,6 +1,6 @@
 # 042 — Limitación del repintado del chart · Diseño
 
-> Status: **approved**
+> Status: **closed**
 
 ## Enfoque
 

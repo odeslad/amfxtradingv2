@@ -1,6 +1,6 @@
 # 042 — Chart render throttle
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

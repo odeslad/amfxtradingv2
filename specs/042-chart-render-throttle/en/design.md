@@ -1,6 +1,6 @@
 # 042 — Chart render throttle · Design
 
-> Status: **approved**
+> Status: **closed**
 
 ## Approach
 

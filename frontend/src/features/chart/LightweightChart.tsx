@@ -43,6 +43,8 @@ interface Candle {
 }
 
 const ROLLOVER_TIMEFRAMES = new Set(['M5', 'M15', 'H1', 'H4', 'D1']);
+// Minimum gap between two live-tick applications to the chart (spec 042).
+const LIVE_MIN_INTERVAL_MS = 250;
 const TF_SECONDS: Record<string, number> = { M5: 300, M15: 900, H1: 3600, H4: 14400, D1: 86400 };
 // EMA cross trades overlay (spec 039)
 const EMA_TRADE_ENTRY_COLOR = '#c8a840';
@@ -1073,9 +1075,9 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     syncSpreadLines();
   }, [showSpread, syncSpreadLines]);
 
-  const updateLive = useCallback((liveCandle: Candle | null, ask?: number) => {
-    if (liveCandle === null) { liveCandleTimeRef.current = null; quoteRef.current = { bid: null, ask: null }; return; }
-    quoteRef.current = { bid: liveCandle.close, ask: ask ?? null };
+  // Applies a live tick to the series and the EMAs (spec 042: called by the scheduler
+  // below, never straight from the WebSocket handler).
+  const applyLive = useCallback((liveCandle: Candle) => {
     if (showSpreadRef.current) syncSpreadLines();
     if (!seriesRef.current) return;
 
@@ -1108,6 +1110,66 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
     }
     updateLiveEmas(liveTime, liveCandle.close);
   }, [updateLiveEmas, syncSpreadLines]);
+
+  // Tick scheduler (spec 042): ticks arrive every 100 ms but the chart is repainted at
+  // most once per animation frame and never more often than LIVE_MIN_INTERVAL_MS, with
+  // the latest tick. Nothing is scheduled while the tab is hidden; the pending tick is
+  // applied when it becomes visible again.
+  const pendingLiveRef = useRef<Candle | null>(null);
+  const lastApplyRef = useRef(0);
+  const applyTimerRef = useRef<{ kind: 'raf' | 'timeout'; id: number } | null>(null);
+
+  const cancelApply = useCallback(() => {
+    const timer = applyTimerRef.current;
+    if (!timer) return;
+    if (timer.kind === 'raf') cancelAnimationFrame(timer.id);
+    else clearTimeout(timer.id);
+    applyTimerRef.current = null;
+  }, []);
+
+  const applyPending = useCallback(() => {
+    applyTimerRef.current = null;
+    const candle = pendingLiveRef.current;
+    if (!candle) return;
+    pendingLiveRef.current = null;
+    lastApplyRef.current = performance.now();
+    applyLive(candle);
+  }, [applyLive]);
+
+  const scheduleApply = useCallback(() => {
+    if (applyTimerRef.current || document.hidden || !pendingLiveRef.current) return;
+    const wait = LIVE_MIN_INTERVAL_MS - (performance.now() - lastApplyRef.current);
+    if (wait <= 0) {
+      applyTimerRef.current = { kind: 'raf', id: requestAnimationFrame(applyPending) };
+    } else {
+      applyTimerRef.current = {
+        kind: 'timeout',
+        id: window.setTimeout(() => { applyTimerRef.current = { kind: 'raf', id: requestAnimationFrame(applyPending) }; }, wait),
+      };
+    }
+  }, [applyPending]);
+
+  useEffect(() => {
+    const onVisibility = () => { if (!document.hidden) scheduleApply(); };
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      cancelApply();
+    };
+  }, [scheduleApply, cancelApply]);
+
+  const updateLive = useCallback((liveCandle: Candle | null, ask?: number) => {
+    if (liveCandle === null) {
+      cancelApply();
+      pendingLiveRef.current = null;
+      liveCandleTimeRef.current = null;
+      quoteRef.current = { bid: null, ask: null };
+      return;
+    }
+    quoteRef.current = { bid: liveCandle.close, ask: ask ?? null };
+    pendingLiveRef.current = liveCandle;
+    scheduleApply();
+  }, [scheduleApply, cancelApply]);
 
   const fitPrice = useCallback(() => {
     seriesRef.current?.priceScale().applyOptions({ autoScale: true, scaleMargins: { top: 0, bottom: 0 } });

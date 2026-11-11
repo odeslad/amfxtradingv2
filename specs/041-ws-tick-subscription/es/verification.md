@@ -36,4 +36,20 @@
 - **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre los tres ficheros → limpio.
 - **Pasos manuales (usuario):** Vite contra la API de producción (el backend local no tiene pipes, así que no hay ticks). DevTools > Network > `ws` > Messages. Esperado: (1) al cargar, un `{"type":"subscribe","ticks":[{broker,symbol}]}` saliente con el par del chart; (2) cambiar broker o símbolo → un frame nuevo solo con el par nuevo; (3) vista dividida → un frame con los dos pares, volver a simple → un frame con uno; (4) abrir New Trade con un preset cuyo broker de niveles difiera del chart → frame con dos pares, cerrarlo → vuelve a uno; (5) cortar la conexión (toggle offline de DevTools on/off) → tras la reconexión se vuelve a enviar el frame. Vela viva, precio del panel de alertas y bid/ask de New Trade siguen actualizándose (el backend de producción sigue enviando todos los ticks hasta que la tarea 6 despliegue el filtro).
 - **Resultado:** 🕐 pendiente de la comprobación manual del usuario.
-- **Est vs Actual:** 1 SP · 0,5 SP de momento.
+- **Est vs Actual:** 1 SP · 0,5 SP.
+
+## Tarea 6 · [infra] Push, deploys y validación en producción
+
+- **Mecanismo:** manual (validación del usuario) + `ws-measure.ts` en el VPS.
+- **Deploys:** backend subido primero (`1acbab3`, 2026-11-11 ≈ 10:02 UTC; la API de GitHub estaba limitada, así que el reinicio se confirmó por el `uptimeS` de `/health` cayendo a 15 s), frontend justo después (`7e435e4`; producción sirvió `index-D2uagtMM.js` unos minutos más tarde; la app muestra Build 256.228.35 = frontend 256 · backend 228 · EA 35).
+- **Medición del AC 7** (VPS, `npx tsx --env-file=.env scripts/ws-measure.ts --seconds 60`, 2026-11-11 ≈ 10:10 UTC, mercado abierto):
+
+  | Pasada | Total | Ticks | Resto |
+  |---|---|---|---|
+  | 2026-11-10, antes de la spec | 319 277 B/s | 313 523 B/s (38 824 items, 74 pares) | 5 754 B/s |
+  | Sin suscripción | 5 973 B/s | 0 | positions + account + candle |
+  | `solidary III:EURUSD` | 10 614 B/s | 4 751 B/s (542 items, 1 par) | 5 863 B/s |
+
+  Un par suscrito recibe el 3,3 % del volumen anterior (el AC 7 pide < 5 % / < 16 KB/s) → ≈ 38 MB por hora en lugar de ≈ 1,15 GB. Los ≈ 6 KB/s restantes son `positions` + `account` de los 11 brokers, fuera de alcance.
+- **Validación del usuario en producción:** 🕐 pendiente — chart en vivo en escritorio y móvil, vista dividida, precio del panel de alertas, bid/ask de New Trade, Accounts / Positions / Orders en vivo para todos los brokers (AC 2, 4, 5, 8).
+- **Est vs Actual:** 0,75 SP · 0,75 SP.

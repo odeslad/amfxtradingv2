@@ -36,4 +36,20 @@
 - **Commands:** `npm run build` → ✓ built · `npx eslint` on the three files → clean.
 - **Manual steps (user):** Vite against the production API (the local backend has no pipes, so no ticks). DevTools > Network > `ws` > Messages. Expect: (1) on load one outbound `{"type":"subscribe","ticks":[{broker,symbol}]}` with the chart pair; (2) change broker or symbol → one new frame with the new pair only; (3) split view → one frame with both pairs, back to single → one frame with one; (4) open New Trade with a preset whose levels broker differs from the chart → frame with two pairs, close it → back to one; (5) kill the connection (DevTools offline toggle on/off) → after the reconnect the frame is sent again. Live candle, alerts panel price and New Trade bid/ask keep updating (the production backend still sends every tick until task 6 deploys the filter).
 - **Outcome:** 🕐 pending the user's manual check.
-- **Est vs Actual:** 1 SP · 0.5 SP so far.
+- **Est vs Actual:** 1 SP · 0.5 SP.
+
+## Task 6 · [infra] Push, deploys and production validation
+
+- **Mechanism:** manual (user validation) + `ws-measure.ts` on the VPS.
+- **Deploys:** backend pushed first (`1acbab3`, 2026-11-11 ≈ 10:02 UTC; the GitHub API was rate-limited, so the restart was confirmed by `/health` `uptimeS` dropping to 15 s), frontend right after (`7e435e4`; production served `index-D2uagtMM.js` a few minutes later; the app shows Build 256.228.35 = frontend 256 · backend 228 · EA 35).
+- **AC 7 measurement** (VPS, `npx tsx --env-file=.env scripts/ws-measure.ts --seconds 60`, 2026-11-11 ≈ 10:10 UTC, market open):
+
+  | Run | Total | Ticks | Rest |
+  |---|---|---|---|
+  | 2026-11-10, before the spec | 319 277 B/s | 313 523 B/s (38 824 items, 74 pairs) | 5 754 B/s |
+  | No subscription | 5 973 B/s | 0 | positions + account + candle |
+  | `solidary III:EURUSD` | 10 614 B/s | 4 751 B/s (542 items, 1 pair) | 5 863 B/s |
+
+  One subscribed pair receives 3.3 % of the previous volume (AC 7 asks for < 5 % / < 16 KB/s) → ≈ 38 MB per hour instead of ≈ 1.15 GB. The remaining ≈ 6 KB/s is `positions` + `account` of all 11 brokers, out of scope.
+- **User validation on production:** 🕐 pending — chart live on desktop and mobile, split view, alerts panel price, New Trade bid/ask, Accounts / Positions / Orders live for every broker (AC 2, 4, 5, 8).
+- **Est vs Actual:** 0.75 SP · 0.75 SP.

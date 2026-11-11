@@ -17,8 +17,10 @@ export const FIB_LEVEL_CATALOGUE = [0, 23.6, 38.2, 50, 61.8, 78.6, 100, 127.2, 1
 const FIB_LEVEL_ANCHORS = [0, 100];
 export const DEFAULT_FIB_LEVELS = [0, 23.6, 38.2, 50, 61.8, 78.6, 100];
 
-// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration in candles, count
-// and take profit as a reward:risk ratio.
+// EMA cross trades overlay (spec 039): EMA pair, entry offset, max duration in candles, count,
+// take profit as a reward:risk ratio and what the SL / TP labels show.
+export const EMA_TRADES_LABEL_KEYS = ['price', 'r', 'pips'] as const;
+export type EmaTradesLabel = (typeof EMA_TRADES_LABEL_KEYS)[number];
 export interface EmaTradesSettings {
   fast: number;
   slow: number;
@@ -26,8 +28,9 @@ export interface EmaTradesSettings {
   candles: number;
   count: number;
   tpRatio: number;
+  labels: EmaTradesLabel[];
 }
-export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2 };
+export const DEFAULT_EMA_TRADES: EmaTradesSettings = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2, labels: [...EMA_TRADES_LABEL_KEYS] };
 const EMA_TRADES_MAX_CANDLES = 50;
 const EMA_TRADES_MAX_COUNT = 10;
 const EMA_TRADES_TP_RATIO = { min: 0.5, max: 10 };
@@ -77,6 +80,7 @@ interface DisplayRow {
   emaTradesCandles: number;
   emaTradesCount: number;
   emaTradesTpRatio: number;
+  emaTradesLabels: string[];
   hiddenBrokers: string[];
   hiddenSymbols: Prisma.JsonValue;
 }
@@ -149,7 +153,22 @@ function parseEmaTrades(value: unknown): EmaTradesSettings | undefined {
   if (count > EMA_TRADES_MAX_COUNT) throw new BadRequest(`display.emaTrades.count must be <= ${EMA_TRADES_MAX_COUNT}`);
   const tpRatio = finiteNumber(row.tpRatio, 'display.emaTrades.tpRatio', { min: EMA_TRADES_TP_RATIO.min });
   if (tpRatio > EMA_TRADES_TP_RATIO.max) throw new BadRequest(`display.emaTrades.tpRatio must be <= ${EMA_TRADES_TP_RATIO.max}`);
-  return { fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), candles, count, tpRatio };
+  return {
+    fast, slow, entryPips: finiteNumber(row.entryPips, 'display.emaTrades.entryPips', { min: 0 }), candles, count, tpRatio,
+    labels: parseEmaTradesLabels(row.labels),
+  };
+}
+
+// Known keys only, deduplicated and in canonical order; an empty list falls back to price
+// so a label is never blank.
+function parseEmaTradesLabels(value: unknown): EmaTradesLabel[] {
+  if (!Array.isArray(value)) throw new BadRequest('display.emaTrades.labels must be an array');
+  const isKey = (item: unknown): item is EmaTradesLabel => typeof item === 'string' && (EMA_TRADES_LABEL_KEYS as readonly string[]).includes(item);
+  value.forEach((item, i) => {
+    if (!isKey(item)) throw new BadRequest(`display.emaTrades.labels[${i}] must be one of ${EMA_TRADES_LABEL_KEYS.join(', ')}`);
+  });
+  const labels = EMA_TRADES_LABEL_KEYS.filter(key => value.includes(key));
+  return labels.length > 0 ? labels : ['price'];
 }
 
 function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
@@ -161,6 +180,7 @@ function emaTradesOf(display: DisplayRow | null): EmaTradesSettings {
     candles: display.emaTradesCandles,
     count: display.emaTradesCount,
     tpRatio: display.emaTradesTpRatio,
+    labels: EMA_TRADES_LABEL_KEYS.filter(key => display.emaTradesLabels.includes(key)),
   };
 }
 
@@ -172,6 +192,7 @@ function emaTradesColumns(value: EmaTradesSettings) {
     emaTradesCandles: value.candles,
     emaTradesCount: value.count,
     emaTradesTpRatio: value.tpRatio,
+    emaTradesLabels: value.labels,
   };
 }
 

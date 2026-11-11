@@ -58,7 +58,7 @@ describe('parseDisplay fibLevels', () => {
 });
 
 describe('parseDisplay emaTrades', () => {
-  const valid = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2 };
+  const valid = { fast: 24, slow: 48, entryPips: 5, candles: 24, count: 3, tpRatio: 2, labels: ['price', 'r', 'pips'] };
 
   it('leaves it undefined when absent, so the stored value is kept', () => {
     expect(parseDisplay({ pnlMode: 'net' }).emaTrades).toBeUndefined();
@@ -81,6 +81,13 @@ describe('parseDisplay emaTrades', () => {
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 0.4 } })).toThrow(BadRequest);
     expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 11 } })).toThrow(BadRequest);
     expect(parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, tpRatio: 1.5 } }).emaTrades?.tpRatio).toBe(1.5);
+  });
+
+  it('keeps known labels in canonical order, falls back to price when empty and rejects unknown ones', () => {
+    expect(parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, labels: ['pips', 'price', 'pips'] } }).emaTrades?.labels).toEqual(['price', 'pips']);
+    expect(parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, labels: [] } }).emaTrades?.labels).toEqual(['price']);
+    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, labels: ['usd'] } })).toThrow(BadRequest);
+    expect(() => parseDisplay({ pnlMode: 'net', emaTrades: { ...valid, labels: 'price' } })).toThrow(BadRequest);
   });
 });
 

@@ -680,14 +680,19 @@ export function LightweightChart({ candles, broker, symbol, timeframe, ref, onLo
       const d = new Date(sec * 1000).getUTCDay();
       return d === 0 || d === 6;
     };
+    // Candles are sorted by time, so the snap is a lower bound over the weekday times
+    // built once per repaint (spec 042) instead of a scan of every candle per line.
+    const weekdayTimes: number[] = [];
+    for (const c of data) if (!isWeekend(c.time)) weekdayTimes.push(c.time);
     const snapToCandle = (time: number): number | null => {
-      let best: number | null = null;
-      for (const c of data) {
-        if (isWeekend(c.time)) continue;
-        if (c.time === time) return time;
-        if (c.time > time && (best === null || c.time < best)) best = c.time;
+      let lo = 0;
+      let hi = weekdayTimes.length;
+      while (lo < hi) {
+        const mid = (lo + hi) >>> 1;
+        if (weekdayTimes[mid] < time) lo = mid + 1;
+        else hi = mid;
       }
-      return best;
+      return lo < weekdayTimes.length ? weekdayTimes[lo] : null;
     };
 
     const drawLine = (time: number, color: string) => {

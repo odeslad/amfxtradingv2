@@ -17,3 +17,12 @@
 - **Manual steps (user):** folded into the production validation of task 4: position labels, alert markers, drawings and the ruler follow scroll, zoom, price-axis drag and resize; DevTools Performance shows no periodic activity with no ticks (weekend) or with the tab idle.
 - **Outcome:** 🕐 build and lint pass; manual check in task 4.
 - **Est vs Actual:** 1.25 SP · 0.75 SP so far.
+
+## Task 3 · [frontend] `drawRollovers` snapping by binary search
+
+- **Mechanism:** `npm run build` + eslint + manual (lines identical before/after).
+- **Commands:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx` → clean · equivalence script (scratchpad, node): old scan vs new lower bound over 300 random sorted candle sets (M5 to D1 steps, 10 % gaps, weekend bars included) × 200 target times each = 60 000 checks → 0 mismatches.
+- **Implementation:** `weekdayTimes` built once per repaint; `snapToCandle` is a lower-bound binary search returning the first weekday candle time ≥ target, or null past the end — the same result the scan produced.
+- **Manual steps (user):** folded into task 4: rollover, weekly and month-start lines look the same on M5, H1, H4 and D1.
+- **Outcome:** 🕐 build, lint and equivalence pass; visual check in task 4.
+- **Est vs Actual:** 0.5 SP · 0.25 SP so far.

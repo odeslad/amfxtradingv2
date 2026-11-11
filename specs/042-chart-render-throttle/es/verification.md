@@ -17,3 +17,12 @@
 - **Pasos manuales (usuario):** fundidos con la validación en producción de la tarea 4: etiquetas de posición, marcadores de alertas, dibujos y regla siguen a scroll, zoom, arrastre del eje de precio y redimensionado; DevTools Performance no muestra actividad periódica sin ticks (fin de semana) o con la pestaña quieta.
 - **Resultado:** 🕐 build y lint pasan; comprobación manual en la tarea 4.
 - **Est vs Actual:** 1,25 SP · 0,75 SP de momento.
+
+## Tarea 3 · [frontend] Ajuste de `drawRollovers` por búsqueda binaria
+
+- **Mecanismo:** `npm run build` + eslint + manual (líneas idénticas antes/después).
+- **Comandos:** `npm run build` → ✓ built · `npx eslint src/features/chart/LightweightChart.tsx` → limpio · script de equivalencia (scratchpad, node): recorrido antiguo vs cota inferior nueva sobre 300 conjuntos aleatorios de velas ordenadas (pasos de M5 a D1, 10 % de huecos, velas de fin de semana incluidas) × 200 tiempos objetivo cada uno = 60 000 comprobaciones → 0 discrepancias.
+- **Implementación:** `weekdayTimes` construido una vez por repintado; `snapToCandle` es una búsqueda binaria de cota inferior que devuelve el primer tiempo de vela de día laborable ≥ objetivo, o null pasado el final: el mismo resultado que producía el recorrido.
+- **Pasos manuales (usuario):** fundidos con la tarea 4: las líneas de rollover, semanales y de inicio de mes se ven igual en M5, H1, H4 y D1.
+- **Resultado:** 🕐 build, lint y equivalencia pasan; comprobación visual en la tarea 4.
+- **Est vs Actual:** 0,5 SP · 0,25 SP de momento.

@@ -29,3 +29,11 @@
 - **Comandos:** `npm run build` → ✓ built · `npx eslint src/lib/ws.ts src/lib/useTickSubscription.ts` → limpio.
 - **Resultado:** ✅ pasa el 2026-11-11. `Map` con contador de referencias por `broker|symbol`, un flush en microtarea por cambio, frame omitido cuando es idéntico al último enviado, `lastSent` reiniciado en `onopen` para que cada reconexión reenvíe. El comportamiento en pantalla se comprueba en la tarea 5 junto con los consumidores.
 - **Est vs Actual:** 0,75 SP · 0,5 SP.
+
+## Tarea 5 · [frontend] Declarar el par en `ChartSlot`, `ChartPage`, `NewTradePanel`
+
+- **Mecanismo:** `npm run build` + manual en el stack local (frames WS en DevTools).
+- **Comandos:** `npm run build` → ✓ built · `npx eslint` sobre los tres ficheros → limpio.
+- **Pasos manuales (usuario):** Vite contra la API de producción (el backend local no tiene pipes, así que no hay ticks). DevTools > Network > `ws` > Messages. Esperado: (1) al cargar, un `{"type":"subscribe","ticks":[{broker,symbol}]}` saliente con el par del chart; (2) cambiar broker o símbolo → un frame nuevo solo con el par nuevo; (3) vista dividida → un frame con los dos pares, volver a simple → un frame con uno; (4) abrir New Trade con un preset cuyo broker de niveles difiera del chart → frame con dos pares, cerrarlo → vuelve a uno; (5) cortar la conexión (toggle offline de DevTools on/off) → tras la reconexión se vuelve a enviar el frame. Vela viva, precio del panel de alertas y bid/ask de New Trade siguen actualizándose (el backend de producción sigue enviando todos los ticks hasta que la tarea 6 despliegue el filtro).
+- **Resultado:** 🕐 pendiente de la comprobación manual del usuario.
+- **Est vs Actual:** 1 SP · 0,5 SP de momento.

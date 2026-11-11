@@ -4,6 +4,7 @@ import { apiFetch, apiSend, errorMessage } from '../../lib/api';
 import { modifyCommand, sendCommand } from '../../lib/commands';
 import { addToast } from '../../lib/toast';
 import { useWs } from '../../lib/useWs';
+import { useTickSubscription } from '../../lib/useTickSubscription';
 import { useAuth } from '../auth/useAuth';
 import { playAlertBeep } from '../../lib/beep';
 import { ChartFiltersPanel } from './ChartFiltersPanel';
@@ -395,6 +396,9 @@ export function ChartPage() {
 
   // Page-level stream: fired alerts, live positions and the alerts panel price.
   // Each ChartSlot has its own subscriber for the candles of its timeframe (spec 036).
+  // The alerts panel price follows the chart pair (spec 041).
+  useTickSubscription(broker, symbol);
+
   useWs(useCallback((msg: unknown) => {
     const m = msg as {
       type: string;

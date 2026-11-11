@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch, apiSend, isAbortError } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
+import { useTickSubscription } from '../../lib/useTickSubscription';
 import type { PriceAlert } from '../../lib/useAlerts';
 import { ChartToolbar, type PositionsMode } from './ChartToolbar';
 import { AlertActionBar } from './AlertActionBar';
@@ -134,6 +135,9 @@ export function ChartSlot({
     [alerts],
   );
   const selectedAlert = selectedAlertId === null ? null : alerts.find(a => a.id === selectedAlertId) ?? null;
+
+  // The live candle needs this slot's ticks (spec 041).
+  useTickSubscription(broker, symbol);
 
   useWs(useCallback((msg: unknown) => {
     const m = msg as {

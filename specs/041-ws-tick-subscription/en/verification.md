@@ -29,3 +29,11 @@
 - **Commands:** `npm run build` → ✓ built · `npx eslint src/lib/ws.ts src/lib/useTickSubscription.ts` → clean.
 - **Outcome:** ✅ pass on 2026-11-11. Ref-counted `Map` of `broker|symbol`, one microtask flush per change, frame skipped when identical to the last one sent, `lastSent` reset on `onopen` so every reconnect re-sends. Behaviour on screen is checked in task 5 together with the consumers.
 - **Est vs Actual:** 0.75 SP · 0.5 SP.
+
+## Task 5 · [frontend] Declare the pair in `ChartSlot`, `ChartPage`, `NewTradePanel`
+
+- **Mechanism:** `npm run build` + manual on the local stack (DevTools WS frames).
+- **Commands:** `npm run build` → ✓ built · `npx eslint` on the three files → clean.
+- **Manual steps (user):** Vite against the production API (the local backend has no pipes, so no ticks). DevTools > Network > `ws` > Messages. Expect: (1) on load one outbound `{"type":"subscribe","ticks":[{broker,symbol}]}` with the chart pair; (2) change broker or symbol → one new frame with the new pair only; (3) split view → one frame with both pairs, back to single → one frame with one; (4) open New Trade with a preset whose levels broker differs from the chart → frame with two pairs, close it → back to one; (5) kill the connection (DevTools offline toggle on/off) → after the reconnect the frame is sent again. Live candle, alerts panel price and New Trade bid/ask keep updating (the production backend still sends every tick until task 6 deploys the filter).
+- **Outcome:** 🕐 pending the user's manual check.
+- **Est vs Actual:** 1 SP · 0.5 SP so far.

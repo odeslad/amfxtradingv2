@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { apiFetch } from '../../lib/api';
 import { newCommandId, sendCommand, type Command, type CommandAction } from '../../lib/commands';
 import { subscribe } from '../../lib/ws';
+import { useTickSubscription } from '../../lib/useTickSubscription';
 import { addToast } from '../../lib/toast';
 import { useVisibility, visibleSymbols, isSymbolVisible } from '../../lib/visibility';
 import { SETUP_LEVEL_KEYS, TP_RATIOS, pricePrecision, tpForRatio, type SetupLevelKey, type TpRatio } from './utils/position';
@@ -102,6 +103,8 @@ export const NewTradePanel = memo(function NewTradePanel({ open, onClose, initia
     ? broker
     : (initialBroker && activeMirrorBrokers.some(m => m.broker === initialBroker) ? initialBroker : activeMirrorBrokers[0]?.broker ?? '');
   const showLevels = Boolean(levelsBroker && symbol) && visibleLevels.length > 0;
+  // Live bid/ask of the levels broker only while the panel is open (spec 041).
+  useTickSubscription(open ? levelsBroker : '', open ? symbol : '');
   const pendingIds = useRef<Set<string>>(new Set());
   const onCloseRef = useRef(onClose);
   const initialSymbolRef = useRef(initialSymbol);

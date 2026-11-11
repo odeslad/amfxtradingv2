@@ -29,3 +29,36 @@ export function sendDecision(bufferedAmount: number): SendDecision {
   if (bufferedAmount > SKIP_ABOVE_BYTES) return 'skip';
   return 'send';
 }
+
+// Tick subscription (spec 041): the client names the broker/symbol pairs it needs and
+// receives ticks of those only. The frame replaces the whole set; an empty list stops them.
+export const SUBSCRIBE_MAX_PAIRS = 16;
+export const SUBSCRIBE_MAX_PAYLOAD = 4096;
+const SUBSCRIBE_MAX_NAME = 64;
+
+export const tickKey = (broker: string, symbol: string): string => `${broker}|${symbol}`;
+
+const isName = (value: unknown): value is string =>
+  typeof value === 'string' && value.length > 0 && value.length <= SUBSCRIBE_MAX_NAME;
+
+// The set of `broker|symbol` keys of a valid `subscribe` frame, or null for anything
+// else: the caller keeps the previous set rather than guessing.
+export function parseSubscription(raw: unknown): Set<string> | null {
+  let message: unknown;
+  try {
+    message = JSON.parse(typeof raw === 'string' ? raw : String(raw));
+  } catch {
+    return null;
+  }
+  if (typeof message !== 'object' || message === null) return null;
+  const { type, ticks } = message as { type?: unknown; ticks?: unknown };
+  if (type !== 'subscribe' || !Array.isArray(ticks) || ticks.length > SUBSCRIBE_MAX_PAIRS) return null;
+  const keys = new Set<string>();
+  for (const item of ticks) {
+    if (typeof item !== 'object' || item === null) return null;
+    const { broker, symbol } = item as { broker?: unknown; symbol?: unknown };
+    if (!isName(broker) || !isName(symbol)) return null;
+    keys.add(tickKey(broker, symbol));
+  }
+  return keys;
+}

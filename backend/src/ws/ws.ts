@@ -4,12 +4,16 @@ import type { Duplex } from 'stream';
 import jwt from 'jsonwebtoken';
 import { config } from '../config';
 import { getBid, getAsk } from '../store/ticks';
-import { isAllowedOrigin, tokenFromCookie, sendDecision, HEARTBEAT_MS } from './policy';
+import { isAllowedOrigin, tokenFromCookie, sendDecision, parseSubscription, tickKey, HEARTBEAT_MS, SUBSCRIBE_MAX_PAYLOAD } from './policy';
 
 interface Client extends WebSocket {
   userId: number;
   isAlive: boolean;
+  // broker|symbol pairs this client wants ticks for (spec 041); empty until it subscribes.
+  tickKeys: Set<string>;
 }
+
+interface TickItem { symbol: string; [field: string]: unknown }
 
 function verifyToken(token: string | null): number | null {
   if (!token) return null;
@@ -29,7 +33,7 @@ function reject(socket: Duplex, status: number, text: string): void {
 }
 
 export function createWss(server: Server) {
-  const wss = new WebSocketServer({ noServer: true });
+  const wss = new WebSocketServer({ noServer: true, maxPayload: SUBSCRIBE_MAX_PAYLOAD });
   const clients = wss.clients as Set<Client>;
 
   // Origin and session are checked before the socket exists: a rejected
@@ -46,7 +50,13 @@ export function createWss(server: Server) {
   wss.on('connection', (ws: Client, _req: IncomingMessage, userId: number) => {
     ws.userId = userId;
     ws.isAlive = true;
+    ws.tickKeys = new Set();
     ws.on('pong', () => { ws.isAlive = true; });
+    // The only inbound message: a full replacement of the tick set; anything else is ignored.
+    ws.on('message', data => {
+      const keys = parseSubscription(data.toString());
+      if (keys) ws.tickKeys = keys;
+    });
     console.log(`[WS] Client connected (user ${userId}, total: ${clients.size})`);
     ws.on('close', () => console.log(`[WS] Client disconnected (total: ${clients.size})`));
   });
@@ -85,10 +95,27 @@ export function createWss(server: Server) {
     for (const ws of clients) if (ws.userId === userId) send(ws, message);
   }
 
+  // Each client gets the ticks of its subscribed pairs only; a batch with no match is not
+  // sent. Clients sharing the same subset share one encoding.
+  function broadcastTicks(broker: string, batch: TickItem[]): void {
+    if (clients.size === 0 || batch.length === 0) return;
+    const encoded = new Map<string, string>();
+    for (const ws of clients) {
+      if (ws.tickKeys.size === 0) continue;
+      const subset = batch.filter(t => ws.tickKeys.has(tickKey(broker, t.symbol)));
+      if (subset.length === 0) continue;
+      const cacheKey = subset.map(t => t.symbol).join(',');
+      let message = encoded.get(cacheKey);
+      if (message === undefined) {
+        message = encode('ticks', { broker, ticks: subset });
+        encoded.set(cacheKey, message);
+      }
+      send(ws, message);
+    }
+  }
+
   return {
-    broadcastTicks(broker: string, batch: unknown) {
-      broadcast('ticks', { broker, ticks: batch });
-    },
+    broadcastTicks,
     broadcastPositions(broker: string, positions: unknown, currency: string, brokerOffset: number) {
       const enriched = (positions as { symbol: string }[]).map(p => ({
         ...p,

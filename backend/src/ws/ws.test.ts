@@ -89,18 +89,71 @@ describe('upgrade gate', () => {
   });
 });
 
-describe('delivery', () => {
-  it('broadcasts ticks to every client but alerts only to their owner', async () => {
-    const [a, b] = await Promise.all([connectAs(1), connectAs(2)]);
-    const tickA = nextMessage(a);
-    const tickB = nextMessage(b);
-    wss.broadcastTicks('test', [{ symbol: 'EURUSD', bid: 1.1 }]);
-    expect(await tickA).toMatchObject({ type: 'ticks', broker: 'test' });
-    expect(await tickB).toMatchObject({ type: 'ticks', broker: 'test' });
+const subscribe = (ws: WebSocket, pairs: { broker: string; symbol: string }[]): Promise<void> => {
+  ws.send(JSON.stringify({ type: 'subscribe', ticks: pairs }));
+  return settle();
+};
 
+const collect = (ws: WebSocket): unknown[] => {
+  const received: unknown[] = [];
+  ws.on('message', data => received.push(JSON.parse(data.toString())));
+  return received;
+};
+
+const batch = [{ symbol: 'EURUSD', bid: 1.1 }, { symbol: 'XAUUSD', bid: 2000 }];
+
+describe('delivery', () => {
+  it('sends no ticks to a client that has not subscribed', async () => {
+    const client = await connectAs(1);
+    const received = collect(client);
+    wss.broadcastTicks('test', batch);
+    await settle();
+    expect(received).toEqual([]);
+  });
+
+  it('sends each client only the ticks of its pairs and skips batches with no match', async () => {
+    const [a, b] = await Promise.all([connectAs(1), connectAs(2)]);
+    await subscribe(a, [{ broker: 'test', symbol: 'EURUSD' }]);
+    await subscribe(b, [{ broker: 'test', symbol: 'EURUSD' }, { broker: 'test', symbol: 'XAUUSD' }]);
+    const gotA = collect(a);
+    const gotB = collect(b);
+
+    wss.broadcastTicks('test', batch);
+    wss.broadcastTicks('other', batch);
+    wss.broadcastTicks('test', [{ symbol: 'GBPUSD', bid: 1.3 }]);
+    await settle();
+
+    expect(gotA).toEqual([{ type: 'ticks', broker: 'test', ticks: [{ symbol: 'EURUSD', bid: 1.1 }] }]);
+    expect(gotB).toEqual([{ type: 'ticks', broker: 'test', ticks: batch }]);
+  });
+
+  it('replaces the set on a new frame, stops on an empty one and ignores a malformed one', async () => {
+    const client = await connectAs(1);
+    await subscribe(client, [{ broker: 'test', symbol: 'EURUSD' }]);
+    const received = collect(client);
+
+    await subscribe(client, [{ broker: 'test', symbol: 'XAUUSD' }]);
+    wss.broadcastTicks('test', batch);
+    await settle();
+    expect(received).toEqual([{ type: 'ticks', broker: 'test', ticks: [{ symbol: 'XAUUSD', bid: 2000 }] }]);
+
+    client.send('not json');
+    client.send(JSON.stringify({ type: 'subscribe', ticks: 'XAUUSD' }));
+    await settle();
+    wss.broadcastTicks('test', batch);
+    await settle();
+    expect(received).toHaveLength(2);
+
+    await subscribe(client, []);
+    wss.broadcastTicks('test', batch);
+    await settle();
+    expect(received).toHaveLength(2);
+  });
+
+  it('sends alerts only to their owner, subscribed or not', async () => {
+    const [a, b] = await Promise.all([connectAs(1), connectAs(2)]);
     const alertA = nextMessage(a);
-    const received: unknown[] = [];
-    b.on('message', data => received.push(JSON.parse(data.toString())));
+    const received = collect(b);
     wss.broadcastAlert(1, 'test', 'EURUSD', 1.1, 'above');
     wss.broadcastEmaAlert(1, 'test', 'EURUSD', 'H1', 'buy');
     expect(await alertA).toEqual({ type: 'alert', userId: 1, broker: 'test', symbol: 'EURUSD', price: 1.1, direction: 'above' });

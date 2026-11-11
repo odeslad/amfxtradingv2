@@ -1,6 +1,6 @@
 # 041 — WebSocket tick subscription
 
-> Status: **approved**
+> Status: **closed**
 
 ## Context
 

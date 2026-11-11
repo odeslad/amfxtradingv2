@@ -53,3 +53,12 @@
   Un par suscrito recibe el 3,3 % del volumen anterior (el AC 7 pide < 5 % / < 16 KB/s) → ≈ 38 MB por hora en lugar de ≈ 1,15 GB. Los ≈ 6 KB/s restantes son `positions` + `account` de los 11 brokers, fuera de alcance.
 - **Validación del usuario en producción:** 🕐 pendiente — chart en vivo en escritorio y móvil, vista dividida, precio del panel de alertas, bid/ask de New Trade, Accounts / Positions / Orders en vivo para todos los brokers (AC 2, 4, 5, 8).
 - **Est vs Actual:** 0,75 SP · 0,75 SP.
+
+## Tarea 7 · [specs] Cierre
+
+- **Builds finales:** backend `npm run build` → ✓ · frontend `npm run build` → ✓ built (2026-11-11).
+- **Est vs Actual por tarea:** 1: 0,75 · 0,5 — 2: 1,5 · 1 — 3: 0,5 · 0,75 — 4: 0,75 · 0,5 — 5: 1 · 0,5 — 6: 0,75 · 0,75 — 7: 0,25 · 0,25.
+- **Total:** 5,5 SP estimados · 4,25 SP reales. Calibración: las dos tareas del WebSocket salieron por debajo porque el diseño fijó de antemano el protocolo y los casos de test; el script de medición se pasó porque no había backend local y hubo que montar un arnés. La comprobación en DevTools de la tarea 5 pasó a producción por decisión del usuario.
+- **Desviaciones:** `scripts/ws-measure.ts` (TypeScript vía tsx) en lugar del `.js` que nombraba el diseño.
+- **Pendiente del usuario:** nada. Continuaciones fuera de esta spec: `permessage-deflate` y un payload de tick más ligero recortarían los ≈ 6 KB/s restantes de `positions` / `account` y el tamaño por tick.
+- **Est vs Actual:** 0,25 SP · 0,25 SP.

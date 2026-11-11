@@ -1,6 +1,6 @@
 # 041 — Suscripción de ticks por WebSocket
 
-> Status: **approved**
+> Status: **closed**
 
 ## Contexto
 

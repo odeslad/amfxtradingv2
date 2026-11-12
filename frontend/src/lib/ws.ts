@@ -6,8 +6,17 @@ const WS_BASE = API_BASE.startsWith('/')
 
 type Listener = (data: unknown) => void;
 
+type ResyncListener = () => void;
+
+const RECONNECT_DELAY_MS = 3000;
+
 const listeners = new Set<Listener>();
+// Messages sent while the socket was down or the page frozen are lost for good: these
+// listeners are told when that may have happened so they can reload what they missed.
+const resyncListeners = new Set<ResyncListener>();
 let socket: WebSocket | null = null;
+let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+let hasOpened = false;
 
 // Tick subscription (spec 041): the backend sends ticks only for the broker/symbol pairs
 // declared here. Components add and remove their pair; the union goes out as one
@@ -53,19 +62,30 @@ export function removeTickSubscription(broker: string, symbol: string) {
   scheduleFlush();
 }
 
+function notifyResync() {
+  resyncListeners.forEach(fn => fn());
+}
+
 function connect() {
+  if (reconnectTimer) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+  }
   if (socket && (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING)) {
     return;
   }
 
-  socket = new WebSocket(`${WS_BASE}/ws`);
+  const ws = new WebSocket(`${WS_BASE}/ws`);
+  socket = ws;
 
-  socket.onopen = () => {
+  ws.onopen = () => {
     lastSent = null;
     flushSubscription();
+    if (hasOpened) notifyResync();
+    hasOpened = true;
   };
 
-  socket.onmessage = (e) => {
+  ws.onmessage = (e) => {
     try {
       const data = JSON.parse(e.data as string);
       listeners.forEach(fn => fn(data));
@@ -74,20 +94,41 @@ function connect() {
     }
   };
 
-  socket.onclose = () => {
+  ws.onclose = () => {
+    // A socket already replaced by a newer one must not tear that one down.
+    if (socket !== ws) return;
     socket = null;
-    setTimeout(connect, 3000);
+    reconnectTimer = setTimeout(connect, RECONNECT_DELAY_MS);
   };
 
-  socket.onerror = () => socket?.close();
+  ws.onerror = () => ws.close();
+}
+
+// Back in the foreground or back online: reconnect now instead of waiting for the timer
+// (throttled in a background tab), and resync even over a socket that stayed open, since
+// a frozen page may have had its frames dropped.
+function resume() {
+  if (document.hidden) return;
+  if (socket?.readyState === WebSocket.OPEN) notifyResync();
+  else connect();
 }
 
 connect();
+document.addEventListener('visibilitychange', resume);
+window.addEventListener('online', resume);
 
 export function subscribe(fn: Listener) {
   listeners.add(fn);
 
   return () => {
     listeners.delete(fn);
+  };
+}
+
+export function subscribeResync(fn: ResyncListener) {
+  resyncListeners.add(fn);
+
+  return () => {
+    resyncListeners.delete(fn);
   };
 }

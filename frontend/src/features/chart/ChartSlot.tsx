@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { apiFetch, apiSend, isAbortError } from '../../lib/api';
 import { useWs } from '../../lib/useWs';
+import { subscribeResync } from '../../lib/ws';
 import { useTickSubscription } from '../../lib/useTickSubscription';
 import type { PriceAlert } from '../../lib/useAlerts';
 import { ChartToolbar, type PositionsMode } from './ChartToolbar';
@@ -88,6 +89,7 @@ const TF_KEYS: Record<string, { time: string; open: string; high: string; low: s
   D1:  { time: 'd1_time',  open: 'd1_open',  high: 'd1_high',  low: 'd1_low'  },
 };
 
+const RESYNC_LIMIT = 500;
 
 const parseCandles = (data: RawCandle[]): Candle[] => {
   const parsed = data.map(c => ({
@@ -99,6 +101,22 @@ const parseCandles = (data: RawCandle[]): Candle[] => {
   }));
   parsed.sort((a, b) => a.time - b.time);
   return parsed;
+};
+
+const sameCandle = (a: Candle, b: Candle): boolean =>
+  a.time === b.time && a.open === b.open && a.high === b.high && a.low === b.low && a.close === b.close;
+
+// Folds the latest candles from the server into the loaded ones. Without overlap the
+// loaded history is dropped (older candles come back through load-more), so the series
+// never keeps a hole. Returns `prev` itself when nothing changed, to skip the redraw.
+const mergeLatest = (prev: Candle[], latest: Candle[]): Candle[] => {
+  if (latest.length === 0) return prev;
+  const from = latest[0].time;
+  const to = latest[latest.length - 1].time;
+  if (prev.length === 0 || prev[prev.length - 1].time < from) return latest;
+  const merged = [...prev.filter(c => c.time < from), ...latest, ...prev.filter(c => c.time > to)];
+  const unchanged = merged.length === prev.length && merged.every((c, i) => sameCandle(c, prev[i]));
+  return unchanged ? prev : merged;
 };
 
 // One chart with everything bound to its own timeframe: candles, live candle,
@@ -212,6 +230,22 @@ export function ChartSlot({
       })
       .catch(err => { if (!isAbortError(err)) setChartLoading(false); });
     return () => { ac.abort(); loadMoreAcRef.current?.abort(); };
+  }, [broker, symbol, timeframe]);
+
+  // Candles closed while the WS was down or the page frozen never arrive as `candle`
+  // messages: reload the latest ones so the chart has no hole before the live candle.
+  useEffect(() => {
+    if (!broker || !symbol) return;
+    let ac: AbortController | null = null;
+    const unsubscribe = subscribeResync(() => {
+      if (candlesRef.current.length === 0) return;
+      ac?.abort();
+      ac = new AbortController();
+      apiFetch<RawCandle[]>(`/candles?broker=${encodeURIComponent(broker)}&symbol=${encodeURIComponent(symbol)}&tf=${timeframe}&limit=${RESYNC_LIMIT}`, { signal: ac.signal })
+        .then(data => setCandles(prev => (prev.length === 0 ? prev : mergeLatest(prev, parseCandles(data)))))
+        .catch(() => {});
+    });
+    return () => { unsubscribe(); ac?.abort(); };
   }, [broker, symbol, timeframe]);
 
   useEffect(() => {
